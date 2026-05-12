@@ -1,0 +1,108 @@
+// This is a placeholder for prisma/schema.prisma.
+// Assuming a basic User model already exists.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql" // Or your preferred database
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String        @id @default(cuid())
+  email         String        @unique
+  emailVerified DateTime?
+  name          String?
+  password      String?
+  image         String?
+  credits       Int           @default(0)
+  role          String        @default("USER") // "USER", "ADMIN"
+  status        String        @default("ACTIVE") // "ACTIVE", "SUSPENDED", "BANNED"
+  accounts      Account[]
+  sessions      Session[]
+  planId        String?
+  subscription  Subscription? @relation(fields: [planId], references: [id])
+  toolUsages    ToolUsage[]
+  creditLogs    CreditLog[]
+  payments      Payment[]
+}
+
+model Account {
+  id                 String  @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String?  @db.Text
+  access_token       String?  @db.Text
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String?  @db.Text
+  session_state      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Subscription {
+  id            String        @id @default(cuid())
+  userId        String        @unique
+  user          User          @relation(fields: [userId], references: [id])
+  planId        String
+  planName      String
+  status        String        @default("ACTIVE") // "ACTIVE", "CANCELLED", "EXPIRED"
+  currentPeriodStart DateTime
+  currentPeriodEnd   DateTime
+  razorpaySubscriptionId String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model Payment {
+  id            String        @id @default(cuid())
+  userId        String
+  user          User          @relation(fields: [userId], references: [id])
+  amount        Float
+  currency      String
+  status        String        @default("PENDING") // "PENDING", "COMPLETED", "FAILED"
+  orderId       String?
+  razorpayPaymentId String?
+  subscriptionId String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model ToolUsage {
+  id            String        @id @default(cuid())
+  userId        String
+  user          User          @relation(fields: [userId], references: [id])
+  toolId        String
+  toolName      String
+  input         Json
+  output        Json
+  creditsUsed   Int
+  apiCost       Float         @default(0) // Cost from external AI APIs
+  timestamp     DateTime      @default(now())
+}
+
+model CreditLog {
+  id            String        @id @default(cuid())
+  userId        String
+  user          User          @relation(fields: [userId], references: [id])
+  amount        Int
+  type          String        // "PURCHASE", "BONUS", "DEDUCTION", "RESET"
+  description   String?
+  timestamp     DateTime      @default(now())
+}

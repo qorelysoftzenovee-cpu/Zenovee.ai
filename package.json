@@ -1,0 +1,17 @@
+{
+  "name": "zenovee-root",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "@supabase/ssr": "^0.10.3",
+    "@supabase/supabase-js": "^2.105.4",
+    "@t3-oss/env-nextjs": "^0.13.11",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "framer-motion": "^11.0.3",
+    "lucide-react": "^1.14.0",
+    "next-themes": "^0.4.6",
+    "tailwind-merge": "^3.6.0",
+    "zod": "^4.4.3"
+  }
+}
