@@ -166,6 +166,73 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["api_usage"]["Insert"]>;
         Relationships: [];
       };
+      ai_request_logs: {
+        Row: {
+          id: string;
+          user_id: string;
+          tool_id: string;
+          ip_address: string;
+          usage_class: "standard" | "heavy";
+          plan_id: string;
+          status: string;
+          prompt_chars: number;
+          failure_reason: string | null;
+          abuse_score: number;
+          metadata: Json | null;
+          created_at: string;
+        };
+        Insert: {
+          user_id: string;
+          tool_id: string;
+          ip_address: string;
+          usage_class: "standard" | "heavy";
+          plan_id: string;
+          status: string;
+          prompt_chars: number;
+          failure_reason?: string | null;
+          abuse_score?: number;
+          metadata?: Json | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["ai_request_logs"]["Insert"]>;
+        Relationships: [];
+      };
+      ai_abuse_flags: {
+        Row: {
+          id: string;
+          user_id: string;
+          ip_address: string;
+          flag_type: string;
+          score: number;
+          metadata: Json | null;
+          created_at: string;
+        };
+        Insert: {
+          user_id: string;
+          ip_address: string;
+          flag_type: string;
+          score: number;
+          metadata?: Json | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["ai_abuse_flags"]["Insert"]>;
+        Relationships: [];
+      };
+      ai_cooldowns: {
+        Row: {
+          scope_key: string;
+          reason: string;
+          cooldown_until: string;
+          updated_at: string;
+          created_at: string;
+        };
+        Insert: {
+          scope_key: string;
+          reason: string;
+          cooldown_until: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["ai_cooldowns"]["Insert"]>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

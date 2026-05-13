@@ -31,7 +31,8 @@ const textGenerationTool: ToolDefinition<z.infer<typeof textInput>, z.infer<type
   inputSchema: textInput,
   outputSchema: textOutput,
   creditCost: 10,
-  aiModel: "gemini-2.0-flash",
+  usageClass: "standard",
+  aiModel: "llama-3.1-8b-instant",
   promptTemplate: ({ prompt }) =>
     `You are a premium SaaS AI writer. Generate a concise, high-quality response for this prompt:\n\n${prompt}`,
   outputFormatter: (response) => ({ generatedText: response.trim() }),
@@ -62,7 +63,8 @@ const codeGenerationTool: ToolDefinition<z.infer<typeof codeInput>, z.infer<type
   inputSchema: codeInput,
   outputSchema: codeOutput,
   creditCost: 20,
-  aiModel: "gemini-1.5-pro",
+  usageClass: "heavy",
+  aiModel: "llama-3.1-70b-versatile",
   promptTemplate: ({ description, language }) =>
     `You are an expert ${language} engineer. Produce production-ready ${language} code for the following request:\n\n${description}\n\nReturn plain text with the code first, then a short explanation.`,
   outputFormatter: (response) => {

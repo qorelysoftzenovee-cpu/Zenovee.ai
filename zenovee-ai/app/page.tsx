@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentUser } from "@/lib/auth";
-import Navigation from './components/Navigation';
+import Navigation from "./components/Navigation";
 
 const features = [
   {
@@ -27,7 +27,7 @@ export default async function LandingPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navigation />
+      <Navigation isAuthenticated={Boolean(user)} />
 
       <main>
         <section className="section-shell py-20 md:py-28 lg:py-32">

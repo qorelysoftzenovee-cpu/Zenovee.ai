@@ -10,6 +10,13 @@ export class HistoryService {
     output: Json;
     cost: number;
     apiCost?: number;
+    provider?: string;
+    model?: string;
+    usage?: {
+      promptTokens: number;
+      completionTokens: number;
+      totalTokens: number;
+    };
   }) {
     const { data, error } = await supabaseAdmin
       .from("tool_usage")
@@ -27,6 +34,21 @@ export class HistoryService {
 
     if (error) {
       throw new Error(error.message);
+    }
+
+    if (args.provider && args.model) {
+      const { error: usageError } = await supabaseAdmin.from("api_usage").insert({
+        user_id: args.userId,
+        provider: args.provider,
+        model: args.model,
+        prompt_tokens: args.usage?.promptTokens ?? 0,
+        completion_tokens: args.usage?.completionTokens ?? 0,
+        total_tokens: args.usage?.totalTokens ?? 0,
+      });
+
+      if (usageError) {
+        throw new Error(usageError.message);
+      }
     }
 
     return data;

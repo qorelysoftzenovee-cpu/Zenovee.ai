@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { getPlanById } from "@/app/subscription-plans";
 import { env } from "@/lib/env";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { getRazorpayClient } from "@/services/razorpay";
 
 export async function POST(request: Request) {
   const user = await getCurrentUser();
@@ -18,14 +19,28 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Plan not found." }, { status: 404 });
   }
 
-  const orderId = `local_${user.id}_${plan.id}_${Date.now()}`;
+  if (!env.RAZORPAY_KEY_ID || !env.RAZORPAY_KEY_SECRET) {
+    return NextResponse.json({ error: "Billing is not configured." }, { status: 503 });
+  }
+
+  const razorpay = getRazorpayClient();
+
+  const order = await razorpay.orders.create({
+    amount: Math.round(plan.price * 100),
+    currency: "INR",
+    receipt: `sub_${user.id}_${plan.id}_${Date.now()}`,
+    notes: {
+      userId: user.id,
+      planId: plan.id,
+    },
+  });
 
   await supabaseAdmin.from("payments").insert({
     user_id: user.id,
     amount: plan.price,
     currency: "INR",
     status: "PENDING",
-    order_id: orderId,
+    order_id: order.id,
   });
 
   await supabaseAdmin.from("subscriptions").upsert(
@@ -40,10 +55,10 @@ export async function POST(request: Request) {
 
   return NextResponse.json({
     success: true,
-    mode: env.RAZORPAY_KEY_ID && env.RAZORPAY_KEY_SECRET ? "configured" : "pending_configuration",
-    message:
-      env.RAZORPAY_KEY_ID && env.RAZORPAY_KEY_SECRET
-        ? "Checkout request recorded. Connect the Razorpay frontend modal to complete payment."
-        : "Razorpay keys are not configured yet. Billing request was recorded for operational visibility.",
+    order: {
+      id: order.id,
+      amount: order.amount,
+      currency: order.currency,
+    },
   });
 }

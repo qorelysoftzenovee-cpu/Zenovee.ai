@@ -1,6 +1,6 @@
 import type { ZodSchema } from "zod";
 
-export type GeminiModel = "gemini-2.0-flash" | "gemini-1.5-pro";
+export type AIModel = "llama-3.1-70b-versatile" | "llama-3.1-8b-instant" | "mixtral-8x7b";
 
 export interface AIUsage {
   promptTokens: number;
@@ -9,11 +9,13 @@ export interface AIUsage {
 }
 
 export interface AIGenerateTextInput {
-  model: GeminiModel;
+  model: AIModel;
   prompt: string;
+  systemPrompt?: string;
   timeoutMs?: number;
   maxRetries?: number;
   temperature?: number;
+  maxTokens?: number;
 }
 
 export interface AIGenerateStructuredInput<TSchema extends ZodSchema> extends AIGenerateTextInput {
@@ -23,7 +25,9 @@ export interface AIGenerateStructuredInput<TSchema extends ZodSchema> extends AI
 export interface AIGenerateTextResult {
   content: string;
   usage: AIUsage;
-  model: GeminiModel;
+  model: AIModel;
+  provider: "groq";
+  costUsd: number;
 }
 
 export interface AIGenerateStructuredResult<T> extends AIGenerateTextResult {
