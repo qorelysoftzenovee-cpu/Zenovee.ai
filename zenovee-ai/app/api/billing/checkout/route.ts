@@ -2,10 +2,16 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { getPlanById } from "@/app/subscription-plans";
 import { env } from "@/lib/env";
-import { supabaseAdmin } from "@/lib/supabase/admin";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getRazorpayClient } from "@/services/razorpay";
 
 export async function POST(request: Request) {
+  const hasSupabaseConfig = Boolean(env.NEXT_PUBLIC_SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY);
+
+  if (!hasSupabaseConfig) {
+    return NextResponse.json({ error: "Supabase is not configured." }, { status: 503 });
+  }
+
   const user = await getCurrentUser();
 
   if (!user) {
@@ -24,6 +30,7 @@ export async function POST(request: Request) {
   }
 
   const razorpay = getRazorpayClient();
+  const supabaseAdmin = getSupabaseAdmin();
 
   const order = await razorpay.orders.create({
     amount: Math.round(plan.price * 100),
