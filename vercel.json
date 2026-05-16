@@ -1,0 +1,6 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "cd zenovee-ai && npm install",
+  "buildCommand": "cd zenovee-ai && npm run build",
+  "outputDirectory": "zenovee-ai/.next"
+}
