@@ -1,4 +1,4 @@
-import { groqAIService } from "@/services/ai/groq-client";
+import { getGroqAIService } from "@/services/ai/groq-client";
 import type { ZodSchema } from "zod";
 import type {
   AIGenerateStructuredInput,
@@ -29,7 +29,7 @@ export async function runAI({
   temperature?: number;
   maxTokens?: number;
 }): Promise<AIGenerateTextResult> {
-  return groqAIService.generateText({
+  return getGroqAIService().generateText({
     model,
     prompt,
     systemPrompt,
@@ -39,7 +39,7 @@ export async function runAI({
 }
 
 export async function runAIStructuredWithSchema<TSchema extends ZodSchema>(input: AIGenerateStructuredInput<TSchema>) {
-  return groqAIService.generateStructured(input);
+  return getGroqAIService().generateStructured(input);
 }
 
 export type { AIGenerateTextInput, AIGenerateStructuredInput } from "@/services/ai/types";

@@ -168,4 +168,12 @@ export class GroqAIService {
   }
 }
 
-export const groqAIService = new GroqAIService(env.GROQ_API_KEY || "__MISSING_GROQ_KEY__");
+let groqAIServiceInstance: GroqAIService | null = null;
+
+export function getGroqAIService() {
+  if (!groqAIServiceInstance) {
+    groqAIServiceInstance = new GroqAIService(env.GROQ_API_KEY || "__MISSING_GROQ_KEY__");
+  }
+
+  return groqAIServiceInstance;
+}
