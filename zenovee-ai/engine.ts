@@ -14,6 +14,10 @@ export class ToolEngine {
       throw new Error("Requested tool was not found.");
     }
 
+    if (tool.metadata.availability === "coming_soon") {
+      throw new Error(tool.metadata.disabledReason ?? "This tool is currently unavailable.");
+    }
+
     const sanitizedInput = AIProtectionService.sanitizeInput(rawInput);
     const validatedInput = tool.inputSchema.parse(sanitizedInput) as Record<string, unknown>;
     await CreditService.ensureSufficientCredits(this.userId, tool.creditCost);
@@ -49,13 +53,15 @@ export class ToolEngine {
     const formattedOutput = tool.outputFormatter(aiResponse.content) as Record<string, unknown>;
     tool.outputSchema.parse(formattedOutput);
 
+    const durationMs = typeof aiResponse.latencyMs === "number" ? aiResponse.latencyMs : null;
+
     const remainingCredits = await CreditService.deductCredits(
       this.userId,
       tool.creditCost,
       `${tool.metadata.name} execution`
     );
 
-    await HistoryService.saveToolExecution({
+    const execution = await HistoryService.saveToolExecution({
       userId: this.userId,
       toolId: tool.id,
       toolName: tool.metadata.name,
@@ -66,6 +72,8 @@ export class ToolEngine {
       provider: aiResponse.provider,
       model: aiResponse.model,
       usage: aiResponse.usage,
+      prompt,
+      durationMs: durationMs ?? undefined,
     });
 
     await AIProtectionService.markCompletion({
@@ -79,6 +87,7 @@ export class ToolEngine {
     });
 
     return {
+      executionId: execution.id,
       output: formattedOutput,
       remainingCredits,
       usage: aiResponse.usage,
@@ -86,12 +95,13 @@ export class ToolEngine {
   }
 
   getToolList() {
-    return listToolDefinitions().map(({ id, metadata, creditCost, fields, usageClass }) => ({
+    return listToolDefinitions().map(({ id, metadata, creditCost, fields, usageClass, exportFormats }) => ({
       id,
       metadata,
       creditCost,
       fields,
       usageClass: usageClass ?? "standard",
+      exportFormats: exportFormats ?? ["json"],
     }));
   }
 }

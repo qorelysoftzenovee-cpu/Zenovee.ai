@@ -6,6 +6,8 @@ export class CreditService {
       .from("credits")
       .select("balance")
       .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(1)
       .maybeSingle<{ balance: number }>();
     if (error) throw new Error(error.message);
     return data?.balance ?? 0;
@@ -25,10 +27,23 @@ export class CreditService {
     }
 
     const nextBalance = currentCredits - amount;
-    const { error: creditError } = await supabaseAdmin
-      .from("credits")
-      .upsert({ user_id: userId, balance: nextBalance }, { onConflict: "user_id" });
+    const nowIso = new Date().toISOString();
+
+    const { error: creditError } = await supabaseAdmin.from("credits").insert({
+      user_id: userId,
+      credits_added: 0,
+      credits_consumed: amount,
+      remaining_balance: nextBalance,
+      reason: description,
+      reset_interval: "monthly",
+      updated_at: nowIso,
+    } as never);
     if (creditError) throw new Error(creditError.message);
+
+    await supabaseAdmin
+      .from("users")
+      .update({ credits_balance: nextBalance, updated_at: nowIso } as never)
+      .eq("id", userId);
 
     const { error: usageError } = await supabaseAdmin.from("tool_usage").insert({
       user_id: userId,
@@ -36,7 +51,7 @@ export class CreditService {
       tool_name: description,
       input: { type: "USAGE", amount },
       output: { remaining: nextBalance },
-      cost: amount,
+      credits_consumed: amount,
       api_cost: 0,
     });
     if (usageError) throw new Error(usageError.message);
@@ -47,14 +62,27 @@ export class CreditService {
   static async addCredits(userId: string, amount: number, description: string) {
     const currentCredits = await this.getCredits(userId);
     const nextBalance = currentCredits + amount;
-    const { error } = await supabaseAdmin
-      .from("credits")
-      .upsert({ user_id: userId, balance: nextBalance }, { onConflict: "user_id" });
+    const nowIso = new Date().toISOString();
+    const { error } = await supabaseAdmin.from("credits").insert({
+      user_id: userId,
+      credits_added: amount,
+      credits_consumed: 0,
+      remaining_balance: nextBalance,
+      reason: description,
+      reset_interval: "monthly",
+      updated_at: nowIso,
+    } as never);
     if (error) throw new Error(error.message);
+
+    await supabaseAdmin
+      .from("users")
+      .update({ credits_balance: nextBalance, updated_at: nowIso } as never)
+      .eq("id", userId);
 
     await supabaseAdmin.from("payments").insert({
       user_id: userId,
-      amount,
+      payment_amount: amount,
+      plan: "credit_topup",
       status: "CREDIT_TOPUP",
       currency: "INR",
       order_id: description,

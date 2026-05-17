@@ -1,0 +1,63 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="styles.css" />
+    <title>Zenovee AI Settings</title>
+  </head>
+  <body>
+    <div class="app-shell" style="max-width:760px;margin:0 auto;">
+      <div class="header">
+        <div class="brand">
+          <div class="brand-badge">Z</div>
+          <div>
+            <strong>Zenovee AI Settings</strong>
+            <div class="muted" style="font-size:12px;">Personalize your browser workspace</div>
+          </div>
+        </div>
+        <a href="onboarding.html" class="button secondary small" style="width:auto;">Onboarding</a>
+      </div>
+
+      <div class="card section stack">
+        <div class="row between">
+          <div>
+            <strong>Theme mode</strong>
+            <div class="muted" style="font-size:12px;">Switch between light and dark interface</div>
+          </div>
+          <select id="theme" class="select" style="max-width:180px;">
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
+        </div>
+
+        <div class="row between">
+          <div>
+            <strong>Preferred action</strong>
+            <div class="muted" style="font-size:12px;">Default workflow used across quick tools</div>
+          </div>
+          <select id="preferred-action" class="select" style="max-width:220px;"></select>
+        </div>
+
+        <div class="row between">
+          <div>
+            <strong>Shortcut label</strong>
+            <div class="muted" style="font-size:12px;">Set the shortcut hint shown in the extension</div>
+          </div>
+          <input id="shortcut" class="input" style="max-width:220px;" placeholder="Alt+Shift+Z" />
+        </div>
+
+        <div class="row between">
+          <div>
+            <strong>Desktop notifications</strong>
+            <div class="muted" style="font-size:12px;">Show generation success, credits, and errors</div>
+          </div>
+          <input id="notifications" type="checkbox" class="toggle" />
+        </div>
+
+        <button id="save-settings" class="button">Save preferences</button>
+      </div>
+    </div>
+    <script type="module" src="settings.js"></script>
+  </body>
+  </html>

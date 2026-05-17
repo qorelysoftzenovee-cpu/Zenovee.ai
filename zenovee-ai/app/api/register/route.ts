@@ -41,19 +41,29 @@ export async function POST(request: Request) {
       name: payload.name.trim(),
       role: "USER",
       status: "ACTIVE",
+      plan: "starter",
+      credits_balance: 100,
+      signup_date: new Date().toISOString(),
     });
     if (profileError) {
       await supabaseAdmin.auth.admin.deleteUser(userId);
+      if (profileError.message.includes("Could not find the table 'public.users'")) {
+        return NextResponse.json(
+          { error: "Database is not initialized. Run supabase/bootstrap.sql in Supabase SQL Editor." },
+          { status: 500 }
+        );
+      }
       return NextResponse.json({ error: profileError.message }, { status: 400 });
     }
 
-    const { error: creditError } = await supabaseAdmin.from("credits").upsert(
-      {
-        user_id: userId,
-        balance: 100,
-      },
-      { onConflict: "user_id" }
-    );
+    const { error: creditError } = await supabaseAdmin.from("credits").insert({
+      user_id: userId,
+      credits_added: 100,
+      credits_consumed: 0,
+      remaining_balance: 100,
+      reason: "signup_bonus",
+      reset_interval: "monthly",
+    } as never);
     if (creditError) {
       await supabaseAdmin.auth.admin.deleteUser(userId);
       return NextResponse.json({ error: creditError.message }, { status: 400 });
@@ -61,6 +71,7 @@ export async function POST(request: Request) {
 
     await supabaseAdmin.from("admin_logs").insert({
       admin_user_id: userId,
+      target_user_id: userId,
       action: "USER_REGISTERED",
       payload: { email },
     });

@@ -28,6 +28,7 @@ export interface AIGenerateTextResult {
   model: AIModel;
   provider: "groq";
   costUsd: number;
+  latencyMs?: number;
 }
 
 export interface AIGenerateStructuredResult<T> extends AIGenerateTextResult {

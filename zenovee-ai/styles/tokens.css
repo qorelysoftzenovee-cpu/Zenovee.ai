@@ -6,12 +6,19 @@
   --card: 0 0% 100%;
   --card-foreground: 222.2 47.4% 11.2%;
   --border: 214.3 31.8% 91.4%;
+  --ring: 262.1 83.3% 57.8%;
   --primary: 222.2 47.4% 11.2%;
   --primary-foreground: 210 40% 98%;
   --secondary: 210 40% 96.1%;
   --secondary-foreground: 222.2 47.4% 11.2%;
   --accent: 262.1 83.3% 57.8%;
   --accent-foreground: 210 40% 98%;
+  --success: 142.1 76.2% 36.3%;
+  --success-foreground: 138 76% 97%;
+  --warning: 38 92% 50%;
+  --warning-foreground: 26 83% 14%;
+  --danger: 0 84.2% 60.2%;
+  --danger-foreground: 210 40% 98%;
   --radius: 0.75rem;
 }
 
@@ -23,10 +30,17 @@
   --card: 222.2 84% 4.9%;
   --card-foreground: 210 40% 98%;
   --border: 217.2 32.6% 17.5%;
+  --ring: 263.4 70% 50.4%;
   --primary: 210 40% 98%;
   --primary-foreground: 222.2 47.4% 11.2%;
   --secondary: 217.2 32.6% 17.5%;
   --secondary-foreground: 210 40% 98%;
   --accent: 263.4 70% 50.4%;
   --accent-foreground: 210 40% 98%;
+  --success: 142.1 70.6% 45.3%;
+  --success-foreground: 144 70% 6%;
+  --warning: 48 96% 53%;
+  --warning-foreground: 32 90% 8%;
+  --danger: 0 62.8% 30.6%;
+  --danger-foreground: 210 40% 98%;
 }

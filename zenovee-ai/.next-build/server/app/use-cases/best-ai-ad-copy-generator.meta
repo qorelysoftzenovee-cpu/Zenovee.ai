@@ -1,0 +1,16 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/use-cases/layout,_N_T_/use-cases/[slug]/layout,_N_T_/use-cases/[slug]/page,_N_T_/use-cases/best-ai-ad-copy-generator"
+  },
+  "segmentPaths": [
+    "/_tree",
+    "/_full",
+    "/use-cases/$d$slug/__PAGE__",
+    "/use-cases/$d$slug",
+    "/use-cases",
+    "/_index",
+    "/_head"
+  ]
+}

@@ -17,6 +17,8 @@ export class HistoryService {
       completionTokens: number;
       totalTokens: number;
     };
+    prompt?: string;
+    durationMs?: number;
   }) {
     const { data, error } = await supabaseAdmin
       .from("tool_usage")
@@ -24,9 +26,12 @@ export class HistoryService {
         user_id: args.userId,
         tool_id: args.toolId,
         tool_name: args.toolName,
+        credits_consumed: args.cost,
+        ai_model: args.model ?? null,
+        provider: args.provider ?? null,
+        generation_duration_ms: args.durationMs ?? null,
         input: args.input,
         output: args.output,
-        cost: args.cost,
         api_cost: args.apiCost ?? 0,
       })
       .select("id")
@@ -41,15 +46,31 @@ export class HistoryService {
         user_id: args.userId,
         provider: args.provider,
         model: args.model,
+        token_usage: args.usage?.totalTokens ?? 0,
         prompt_tokens: args.usage?.promptTokens ?? 0,
         completion_tokens: args.usage?.completionTokens ?? 0,
-        total_tokens: args.usage?.totalTokens ?? 0,
+        cost: args.apiCost ?? 0,
+        status: "success",
+        failure_count: 0,
       });
 
       if (usageError) {
         throw new Error(usageError.message);
       }
     }
+
+    await supabaseAdmin.from("generation_history").insert({
+      user_id: args.userId,
+      tool_usage_id: data.id,
+      tool_id: args.toolId,
+      prompt: args.prompt ?? null,
+      output: typeof args.output === "string" ? args.output : JSON.stringify(args.output),
+      exports: null,
+      metadata: {
+        toolName: args.toolName,
+        apiCost: args.apiCost ?? 0,
+      },
+    });
 
     return data;
   }

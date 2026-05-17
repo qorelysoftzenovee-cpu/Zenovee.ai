@@ -1,6 +1,6 @@
 'use client';
 
-import { Menu, X } from 'lucide-react';
+import { Menu, ShieldCheck, Sparkles, X } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -9,81 +9,91 @@ export default function Navigation({ isAuthenticated }: { isAuthenticated: boole
   const [isOpen, setIsOpen] = useState(false);
 
   const navItems = [
-    { label: 'Features', href: '#features' },
-    { label: 'Tools', href: '#tools' },
-    { label: 'Pricing', href: '#pricing' },
-    { label: 'Docs', href: '#docs' },
+    { label: 'Tools', href: '/tools' },
+    { label: 'Blog', href: '/blog' },
+    { label: 'Pricing', href: '/pricing' },
+    { label: 'Contact', href: '/contact' },
   ];
 
   return (
-    <nav className="sticky top-0 z-50 w-full backdrop-blur-xl bg-white/80 dark:bg-black/80 border-b border-slate-200 dark:border-slate-800">
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 flex items-center justify-between">
-        {/* Logo */}
-        <div className="flex items-center gap-2 group cursor-pointer">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center">
+    <nav className="sticky top-0 z-50 w-full border-b border-border/70 bg-background/78 backdrop-blur-2xl">
+      <div className="section-shell flex items-center justify-between gap-4 py-4">
+        <Link href="/" className="group flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-purple-600 shadow-lg shadow-purple-500/20">
             <span className="text-white font-bold text-lg">Z</span>
           </div>
-          <span className="font-bold text-xl text-slate-900 dark:text-white">Zenovee</span>
-        </div>
+          <div>
+            <span className="block text-lg font-bold leading-none text-foreground">Zenovee</span>
+            <span className="block text-[11px] uppercase tracking-[0.24em] text-muted-foreground">Premium AI Workspace</span>
+          </div>
+        </Link>
 
-        {/* Desktop Menu */}
-        <div className="hidden md:flex items-center gap-8">
+        <div className="hidden items-center gap-6 lg:flex">
           {navItems.map((item, idx) => (
-            <a
+            <Link
               key={idx}
               href={item.href}
-              className="text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors"
+              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
             >
               {item.label}
-            </a>
+            </Link>
           ))}
         </div>
 
-        {/* Right side buttons */}
-        <div className="hidden md:flex items-center gap-4">
+        <div className="hidden items-center gap-3 md:flex">
+          <div className="hidden items-center gap-2 rounded-full border border-border/70 bg-card/70 px-3 py-1.5 text-xs text-muted-foreground xl:flex">
+            <ShieldCheck size={14} className="text-accent" /> Secure billing
+            <span className="text-border">•</span>
+            <Sparkles size={14} className="text-accent" /> Export-ready outputs
+          </div>
           {isAuthenticated ? (
             <Link href="/dashboard">
-              <Button variant="default" className="font-semibold px-6">
+              <Button variant="default" className="px-6 font-semibold">
                 Go to Dashboard
               </Button>
             </Link>
           ) : (
             <>
-              <Link href="/login">
-                <button className="text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white font-semibold transition-colors">
-                  Sign In
-                </button>
+              <Link href="/login" className="text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground">
+                Sign In
               </Link>
               <Link href="/register">
-                <button className="btn-primary text-sm">
-                  Get Started
-                </button>
+                <Button size="sm" className="px-5">Get Started</Button>
               </Link>
             </>
           )}
         </div>
 
-        {/* Mobile menu button */}
-        <button onClick={() => setIsOpen(!isOpen)} className="md:hidden p-2 hover:bg-slate-100 dark:hover:bg-slate-900 rounded-lg transition-colors">
+        <button
+          aria-label={isOpen ? 'Close navigation menu' : 'Open navigation menu'}
+          onClick={() => setIsOpen(!isOpen)}
+          className="rounded-xl border border-border/70 bg-card/70 p-2.5 transition-colors hover:bg-muted md:hidden"
+        >
           {isOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
       </div>
 
-      {/* Mobile menu */}
-      <div className={`md:hidden overflow-hidden bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 ${isOpen ? "block" : "hidden"}`}>
-        <div className="px-4 py-4 space-y-3">
+      <div className={`border-t border-border/70 bg-background/96 md:hidden ${isOpen ? 'block' : 'hidden'}`}>
+        <div className="section-shell space-y-3 py-4">
           {navItems.map((item, idx) => (
-            <a
+            <Link
               key={idx}
               href={item.href}
-              className="block text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white py-2"
+              className="block rounded-xl px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              onClick={() => setIsOpen(false)}
             >
               {item.label}
-            </a>
+            </Link>
           ))}
-          <div className="pt-4 space-y-2 border-t border-slate-200 dark:border-slate-800">
-            <Link href="/login" className="block w-full text-slate-700 dark:text-slate-300 py-2 text-center">Sign In</Link>
-            <Link href="/register" className="block w-full btn-primary text-center">Get Started</Link>
+          <div className="surface-muted space-y-3 p-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Trusted experience</p>
+            <div className="flex items-center gap-2 text-sm text-foreground"><ShieldCheck size={16} className="text-accent" /> Secure checkout and support access</div>
+            <div className="flex flex-col gap-2 pt-2">
+              <Link href="/login" className="block text-center text-sm font-semibold text-muted-foreground">Sign In</Link>
+              <Link href="/register" className="block" onClick={() => setIsOpen(false)}>
+                <Button className="w-full">Get Started</Button>
+              </Link>
+            </div>
           </div>
         </div>
       </div>

@@ -1,0 +1,75 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="styles.css" />
+    <title>Zenovee AI</title>
+  </head>
+  <body>
+    <div class="app-shell">
+      <div class="header">
+        <div class="brand">
+          <div class="brand-badge">Z</div>
+          <div>
+            <strong>Zenovee AI</strong>
+            <div class="muted" style="font-size:12px;">Browser workspace</div>
+          </div>
+        </div>
+        <button id="open-settings" class="button secondary small" style="width:auto;">Settings</button>
+      </div>
+
+      <div id="auth-view" class="card hero">
+        <div class="stack">
+          <div>
+            <strong>Sign in to continue</strong>
+            <div class="muted" style="font-size:13px; margin-top:4px;">Use your Zenovee SaaS account to sync credits, tools, and history.</div>
+          </div>
+          <input id="email" class="input" type="email" placeholder="you@company.com" />
+          <input id="password" class="input" type="password" placeholder="Password" />
+          <button id="login-button" class="button">Continue</button>
+          <div id="auth-message" class="muted" style="font-size:12px;"></div>
+        </div>
+      </div>
+
+      <div id="app-view" class="hidden">
+        <div class="card hero">
+          <div class="row between">
+            <div>
+              <div class="pill">Credits <strong id="credits-value">0</strong></div>
+              <div style="margin-top:10px;"><strong id="user-email">—</strong></div>
+              <div class="muted" style="font-size:12px;">Connected to your live Zenovee account</div>
+            </div>
+            <button id="logout-button" class="button ghost small" style="width:auto;">Logout</button>
+          </div>
+        </div>
+
+        <div class="card section" style="margin-bottom:12px;">
+          <div class="row between" style="margin-bottom:10px;">
+            <strong>Quick tools</strong>
+            <div class="muted" style="font-size:12px;">Page-aware</div>
+          </div>
+          <div id="tool-grid" class="tool-grid"></div>
+        </div>
+
+        <div class="card section" style="margin-bottom:12px;">
+          <div class="row between" style="margin-bottom:10px;">
+            <strong>Last output</strong>
+            <button id="copy-result" class="button secondary small" style="width:auto;">Copy</button>
+          </div>
+          <div id="result-title" class="muted" style="font-size:12px; margin-bottom:8px;">No generation yet</div>
+          <div id="result-body" class="history-item" style="white-space:pre-wrap; line-height:1.5;">Select text on any page and run a tool.</div>
+        </div>
+
+        <div class="card section">
+          <div class="row between" style="margin-bottom:10px;">
+            <strong>Recent generations</strong>
+            <a href="onboarding.html" class="muted" style="font-size:12px;">Guide</a>
+          </div>
+          <div id="history-list" class="stack"></div>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="popup.js"></script>
+  </body>
+  </html>

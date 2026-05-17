@@ -206,6 +206,14 @@ export class AIProtectionService {
           score: 95,
           metadata: { rapidSpamCount },
         }),
+        supabaseAdmin.from("abuse_flags").insert({
+          user_id: context.userId,
+          ip_address: context.ipAddress,
+          category: "rapid_spam",
+          score: 95,
+          details: { rapidSpamCount },
+          reviewed: false,
+        } as never),
       ]);
       throw new AIProtectionError("Suspicious rapid requests detected. Please try again later.", 429, "ABUSE_DETECTED");
     }
