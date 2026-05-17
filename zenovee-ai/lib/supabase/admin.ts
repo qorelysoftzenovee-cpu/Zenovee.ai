@@ -1,15 +1,16 @@
 import { createClient } from "@supabase/supabase-js";
-import { env, validateProductionEnv } from "@/lib/env";
 import type { Database } from "@/lib/supabase/types";
+import { getPublicEnv, getServerEnv, isSupabaseAdminConfigured, missingConfigMessage } from "@/lib/runtime";
 
 export function getSupabaseAdmin() {
-  validateProductionEnv();
-
-  if (!env.NEXT_PUBLIC_SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
-    throw new Error("Supabase admin is not configured.");
+  if (!isSupabaseAdminConfigured()) {
+    throw new Error(missingConfigMessage("Supabase admin"));
   }
 
-  return createClient<Database>(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
+  const { supabaseUrl } = getPublicEnv();
+  const { supabaseServiceRoleKey } = getServerEnv();
+
+  return createClient<Database>(supabaseUrl, supabaseServiceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 }
