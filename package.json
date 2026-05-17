@@ -2,6 +2,13 @@
   "name": "zenovee-root",
   "version": "1.0.0",
   "private": true,
+  "scripts": {
+    "dev": "npm --prefix zenovee-ai run dev",
+    "build": "npm --prefix zenovee-ai run build",
+    "start": "npm --prefix zenovee-ai run start",
+    "lint": "npm --prefix zenovee-ai run lint",
+    "typecheck": "npm --prefix zenovee-ai run typecheck"
+  },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.105.4",
@@ -9,9 +16,12 @@
     "clsx": "^2.1.1",
     "framer-motion": "^11.0.3",
     "lucide-react": "^1.14.0",
+    "next": "16.2.6",
     "next-themes": "^0.4.6",
     "pdf-lib": "^1.17.1",
     "razorpay": "^2.9.6",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
     "tailwind-merge": "^3.6.0",
     "zod": "^4.4.3"
   }
