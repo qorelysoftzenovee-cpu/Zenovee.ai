@@ -34,6 +34,7 @@ export function BillingActions() {
           Cancel Subscription
         </Button>
       </div>
+      <p className="text-xs text-muted-foreground">Secure payments via Razorpay. International cards are supported. Charges are processed in INR.</p>
       {message ? <p className="text-xs text-muted-foreground">{message}</p> : null}
     </div>
   );

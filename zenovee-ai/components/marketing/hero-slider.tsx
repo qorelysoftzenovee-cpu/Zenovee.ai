@@ -50,17 +50,23 @@ export function HeroSlider() {
   const active = slides[index];
 
   return (
-    <div className="surface-card overflow-hidden p-6 md:p-10">
+    <div className="overflow-hidden rounded-3xl border border-slate-800/60 bg-[#0B1020] p-6 text-slate-100 shadow-2xl md:p-10">
       <div className="grid gap-8 md:grid-cols-2 md:items-center">
         <div className="space-y-4 transition-all duration-500">
-          <h1 className="text-4xl font-semibold tracking-tight md:text-5xl">{active.headline}</h1>
-          <p className="text-muted-foreground md:text-lg">{active.subtext}</p>
-          <Button asChild size="lg">
+          <h1 className="text-4xl font-semibold tracking-tight text-white md:text-5xl">{active.headline}</h1>
+          <p className="text-slate-300 md:text-lg">{active.subtext}</p>
+          <Button asChild size="lg" className="bg-primary-gradient text-white hover:opacity-95">
             <Link href={active.href}>{active.cta}</Link>
           </Button>
         </div>
-        <div className="h-56 rounded-2xl bg-gradient-to-br from-accent/20 via-background to-muted p-6 transition-all duration-500 md:h-72">
-          <div className="h-full w-full rounded-xl border border-border/60 bg-background/70" />
+        <div className="h-56 rounded-2xl bg-gradient-to-br from-indigo-500/30 via-violet-500/25 to-slate-900 p-6 transition-all duration-500 md:h-72">
+          <div className="flex h-full w-full items-center justify-center rounded-xl border border-slate-600/60 bg-slate-900/50">
+            <img
+              src="https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=900&q=80"
+              alt="AI workflow preview"
+              className="h-full w-full rounded-xl object-cover opacity-90"
+            />
+          </div>
         </div>
       </div>
       <div className="mt-6 flex gap-2">
@@ -68,7 +74,7 @@ export function HeroSlider() {
           <button
             key={i}
             aria-label={`Go to slide ${i + 1}`}
-            className={`h-2.5 rounded-full transition-all ${index === i ? "w-7 bg-accent" : "w-2.5 bg-muted-foreground/40"}`}
+            className={`h-2.5 rounded-full transition-all ${index === i ? "w-7 bg-violet-400" : "w-2.5 bg-slate-500/50"}`}
             onClick={() => setIndex(i)}
           />
         ))}

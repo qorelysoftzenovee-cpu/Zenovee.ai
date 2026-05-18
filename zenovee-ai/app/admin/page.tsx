@@ -84,11 +84,13 @@ export default async function AdminPage() {
 
   const modelUsageEntries = Object.entries(modelUsage);
   const maxModelUsage = Math.max(...modelUsageEntries.map(([, count]) => count), 1);
+  const formatInr = (amount: number) => `₹${amount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   return (
     <PageShell
       title="Admin Dashboard"
       description="Business operations visibility across revenue, usage, payments, and platform health."
+      variant="admin"
     >
       <LiveSync userId={adminUser.id} admin />
       <section className="surface-card mb-6 overflow-hidden p-6 md:p-8">
@@ -103,8 +105,8 @@ export default async function AdminPage() {
             </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
-            <div className="surface-muted px-4 py-3 text-sm"><p className="text-muted-foreground">Revenue</p><p className="mt-1 font-semibold">₹{revenue.toFixed(2)}</p></div>
-            <div className="surface-muted px-4 py-3 text-sm"><p className="text-muted-foreground">API cost</p><p className="mt-1 font-semibold">${apiCost.toFixed(4)}</p></div>
+            <div className="surface-muted px-4 py-3 text-sm"><p className="text-muted-foreground">Revenue</p><p className="mt-1 font-semibold">{formatInr(revenue)}</p></div>
+            <div className="surface-muted px-4 py-3 text-sm"><p className="text-muted-foreground">API cost</p><p className="mt-1 font-semibold">{formatInr(apiCost)}</p></div>
             <div className="surface-muted px-4 py-3 text-sm"><p className="text-muted-foreground">Protection</p><p className="mt-1 font-semibold">{failedGenerations} failed / {suspiciousUsers} flagged</p></div>
           </div>
         </div>
@@ -173,7 +175,7 @@ export default async function AdminPage() {
         <CardContent className="space-y-3 text-sm">
           <div className="surface-muted flex items-center justify-between gap-4 px-4 py-4">
             <span className="flex items-center gap-2 font-medium"><BarChart3 size={16} className="text-accent" /> Revenue captured</span>
-            <span>₹{revenue.toFixed(2)}</span>
+            <span>{formatInr(revenue)}</span>
           </div>
           <div className="surface-muted flex items-center justify-between gap-4 px-4 py-4">
             <span className="flex items-center gap-2 font-medium"><ShieldCheck size={16} className="text-accent" /> Failed generations</span>

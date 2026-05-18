@@ -42,7 +42,7 @@ export async function POST(request: Request) {
       role: "USER",
       status: "ACTIVE",
       plan: "starter",
-      credits_balance: 100,
+      credits_balance: 0,
       signup_date: new Date().toISOString(),
     });
     if (profileError) {
@@ -58,10 +58,10 @@ export async function POST(request: Request) {
 
     const { error: creditError } = await supabaseAdmin.from("credits").insert({
       user_id: userId,
-      credits_added: 100,
+      credits_added: 0,
       credits_consumed: 0,
-      remaining_balance: 100,
-      reason: "signup_bonus",
+      remaining_balance: 0,
+      reason: "account_created",
       reset_interval: "monthly",
     } as never);
     if (creditError) {

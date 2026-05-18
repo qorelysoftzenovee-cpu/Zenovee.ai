@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getPlanById } from "@/app/subscription-plans";
+import { getCreditTopupById } from "@/app/credit-topups";
 import { assignPlanCredits, computeNextRenewalDate } from "@/services/billing";
 import { verifyCheckoutSignature } from "@/services/razorpay";
 
@@ -12,15 +13,18 @@ export async function POST(request: Request) {
   const body = (await request.json()) as {
     razorpay_payment_id?: string;
     razorpay_subscription_id?: string;
+    razorpay_order_id?: string;
     razorpay_signature?: string;
   };
 
-  if (!body.razorpay_payment_id || !body.razorpay_subscription_id || !body.razorpay_signature) {
+  if (!body.razorpay_payment_id || !body.razorpay_signature || (!body.razorpay_subscription_id && !body.razorpay_order_id)) {
     return NextResponse.json({ error: "Missing verification payload" }, { status: 400 });
   }
 
+  const verificationRef = body.razorpay_order_id ?? body.razorpay_subscription_id!;
+
   const valid = verifyCheckoutSignature({
-    razorpay_order_id: body.razorpay_subscription_id,
+    razorpay_order_id: verificationRef,
     razorpay_payment_id: body.razorpay_payment_id,
     razorpay_signature: body.razorpay_signature,
   });
@@ -28,11 +32,69 @@ export async function POST(request: Request) {
   if (!valid) return NextResponse.json({ error: "Invalid payment signature" }, { status: 400 });
 
   const supabaseAdmin = getSupabaseAdmin();
+
+  if (body.razorpay_order_id) {
+    const { data: pendingTopup } = await supabaseAdmin
+      .from("payments")
+      .select("id,plan,status")
+      .eq("user_id", user.id)
+      .eq("order_id", body.razorpay_order_id)
+      .maybeSingle<{ id: string; plan: string; status: string }>();
+
+    if (!pendingTopup) {
+      return NextResponse.json({ error: "Topup payment not found" }, { status: 404 });
+    }
+
+    const topupId = pendingTopup.plan.replace("topup:", "");
+    const topup = getCreditTopupById(topupId);
+    if (!topup) {
+      return NextResponse.json({ error: "Invalid topup" }, { status: 400 });
+    }
+
+    const { data: currentCreditsRow } = await supabaseAdmin
+      .from("credits")
+      .select("remaining_balance")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle<{ remaining_balance: number }>();
+
+    const currentBalance = Number(currentCreditsRow?.remaining_balance ?? 0);
+    const nextBalance = currentBalance + topup.credits;
+    const nowIso = new Date().toISOString();
+
+    await Promise.all([
+      supabaseAdmin.from("credits").insert({
+        user_id: user.id,
+        credits_added: topup.credits,
+        credits_consumed: 0,
+        remaining_balance: nextBalance,
+        reason: `credit_topup:${topup.id}`,
+        reset_interval: "monthly",
+        updated_at: nowIso,
+      } as never),
+      supabaseAdmin
+        .from("users")
+        .update({ credits_balance: nextBalance, updated_at: nowIso } as never)
+        .eq("id", user.id),
+      supabaseAdmin
+        .from("payments")
+        .update({ status: "CREDIT_TOPUP", razorpay_transaction_id: body.razorpay_payment_id, updated_at: nowIso } as never)
+        .eq("id", pendingTopup.id),
+    ]);
+
+    return NextResponse.json({ success: true, mode: "topup", creditsAdded: topup.credits, creditsAfter: nextBalance });
+  }
+  const subscriptionId = body.razorpay_subscription_id;
+  if (!subscriptionId) {
+    return NextResponse.json({ error: "Subscription id missing" }, { status: 400 });
+  }
+
   const { data: subscription } = await supabaseAdmin
     .from("subscriptions")
     .select("plan_name")
     .eq("user_id", user.id)
-    .eq("razorpay_subscription_id", body.razorpay_subscription_id)
+    .eq("razorpay_subscription_id", subscriptionId)
     .maybeSingle<{ plan_name: string }>();
 
   if (!subscription) return NextResponse.json({ error: "Subscription not found" }, { status: 404 });
@@ -57,12 +119,12 @@ export async function POST(request: Request) {
       .eq("user_id", user.id),
     supabaseAdmin.from("payments").insert({
       user_id: user.id,
-      payment_amount: plan.price,
+      payment_amount: Number((plan.amountInPaise / 100).toFixed(2)),
       plan: plan.id,
       currency: plan.currency,
       status: "SUCCESS",
       razorpay_transaction_id: body.razorpay_payment_id,
-      subscription_id: body.razorpay_subscription_id,
+      subscription_id: subscriptionId,
     }),
     assignPlanCredits(user.id, plan.id),
   ]);

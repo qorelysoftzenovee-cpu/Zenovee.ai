@@ -25,6 +25,28 @@ type PaymentItem = {
   failure_reason: string | null;
 };
 
+function formatInr(amount: number) {
+  return `₹${amount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function formatGlobalDate(dateValue: string) {
+  return new Date(dateValue).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function formatGlobalDateTime(dateValue: string) {
+  return new Date(dateValue).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 export default async function DashboardPage() {
   const user = await requireUser();
 
@@ -110,7 +132,7 @@ export default async function DashboardPage() {
                 </div>
                 <div className="surface-muted px-4 py-3 text-sm">
                   <p className="text-muted-foreground">Renewal</p>
-                  <p className="mt-1 font-semibold">{latestSubscription?.next_renewal_at ? new Date(latestSubscription.next_renewal_at).toLocaleDateString() : "Not scheduled"}</p>
+                  <p className="mt-1 font-semibold">{latestSubscription?.next_renewal_at ? formatGlobalDate(latestSubscription.next_renewal_at) : "Not scheduled"}</p>
                 </div>
                 <div className="surface-muted px-4 py-3 text-sm">
                   <p className="text-muted-foreground">Security</p>
@@ -166,7 +188,7 @@ export default async function DashboardPage() {
                     <div key={item.id} className="surface-muted flex flex-col gap-3 px-4 py-4 md:flex-row md:items-center md:justify-between">
                       <div>
                         <p className="font-medium">{item.tool_name}</p>
-                        <p className="text-sm text-muted-foreground">{new Date(item.created_at).toLocaleString()}</p>
+                        <p className="text-sm text-muted-foreground">{formatGlobalDateTime(item.created_at)}</p>
                       </div>
                       <div className="flex items-center gap-3 text-sm">
                         <span className="rounded-full border border-border/70 px-3 py-1">{item.cost} credits</span>
@@ -194,11 +216,12 @@ export default async function DashboardPage() {
                   {latestSubscription ? `${latestSubscription.plan_name} • ${latestSubscription.status}` : "No active subscription"}
                 </p>
                 <p className="mt-1 text-muted-foreground">
-                  Renewal: {latestSubscription?.next_renewal_at ? new Date(latestSubscription.next_renewal_at).toLocaleDateString() : "Not scheduled"}
+                  Renewal: {latestSubscription?.next_renewal_at ? formatGlobalDate(latestSubscription.next_renewal_at) : "Not scheduled"}
                 </p>
                 {latestSubscription?.grace_until ? (
-                  <p className="status-warning mt-3 inline-flex rounded-full px-3 py-1 text-xs font-medium">Grace until: {new Date(latestSubscription.grace_until).toLocaleString()}</p>
+                  <p className="status-warning mt-3 inline-flex rounded-full px-3 py-1 text-xs font-medium">Grace until: {formatGlobalDateTime(latestSubscription.grace_until)}</p>
                 ) : null}
+                <p className="mt-2 text-xs text-muted-foreground">Secure payments via Razorpay. Charges are processed in INR.</p>
               </div>
               <BillingActions />
             </CardContent>
@@ -216,11 +239,11 @@ export default async function DashboardPage() {
                       <div>
                         <p className="font-medium">{item.status}</p>
                         <p className="text-sm text-muted-foreground">
-                          {new Date(item.created_at).toLocaleString()}
+                          {formatGlobalDateTime(item.created_at)}
                         </p>
                         {item.failure_reason ? <p className="status-warning mt-2 inline-flex rounded-full px-3 py-1 text-xs font-medium">{item.failure_reason}</p> : null}
                       </div>
-                      <p className="text-sm font-semibold">{item.currency} {Number(item.payment_amount).toFixed(2)}</p>
+                      <p className="text-sm font-semibold">{formatInr(Number(item.payment_amount))}</p>
                     </div>
                   ))}
                 </div>
@@ -253,7 +276,7 @@ export default async function DashboardPage() {
               <p className="text-muted-foreground">Renewal / expiry</p>
               <p className="mt-1 text-base font-semibold">
                 {latestSubscription?.current_period_end
-                  ? new Date(latestSubscription.current_period_end).toLocaleDateString()
+                  ? formatGlobalDate(latestSubscription.current_period_end)
                   : "Not scheduled"}
               </p>
             </div>

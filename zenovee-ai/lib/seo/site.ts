@@ -130,7 +130,7 @@ export function createSoftwareSchema(input: {
     offers: {
       "@type": "Offer",
       price: "0",
-      priceCurrency: "USD",
+      priceCurrency: "INR",
     },
     featureList: input.featureList,
     publisher: {

@@ -54,6 +54,16 @@ type UsageHistoryItem = {
 
 type ExportFormat = "txt" | "md" | "pdf" | "json" | "png";
 
+function formatGlobalDateTime(dateValue: string) {
+  return new Date(dateValue).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 function toReadableValue(value: unknown, depth = 0): string {
   const pad = "  ".repeat(depth);
   if (value == null) return "";
@@ -142,6 +152,11 @@ export function ToolsWorkspace() {
     }
 
     if (!activeTool) return;
+
+    if (credits < activeTool.creditCost) {
+      setError(`Insufficient credits. This tool requires ${activeTool.creditCost} credits. Upgrade to Continue or buy a credit topup.`);
+      return;
+    }
 
     if (activeTool.metadata.availability === "coming_soon") {
       setError(activeTool.metadata.disabledReason ?? "Coming soon");
@@ -404,6 +419,11 @@ export function ToolsWorkspace() {
             >
               {isLoading ? <><Loader2 size={16} className="animate-spin" /> Generating...</> : activeTool?.metadata.availability === "coming_soon" ? "Coming soon" : <><Sparkles size={16} /> Run Tool</>}
             </Button>
+            {activeTool && credits < activeTool.creditCost ? (
+              <div className="status-warning rounded-2xl px-4 py-3 text-sm">
+                Insufficient credits for this tool. <a href="/pricing" className="underline font-medium">Upgrade to Continue</a>
+              </div>
+            ) : null}
           </CardContent>
         </Card>
 
@@ -471,7 +491,7 @@ export function ToolsWorkspace() {
                     <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                       <div>
                         <p className="text-sm font-medium">{item.tool_name}</p>
-                        <p className="text-xs text-muted-foreground">{new Date(item.created_at).toLocaleString()} • {item.credits_consumed} credits</p>
+                        <p className="text-xs text-muted-foreground">{formatGlobalDateTime(item.created_at)} • {item.credits_consumed} credits</p>
                         {item.exports.length ? (
                           <div className="mt-2 flex flex-wrap gap-2">
                             {item.exports.map((file) => (
