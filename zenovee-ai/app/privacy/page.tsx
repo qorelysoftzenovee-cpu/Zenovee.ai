@@ -138,7 +138,7 @@ export default async function PrivacyPage() {
               <li>Request a copy of your data in a portable format</li>
             </ul>
             <p className="text-foreground/90 leading-relaxed mt-4">
-              To exercise these rights, please contact us at privacy@zenovee.com.
+              To exercise these rights, please contact us at support@yourdomain.com.
             </p>
           </section>
 
@@ -155,9 +155,8 @@ export default async function PrivacyPage() {
               If you have any questions about this Privacy Policy, please contact us at:
             </p>
             <div className="bg-muted/50 rounded-lg p-4 mt-4">
-              <p className="text-foreground font-semibold">Privacy Team</p>
-              <p className="text-foreground/90">Email: privacy@zenovee.com</p>
-              <p className="text-foreground/90">Email: support@zenovee.com</p>
+              <p className="text-foreground font-semibold">Support Team</p>
+              <p className="text-foreground/90">Email: support@yourdomain.com</p>
             </div>
           </section>
         </div>

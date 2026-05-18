@@ -11,10 +11,7 @@ export default async function PricingPage() {
   return (
     <div className="min-h-screen bg-background">
       <Navigation isAuthenticated={Boolean(user)} />
-      <PageShell
-        title="Pricing"
-        description="Transparent plans with live checkout wiring and tracked credit allocations."
-      >
+      <PageShell title="Pricing" description="Simple paid plans for serious AI workflows.">
         <div className="mb-6 grid gap-4 md:grid-cols-4">
           {[
             ["Secure billing", "Protected checkout and subscription verification flows."],
@@ -33,13 +30,13 @@ export default async function PricingPage() {
             <Card key={plan.name} className="relative overflow-hidden hover:-translate-y-1">
               <CardHeader>
                 <div className="mb-3 inline-flex w-fit rounded-full border border-accent/15 bg-accent/8 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-accent">
-                  {plan.id === "pro" ? "Most popular" : plan.id === "enterprise" ? "Advanced scale" : "Starter"}
+                  {plan.id === "growth" ? "Most Popular" : "Paid Plan"}
                 </div>
                 <CardTitle>{plan.name}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-3xl font-semibold tracking-tight">
-                  ₹{plan.price}
+                  ${plan.price}
                   <span className="text-base font-normal text-muted-foreground">/month</span>
                 </p>
                 <ul className="space-y-2 text-sm text-muted-foreground">
@@ -48,7 +45,10 @@ export default async function PricingPage() {
                     <li key={point}>• {point}</li>
                   ))}
                 </ul>
-                <PricingActions planId={plan.id} planName={plan.name} />
+                <PricingActions
+                  planId={plan.id}
+                  planName={plan.id === "starter" ? "Starter" : plan.id === "growth" ? "Growth" : "Scale"}
+                />
               </CardContent>
             </Card>
           ))}
@@ -58,7 +58,7 @@ export default async function PricingPage() {
             <a href="/privacy" className="text-sm font-medium text-foreground transition-colors hover:text-accent">Privacy Policy</a>
             <a href="/terms" className="text-sm font-medium text-foreground transition-colors hover:text-accent">Terms of Service</a>
             <a href="/refund" className="text-sm font-medium text-foreground transition-colors hover:text-accent">Refund Policy</a>
-            <a href="mailto:support@zenovee.com" className="text-sm font-medium text-foreground transition-colors hover:text-accent">Contact support</a>
+            <a href="mailto:support@yourdomain.com" className="text-sm font-medium text-foreground transition-colors hover:text-accent">Contact support</a>
           </div>
         </div>
       </PageShell>

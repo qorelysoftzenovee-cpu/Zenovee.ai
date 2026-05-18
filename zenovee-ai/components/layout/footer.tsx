@@ -16,7 +16,7 @@ export function Footer() {
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="surface-muted px-4 py-3 text-sm">
                 <p className="font-semibold">Support</p>
-                <p className="text-muted-foreground">support@zenovee.com</p>
+                <p className="text-muted-foreground">support@yourdomain.com</p>
               </div>
               <div className="surface-muted px-4 py-3 text-sm">
                 <p className="font-semibold">Billing confidence</p>
@@ -108,15 +108,11 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <a href="mailto:support@zenovee.com" className="hover:text-foreground transition-colors">
+                <a href="mailto:support@yourdomain.com" className="hover:text-foreground transition-colors">
                   Email Support
                 </a>
               </li>
-              <li>
-                <a href="mailto:business@zenovee.com" className="hover:text-foreground transition-colors">
-                  Business Inquiries
-                </a>
-              </li>
+              <li className="text-muted-foreground">Response within 24 business hours</li>
             </ul>
           </div>
         </div>

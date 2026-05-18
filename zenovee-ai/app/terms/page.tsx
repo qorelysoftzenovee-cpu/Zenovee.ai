@@ -167,9 +167,8 @@ export default async function TermsPage() {
               If you have questions about these Terms of Service, please contact us at:
             </p>
             <div className="bg-muted/50 rounded-lg p-4 mt-4">
-              <p className="text-foreground font-semibold">Legal Team</p>
-              <p className="text-foreground/90">Email: legal@zenovee.com</p>
-              <p className="text-foreground/90">Email: support@zenovee.com</p>
+              <p className="text-foreground font-semibold">Support Team</p>
+              <p className="text-foreground/90">Email: support@yourdomain.com</p>
             </div>
           </section>
         </div>

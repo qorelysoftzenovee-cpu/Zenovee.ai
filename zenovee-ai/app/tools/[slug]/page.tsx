@@ -52,7 +52,7 @@ export default async function ToolSeoPage({ params }: { params: Promise<{ slug: 
               <div className="flex flex-wrap gap-3">
                 <Button asChild>
                   <Link href="/register" data-analytics-event="conversion" data-analytics-label={`tool-register-${tool.slug}`}>
-                    Start free
+                    Get Started
                   </Link>
                 </Button>
                 <Button asChild variant="secondary">

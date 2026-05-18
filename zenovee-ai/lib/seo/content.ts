@@ -59,7 +59,7 @@ const toolSpecificCopy: Record<string, Omit<ToolSeoEntry, "slug" | "name" | "sho
     faqs: [
       { question: "Does the ad copy generator support multiple platforms?", answer: "Yes. It can generate copy tailored to platforms like Meta, Google, LinkedIn, and X." },
       { question: "Can teams use it for testing angles?", answer: "Yes. It produces multiple headline and body variations to support creative testing." },
-      { question: "Is it useful for ecommerce offers?", answer: "Yes. It works well for product offers, free trials, promotions, and demand capture campaigns." },
+      { question: "Is it useful for ecommerce offers?", answer: "Yes. It works well for product offers, paid promos, promotions, and demand capture campaigns." },
     ],
     relatedToolSlugs: ["customer-persona-builder", "landing-page-copy-generator", "seo-article-generator"],
     primaryKeyword: "AI ad copy generator",

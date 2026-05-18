@@ -100,7 +100,7 @@ export function PricingActions({ planId, planName }: { planId: string; planName:
         const razorpay = new window.Razorpay(options);
         razorpay.open();
       } else {
-        setStatus("Payment gateway not loaded. Please refresh and try again.");
+        setStatus("Payments are not configured yet.");
         setLoading(false);
       }
     } catch {

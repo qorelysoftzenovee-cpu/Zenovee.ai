@@ -29,8 +29,28 @@ export default function LoginPage() {
       password: String(password ?? ""),
     });
 
-    if (loginError) setError(loginError.message);
-    else router.push("/dashboard");
+    if (loginError) {
+      setError(loginError.message);
+    } else {
+      const { data: userRes } = await supabase.auth.getUser();
+      const userId = userRes.user?.id;
+      const userEmail = String(userRes.user?.email ?? "").toLowerCase();
+
+      let role: "USER" | "ADMIN" = "USER";
+      if (userId) {
+        const { data: profile } = await supabase
+          .from("users")
+          .select("role")
+          .eq("id", userId)
+          .maybeSingle<{ role: "USER" | "ADMIN" }>();
+        role = profile?.role ?? "USER";
+      }
+
+      const adminEmail = (process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? "").toLowerCase();
+      const isAdmin = role === "ADMIN" || (adminEmail.length > 0 && adminEmail === userEmail);
+
+      router.push(isAdmin ? "/admin" : "/dashboard");
+    }
     setIsSubmitting(false);
   };
 

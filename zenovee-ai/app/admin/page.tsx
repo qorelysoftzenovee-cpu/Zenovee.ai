@@ -87,8 +87,8 @@ export default async function AdminPage() {
 
   return (
     <PageShell
-      title="Admin"
-      description="System-level controls backed by persisted application data."
+      title="Admin Dashboard"
+      description="Business operations visibility across revenue, usage, payments, and platform health."
     >
       <LiveSync userId={adminUser.id} admin />
       <section className="surface-card mb-6 overflow-hidden p-6 md:p-8">

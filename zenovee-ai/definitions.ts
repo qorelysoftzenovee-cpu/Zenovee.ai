@@ -140,7 +140,7 @@ export const toolRegistry: Record<string, ToolDefinition> = {
       { name: "productService", label: "Product / Service", type: "text", placeholder: "AI meeting assistant", required: true },
       { name: "audience", label: "Audience", type: "text", placeholder: "Remote startup teams", required: true },
       { name: "platform", label: "Platform", type: "select", required: true, options: [{ label: "Meta", value: "Meta" }, { label: "Google", value: "Google" }, { label: "LinkedIn", value: "LinkedIn" }, { label: "X", value: "X" }] },
-      { name: "offer", label: "Offer", type: "text", placeholder: "14-day free trial", required: true },
+      { name: "offer", label: "Offer", type: "text", placeholder: "14-day starter access", required: true },
       { name: "tone", label: "Tone", type: "select", required: true, options: [{ label: "Bold", value: "Bold" }, { label: "Professional", value: "Professional" }, { label: "Conversational", value: "Conversational" }] },
     ],
     inputSchema: adCopyInput,

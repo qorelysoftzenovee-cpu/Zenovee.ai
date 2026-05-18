@@ -66,7 +66,7 @@ export default async function DashboardPage() {
   const metrics = [
     { label: "Available Credits", value: String(credits), hint: "Ready for new generations" },
     { label: "Recent Runs", value: String(usage.length), hint: "Latest tracked activity" },
-    { label: "Current Plan", value: latestSubscription?.plan_name ?? "free", hint: latestSubscription?.status ?? "Inactive" },
+    { label: "Current Plan", value: latestSubscription?.plan_name ?? "No plan", hint: latestSubscription?.status ?? "Inactive" },
   ];
 
   const recentActivity = usage.slice(0, 4);

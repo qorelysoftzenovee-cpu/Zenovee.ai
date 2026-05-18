@@ -41,7 +41,7 @@ export default async function RefundPage() {
               <li>Subscription fees for periods that have already commenced</li>
               <li>Upgrade or downgrade fees</li>
               <li>Admin overrides or manual credit adjustments already consumed</li>
-              <li>Free trial credits that have been exhausted</li>
+              <li>Promotional credits that have been exhausted</li>
             </ul>
           </section>
 
@@ -75,7 +75,7 @@ export default async function RefundPage() {
               <div>
                 <h3 className="font-semibold text-foreground mb-2">4.1 How to Cancel</h3>
                 <p className="text-foreground/90 leading-relaxed">
-                  You can cancel your subscription at any time through your account settings or by contacting support@zenovee.com. Cancellation takes effect at the end of your current billing cycle.
+                  You can cancel your subscription at any time through your account settings or by contacting support@yourdomain.com. Cancellation takes effect at the end of your current billing cycle.
                 </p>
               </div>
               <div>
@@ -136,7 +136,7 @@ export default async function RefundPage() {
               <div>
                 <h3 className="font-semibold text-foreground mb-2">7.1 Submitting a Refund Request</h3>
                 <p className="text-foreground/90 leading-relaxed">
-                  To request a refund, email support@zenovee.com with your account information, order ID, and reason for the refund request. Include any supporting documentation.
+                  To request a refund, email support@yourdomain.com with your account information, order ID, and reason for the refund request. Include any supporting documentation.
                 </p>
               </div>
               <div>
@@ -166,7 +166,7 @@ export default async function RefundPage() {
               <li>Reserve the right to pursue legal action if appropriate</li>
             </ul>
             <p className="text-foreground/90 leading-relaxed mt-4">
-              Always contact support@zenovee.com first to resolve billing disputes before initiating a chargeback.
+              Always contact support@yourdomain.com first to resolve billing disputes before initiating a chargeback.
             </p>
           </section>
 
@@ -190,9 +190,8 @@ export default async function RefundPage() {
               For refund requests or billing disputes, contact:
             </p>
             <div className="bg-muted/50 rounded-lg p-4 mt-4">
-              <p className="text-foreground font-semibold">Billing and Support Team</p>
-              <p className="text-foreground/90">Email: support@zenovee.com</p>
-              <p className="text-foreground/90">Email: billing@zenovee.com</p>
+              <p className="text-foreground font-semibold">Support Team</p>
+              <p className="text-foreground/90">Email: support@yourdomain.com</p>
               <p className="text-foreground/90">Response time: Within 24-48 hours</p>
             </div>
           </section>

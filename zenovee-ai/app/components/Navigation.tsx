@@ -9,8 +9,8 @@ export default function Navigation({ isAuthenticated }: { isAuthenticated: boole
   const [isOpen, setIsOpen] = useState(false);
 
   const navItems = [
+    { label: 'Home', href: '/' },
     { label: 'Tools', href: '/tools' },
-    { label: 'Blog', href: '/blog' },
     { label: 'Pricing', href: '/pricing' },
     { label: 'Contact', href: '/contact' },
   ];
@@ -58,7 +58,7 @@ export default function Navigation({ isAuthenticated }: { isAuthenticated: boole
                 Sign In
               </Link>
               <Link href="/register">
-                <Button size="sm" className="px-5">Get Started</Button>
+                <Button size="sm" className="px-5">Start Now</Button>
               </Link>
             </>
           )}
@@ -91,7 +91,7 @@ export default function Navigation({ isAuthenticated }: { isAuthenticated: boole
             <div className="flex flex-col gap-2 pt-2">
               <Link href="/login" className="block text-center text-sm font-semibold text-muted-foreground">Sign In</Link>
               <Link href="/register" className="block" onClick={() => setIsOpen(false)}>
-                <Button className="w-full">Get Started</Button>
+                <Button className="w-full">Start Now</Button>
               </Link>
             </div>
           </div>

@@ -8,6 +8,7 @@ import Navigation from "./components/Navigation";
 import { Footer } from "@/components/layout/footer";
 import { JsonLd } from "@/components/seo/json-ld";
 import { createBreadcrumbSchema, createMetadata } from "@/lib/seo/site";
+import { HeroSlider } from "@/components/marketing/hero-slider";
 
 export const metadata: Metadata = createMetadata({
   title: "AI tools platform for SEO, SaaS, and productivity",
@@ -48,6 +49,10 @@ export default async function LandingPage() {
 
       <main>
         <section className="section-shell py-16 md:py-24 lg:py-28">
+          <HeroSlider />
+        </section>
+
+        <section className="section-shell pb-8 md:pb-12">
           <div className="hero-glow surface-card overflow-hidden p-6 md:p-10 lg:p-12">
             <div className="grid gap-12 md:grid-cols-[1.05fr_0.95fr] md:items-center">
               <div className="space-y-6 animate-enter">
@@ -66,7 +71,7 @@ export default async function LandingPage() {
                 <div className="flex flex-wrap items-center gap-3">
                   <Button asChild size="lg">
                     <Link href={user ? "/dashboard" : "/register"} data-analytics-event="conversion" data-analytics-label="homepage-primary-cta">
-                      {user ? "Open Dashboard" : "Start Free"}
+                      {user ? "Open Dashboard" : "Get Started"}
                       <ArrowRight size={16} />
                     </Link>
                   </Button>

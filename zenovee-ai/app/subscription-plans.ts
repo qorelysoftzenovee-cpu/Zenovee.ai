@@ -18,7 +18,7 @@ export const subscriptionPlans: Plan[] = [
     razorpayInterval: "monthly",
     amountInPaise: 2900,
     currency: "INR",
-    features: ["400 monthly AI credits", "Core AI tools", "Email support"],
+    features: ["400 credits", "Standard tools", "Basic usage limits"],
   },
   {
     id: "growth",
@@ -28,7 +28,7 @@ export const subscriptionPlans: Plan[] = [
     razorpayInterval: "monthly",
     amountInPaise: 4900,
     currency: "INR",
-    features: ["1200 monthly AI credits", "Usage analytics", "Priority support"],
+    features: ["1200 credits", "All core tools", "Higher usage limits", "Best value"],
   },
   {
     id: "scale",
@@ -38,7 +38,7 @@ export const subscriptionPlans: Plan[] = [
     razorpayInterval: "monthly",
     amountInPaise: 9900,
     currency: "INR",
-    features: ["3000 monthly AI credits", "Advanced controls", "Priority SLA"],
+    features: ["3000 credits", "Premium usage", "API access", "Priority limits"],
   },
 ];
 
