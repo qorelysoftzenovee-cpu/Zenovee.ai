@@ -37,11 +37,15 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    background-image: none;
+    background:
+      radial-gradient(circle at top, rgba(120, 119, 198, 0.18), transparent 26%),
+      radial-gradient(circle at 85% 14%, rgba(56, 189, 248, 0.12), transparent 22%),
+      linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--background)) 100%);
+    text-rendering: optimizeLegibility;
   }
 
   .section-shell {
-    @apply mx-auto max-w-7xl px-5 md:px-8;
+    @apply mx-auto max-w-6xl px-5 md:px-8 lg:px-10;
   }
 
   html {
@@ -61,15 +65,18 @@
 
 @layer utilities {
   .surface-card {
-    @apply rounded-3xl border border-border/70 bg-card/78 shadow-[0_24px_80px_-36px_rgba(25,25,40,0.38)] backdrop-blur-sm;
+    @apply rounded-[28px] border border-white/10 bg-card/80 shadow-[0_30px_120px_-48px_rgba(7,12,28,0.92)] backdrop-blur-xl;
   }
 
   .surface-muted {
-    @apply rounded-2xl border border-border/60 bg-muted/45 backdrop-blur-sm;
+    @apply rounded-2xl border border-white/8 bg-muted/55 backdrop-blur-xl;
   }
 
   .hero-glow {
-    background: linear-gradient(135deg, #0b1020 0%, #111a36 45%, #18244d 100%);
+    background:
+      radial-gradient(circle at top left, rgba(129, 140, 248, 0.32), transparent 28%),
+      radial-gradient(circle at 80% 20%, rgba(56, 189, 248, 0.18), transparent 24%),
+      linear-gradient(145deg, #090d18 0%, #11182b 44%, #0d1425 100%);
     color: #f8fafc;
   }
 
@@ -91,6 +98,47 @@
     @apply grid gap-5 md:gap-6;
   }
 
+  .premium-label {
+    @apply inline-flex w-fit items-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground;
+  }
+
+  .hero-panel {
+    @apply rounded-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] shadow-[0_40px_120px_-56px_rgba(56,189,248,0.3)] backdrop-blur-2xl;
+  }
+
+  .stat-chip {
+    @apply inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-muted-foreground;
+  }
+
+  .interactive-card {
+    @apply transition-all duration-300 hover:-translate-y-1 hover:border-white/20 hover:shadow-[0_32px_90px_-48px_rgba(129,140,248,0.38)];
+  }
+
+  .soft-divider {
+    @apply border-t border-white/8;
+  }
+
+  .dashboard-metric {
+    @apply rounded-3xl border border-white/10 bg-white/[0.03] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)];
+  }
+
+  .page-glow {
+    position: relative;
+  }
+
+  .page-glow::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    background: linear-gradient(135deg, rgba(129, 140, 248, 0.22), rgba(56, 189, 248, 0.1), transparent 60%);
+    opacity: 0.9;
+    pointer-events: none;
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    padding: 1px;
+  }
+
   .subtle-scrollbar::-webkit-scrollbar {
     width: 10px;
     height: 10px;
@@ -101,7 +149,7 @@
   }
 
   .text-gradient {
-    background: linear-gradient(135deg, hsl(var(--foreground)) 0%, hsl(var(--accent)) 85%);
+    background: linear-gradient(135deg, #f8fbff 0%, #c4b5fd 42%, #67e8f9 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;

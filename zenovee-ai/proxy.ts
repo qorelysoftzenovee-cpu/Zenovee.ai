@@ -3,15 +3,16 @@ import { createServerClient } from "@supabase/ssr";
 import type { Database } from "@/lib/supabase/types";
 import { getPublicEnv, isSupabaseConfigured } from "@/lib/runtime";
 import { serverLog } from "@/lib/logger";
-
-const ADMIN_AUTH_COOKIE = "zenovee_admin_verified";
+import { normalizeRole } from "@/lib/auth";
 
 export async function proxy(request: NextRequest) {
   const response = NextResponse.next({ request });
   const pathname = request.nextUrl.pathname;
 
+  const isAuthPage = pathname === "/login" || pathname === "/register";
   const isProtectedPage = pathname.startsWith("/dashboard") || pathname.startsWith("/admin");
   const isProtectedApi = pathname.startsWith("/api/tools") || pathname.startsWith("/api/billing") || pathname.startsWith("/api/admin");
+  const isAdminApi = pathname.startsWith("/api/admin");
   const isExtensionApi = pathname.startsWith("/api/extension");
 
   if (!isSupabaseConfigured()) {
@@ -53,23 +54,32 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(new URL("/login", request.url));
     }
 
-    if (user && pathname.startsWith("/admin")) {
-      if (pathname !== "/admin/verify") {
-        const isAdminVerified = request.cookies.get(ADMIN_AUTH_COOKIE)?.value === "1";
-        if (!isAdminVerified) {
-          return NextResponse.redirect(new URL("/admin/verify", request.url));
-        }
-      }
+    if (!user) {
+      return response;
+    }
 
-      const { data: profile } = await supabase
-        .from("users")
-        .select("role")
-        .eq("id", user.id)
-        .maybeSingle<{ role: "USER" | "ADMIN" }>();
+    const { data: profile } = await supabase
+      .from("users")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle<{ role: string | null }>();
 
-      if (profile?.role !== "ADMIN") {
-        return NextResponse.redirect(new URL("/dashboard", request.url));
-      }
+    const role = normalizeRole(profile?.role);
+
+    if (isAuthPage) {
+      return NextResponse.redirect(new URL(role === "admin" ? "/admin" : "/dashboard", request.url));
+    }
+
+    if (pathname.startsWith("/dashboard") && role === "admin") {
+      return NextResponse.redirect(new URL("/admin", request.url));
+    }
+
+    if (pathname.startsWith("/admin") && role !== "admin") {
+      return NextResponse.redirect(new URL("/dashboard", request.url));
+    }
+
+    if (isAdminApi && role !== "admin") {
+      return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 });
     }
 
     return response;
@@ -95,6 +105,8 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
+    "/login",
+    "/register",
     "/dashboard/:path*",
     "/admin/:path*",
     "/api/admin/:path*",

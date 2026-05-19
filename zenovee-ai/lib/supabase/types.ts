@@ -8,7 +8,7 @@ export type Database = {
           id: string;
           email: string;
           name: string | null;
-          role: "USER" | "ADMIN";
+          role: "user" | "admin";
           status: "ACTIVE" | "SUSPENDED" | "BANNED";
           plan: string;
           credits_balance: number;
@@ -22,7 +22,7 @@ export type Database = {
           id: string;
           email: string;
           name?: string | null;
-          role?: "USER" | "ADMIN";
+          role?: "user" | "admin";
           status?: "ACTIVE" | "SUSPENDED" | "BANNED";
           plan?: string;
           credits_balance?: number;

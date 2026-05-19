@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { requireUser } from "@/lib/auth";
+import { requireStandardUser } from "@/lib/auth";
 import { PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
 import { ToolsWorkspace } from "./tools-workspace";
 
 export default async function ToolsWorkspacePage() {
-  await requireUser();
+  await requireStandardUser();
 
   return (
     <PageShell

@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { getExtensionUser } from "@/lib/extension-auth";
-import { CreditService } from "@/credit-service";
 import { listToolDefinitions } from "@/definitions";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { ToolExecutionService } from "@/services/tool-execution-service";
 
 function extensionToolCatalog() {
   return listToolDefinitions()
@@ -32,7 +32,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const credits = await CreditService.getCredits(user.id);
+  const credits = await ToolExecutionService.getCredits(user.id);
   const { data: history, error } = await supabaseAdmin
     .from("tool_usage")
     .select("id,tool_id,tool_name,output,credits_consumed,created_at")

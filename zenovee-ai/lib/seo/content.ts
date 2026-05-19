@@ -1,4 +1,5 @@
 import { listToolDefinitions } from "@/definitions";
+import type { ToolOutputType } from "@/types/tools";
 
 type FAQ = { question: string; answer: string };
 
@@ -9,6 +10,12 @@ export type ToolSeoEntry = {
   description: string;
   category: string;
   icon: string;
+  tagline: string;
+  tags: string[];
+  featured: boolean;
+  trending: boolean;
+  estimatedTimeSeconds?: number;
+  outputType?: ToolOutputType;
   heroTitle: string;
   heroDescription: string;
   featurePoints: string[];
@@ -20,7 +27,12 @@ export type ToolSeoEntry = {
   industries: string[];
 };
 
-const toolSpecificCopy: Record<string, Omit<ToolSeoEntry, "slug" | "name" | "shortName" | "description" | "category" | "icon">> = {
+type ToolSeoNarrative = Omit<
+  ToolSeoEntry,
+  "slug" | "name" | "shortName" | "description" | "category" | "icon" | "tagline" | "tags" | "featured" | "trending" | "estimatedTimeSeconds" | "outputType"
+>;
+
+const toolSpecificCopy: Record<string, ToolSeoNarrative> = {
   "seo-article-generator": {
     heroTitle: "AI SEO Article Generator for high-intent organic growth",
     heroDescription:
@@ -130,6 +142,12 @@ export const toolSeoPages: ToolSeoEntry[] = listToolDefinitions()
       category: tool.metadata.category,
       icon: tool.metadata.icon,
       ...specific,
+      tagline: tool.metadata.tagline ?? tool.metadata.description,
+      tags: tool.metadata.tags ?? [tool.metadata.category],
+      featured: Boolean(tool.metadata.featured),
+      trending: Boolean(tool.metadata.trending),
+      estimatedTimeSeconds: tool.metadata.estimatedTimeSeconds,
+      outputType: tool.metadata.outputType,
     };
   });
 

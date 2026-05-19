@@ -6,29 +6,17 @@ import { creditTopups } from "@/app/credit-topups";
 import Navigation from "@/app/components/Navigation";
 import { Footer } from "@/components/layout/footer";
 import { getCurrentUser } from "@/lib/auth";
+import { SUPPORT_EMAIL } from "@/lib/seo/site";
 
 export default async function PricingPage() {
   const user = await getCurrentUser();
   return (
     <div className="min-h-screen bg-background">
-      <Navigation isAuthenticated={Boolean(user)} />
-      <PageShell title="Pricing" description="Simple paid plans for serious AI workflows.">
-        <div className="mb-6 grid gap-4 sm:grid-cols-2 md:grid-cols-4">
-          {[
-            ["Secure billing", "Protected checkout and subscription verification flows."],
-            ["Transparent credits", "Clear monthly usage allocations across plans."],
-            ["Refund clarity", "Refund policy and support routes visible before purchase."],
-            ["Upgrade confidence", "Live plan actions connected to real billing logic."],
-          ].map(([title, description]) => (
-            <div key={title} className="surface-muted px-4 py-4">
-              <p className="text-sm font-semibold">{title}</p>
-              <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-            </div>
-          ))}
-        </div>
+      <Navigation isAuthenticated={Boolean(user)} isAdmin={user?.role === "admin"} />
+      <PageShell title="Pricing" description="Simple paid plans for focused AI workflows.">
         <div className="grid gap-5 md:grid-cols-3">
           {subscriptionPlans.map((plan) => (
-            <Card key={plan.name} className="relative overflow-hidden hover:-translate-y-1">
+            <Card key={plan.name} className="relative overflow-hidden border-white/10 hover:-translate-y-1">
               <CardHeader>
                 <div className="mb-3 inline-flex w-fit rounded-full border border-accent/15 bg-accent/8 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-accent">
                   {plan.id === "growth" ? "Most Popular" : "Paid Plan"}
@@ -55,7 +43,7 @@ export default async function PricingPage() {
           ))}
         </div>
         <p className="mt-4 text-xs text-muted-foreground">
-          International cards are supported. Charges are processed securely in INR.
+          Charges are processed in INR. For billing questions, email {SUPPORT_EMAIL}.
         </p>
 
         <div className="mt-10">
@@ -63,7 +51,7 @@ export default async function PricingPage() {
           <p className="mt-2 text-sm text-muted-foreground">Buy additional credits instantly. Secure payments via Razorpay over SSL. Charges are processed in INR.</p>
           <div className="mt-5 grid gap-4 md:grid-cols-3">
             {creditTopups.map((topup) => (
-              <Card key={topup.id} className="surface-card">
+              <Card key={topup.id} className="surface-card border-white/10">
                 <CardHeader>
                   <CardTitle>{topup.credits} Credits</CardTitle>
                 </CardHeader>
@@ -80,7 +68,7 @@ export default async function PricingPage() {
             <a href="/privacy" className="text-sm font-medium text-foreground transition-colors hover:text-accent">Privacy Policy</a>
             <a href="/terms" className="text-sm font-medium text-foreground transition-colors hover:text-accent">Terms of Service</a>
             <a href="/refund" className="text-sm font-medium text-foreground transition-colors hover:text-accent">Refund Policy</a>
-            <a href="mailto:support@yourdomain.com" className="text-sm font-medium text-foreground transition-colors hover:text-accent">Contact support</a>
+            <a href={`mailto:${SUPPORT_EMAIL}`} className="text-sm font-medium text-foreground transition-colors hover:text-accent">Contact support</a>
           </div>
         </div>
       </PageShell>

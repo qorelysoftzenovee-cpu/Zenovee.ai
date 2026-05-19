@@ -6,8 +6,22 @@ export interface ToolField {
   type: "textarea" | "text" | "select" | "number" | "file";
   placeholder?: string;
   required?: boolean;
+  helperText?: string;
   options?: Array<{ label: string; value: string }>;
 }
+
+export interface ToolPreset {
+  label: string;
+  description?: string;
+  values: Record<string, string>;
+}
+
+export interface ToolExample {
+  title: string;
+  description: string;
+}
+
+export type ToolOutputType = "article" | "ad-copy" | "persona" | "landing-page" | "text" | "image";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export interface ToolDefinition<TInput = any, TOutput = Record<string, unknown>> {
@@ -17,10 +31,18 @@ export interface ToolDefinition<TInput = any, TOutput = Record<string, unknown>>
     description: string;
     category: string;
     icon: string;
+    tagline?: string;
+    estimatedTimeSeconds?: number;
+    outputType?: ToolOutputType;
+    tags?: string[];
+    featured?: boolean;
+    trending?: boolean;
     availability?: "active" | "coming_soon";
     disabledReason?: string;
   };
   fields: ToolField[];
+  examples?: ToolExample[];
+  presets?: ToolPreset[];
   inputSchema: z.ZodType<TInput>;
   outputSchema: z.ZodType<TOutput>;
   creditCost: number;

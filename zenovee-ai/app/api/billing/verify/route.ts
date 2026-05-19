@@ -3,7 +3,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getPlanById } from "@/app/subscription-plans";
 import { getCreditTopupById } from "@/app/credit-topups";
-import { assignPlanCredits, computeNextRenewalDate } from "@/services/billing";
+import { addTopupCredits, assignPlanCredits, computeNextRenewalDate } from "@/services/billing";
 import { verifyCheckoutSignature } from "@/services/razorpay";
 import { serverLog } from "@/lib/logger";
 
@@ -53,61 +53,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid topup" }, { status: 400 });
     }
 
-    const { data: currentCreditsRow } = await supabaseAdmin
-      .from("credits")
-      .select("remaining_balance")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle<{ remaining_balance: number }>();
+    const nowIso = new Date().toISOString();
+    const nextBalance = await addTopupCredits(user.id, topup.id, topup.credits, `order:${body.razorpay_order_id}`);
 
-    const currentBalance = Number(currentCreditsRow?.remaining_balance ?? 0);
-    const nextBalance = currentBalance + topup.credits;
-      const nowIso = new Date().toISOString();
+    await supabaseAdmin
+      .from("payments")
+      .update({ status: "CREDIT_TOPUP", razorpay_transaction_id: body.razorpay_payment_id, updated_at: nowIso } as never)
+      .eq("id", pendingTopup.id);
 
-      await Promise.all([
-      supabaseAdmin.from("credits").insert({
-        user_id: user.id,
-        credits_added: topup.credits,
-        credits_consumed: 0,
-        remaining_balance: nextBalance,
-        reason: `credit_topup:${topup.id}`,
-        reset_interval: "monthly",
-        updated_at: nowIso,
-      } as never),
-      supabaseAdmin
-        .from("users")
-        .update({ credits_balance: nextBalance, updated_at: nowIso } as never)
-        .eq("id", user.id),
-        supabaseAdmin
-          .from("payments")
-          .update({ status: "CREDIT_TOPUP", razorpay_transaction_id: body.razorpay_payment_id, updated_at: nowIso } as never)
-          .eq("id", pendingTopup.id),
-      ]);
-
-      await supabaseAdmin.from("user_credits").upsert(
-        {
-          user_id: user.id,
-          total_credits: nextBalance,
-          used_credits: 0,
-          available_credits: nextBalance,
-          updated_at: nowIso,
-        } as never,
-        { onConflict: "user_id" }
-      );
-
-      await supabaseAdmin.from("credit_transactions").insert({
-        user_id: user.id,
-        transaction_type: "topup_credit",
-        credits: topup.credits,
-        balance_before: currentBalance,
-        balance_after: nextBalance,
-        plan_id: `topup:${topup.id}`,
-        reference: `order:${body.razorpay_order_id}`,
-        metadata: { source: "verify_route" },
-      } as never);
-
-      return NextResponse.json({ success: true, mode: "topup", creditsAdded: topup.credits, creditsAfter: nextBalance });
+    return NextResponse.json({ success: true, mode: "topup", creditsAdded: topup.credits, creditsAfter: nextBalance });
     }
     const subscriptionId = body.razorpay_subscription_id;
     if (!subscriptionId) {

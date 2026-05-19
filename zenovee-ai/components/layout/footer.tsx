@@ -1,131 +1,57 @@
 import Link from "next/link";
+import { SUPPORT_EMAIL } from "@/lib/seo/site";
 
 export function Footer() {
   return (
-    <footer className="border-t border-border/70 bg-muted/30">
-      <div className="section-shell py-14">
-        <div className="surface-card mb-8 p-6 md:p-8">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-accent">Trust & support</p>
-              <h2 className="text-2xl font-semibold tracking-tight">Built for teams that need reliable AI operations.</h2>
-              <p className="max-w-2xl text-sm text-muted-foreground md:text-base">
-                Secure billing messaging, clear policies, responsive support, and export-ready workflows are available across the product.
-              </p>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="surface-muted px-4 py-3 text-sm">
-                <p className="font-semibold">Support</p>
-                <p className="text-muted-foreground">support@yourdomain.com</p>
-              </div>
-              <div className="surface-muted px-4 py-3 text-sm">
-                <p className="font-semibold">Billing confidence</p>
-                <p className="text-muted-foreground">Transparent plans and refund policy</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="mb-8 grid gap-8 md:grid-cols-4">
+    <footer className="border-t border-white/10 bg-black/10">
+      <div className="section-shell py-10 md:py-12">
+        <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-start">
           <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center">
-                <span className="text-white font-bold text-lg">Z</span>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#7c3aed_0%,#38bdf8_100%)] shadow-[0_16px_40px_-20px_rgba(124,58,237,0.8)]">
+                <span className="text-base font-semibold text-white">Z</span>
               </div>
-              <span className="font-bold text-lg">Zenovee AI</span>
+              <div>
+                <p className="text-base font-semibold tracking-tight">Zenovee AI</p>
+                <p className="text-sm text-muted-foreground">Focused AI tools for content, marketing, and growth teams.</p>
+              </div>
             </div>
-            <p className="text-sm text-muted-foreground">
-              Premium AI solutions for modern businesses with real subscription controls.
-            </p>
-            <p className="rounded-full border border-border/70 bg-card/70 px-3 py-2 text-xs text-muted-foreground">
-              Secure billing • Policy-first • Human support
-            </p>
+            <a href={`mailto:${SUPPORT_EMAIL}`} className="text-sm text-muted-foreground transition-colors hover:text-foreground">
+              {SUPPORT_EMAIL}
+            </a>
           </div>
 
-          <div>
-            <h3 className="font-semibold mb-4">Product</h3>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li>
-                <Link href="/tools" className="hover:text-foreground transition-colors">
-                  Tools Directory
-                </Link>
-              </li>
-              <li>
-                <Link href="/blog" className="hover:text-foreground transition-colors">
-                  Blog
-                </Link>
-              </li>
-              <li>
-                <Link href="/pricing" className="hover:text-foreground transition-colors">
-                  Pricing
-                </Link>
-              </li>
-              <li>
-                <Link href="/categories/marketing" className="hover:text-foreground transition-colors">
-                  AI Marketing Tools
-                </Link>
-              </li>
-              <li>
-                <Link href="/industries/saas" className="hover:text-foreground transition-colors">
-                  AI Tools for SaaS
-                </Link>
-              </li>
-            </ul>
-          </div>
+          <div className="grid gap-8 sm:grid-cols-3">
+            <div>
+              <h3 className="mb-3 text-sm font-semibold">Product</h3>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li><Link href="/pricing" className="transition-colors hover:text-foreground">Pricing</Link></li>
+                <li><Link href="/tools" className="transition-colors hover:text-foreground">Tools</Link></li>
+              </ul>
+            </div>
 
-          <div>
-            <h3 className="font-semibold mb-4">Legal</h3>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li>
-                <Link href="/privacy" className="hover:text-foreground transition-colors">
-                  Privacy Policy
-                </Link>
-              </li>
-              <li>
-                <Link href="/terms" className="hover:text-foreground transition-colors">
-                  Terms of Service
-                </Link>
-              </li>
-              <li>
-                <Link href="/refund" className="hover:text-foreground transition-colors">
-                  Refund Policy
-                </Link>
-              </li>
-            </ul>
-          </div>
+            <div>
+              <h3 className="mb-3 text-sm font-semibold">Legal</h3>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li><Link href="/privacy" className="transition-colors hover:text-foreground">Privacy</Link></li>
+                <li><Link href="/terms" className="transition-colors hover:text-foreground">Terms</Link></li>
+                <li><Link href="/refund" className="transition-colors hover:text-foreground">Refund</Link></li>
+              </ul>
+            </div>
 
-          <div>
-            <h3 className="font-semibold mb-4">Support</h3>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li>
-                <Link href="/use-cases/ai-tools-for-marketers" className="hover:text-foreground transition-colors">
-                  AI Tools for Marketers
-                </Link>
-              </li>
-              <li>
-                <Link href="/contact" className="hover:text-foreground transition-colors">
-                  Contact Us
-                </Link>
-              </li>
-              <li>
-                <a href="mailto:support@yourdomain.com" className="hover:text-foreground transition-colors">
-                  Email Support
-                </a>
-              </li>
-              <li className="text-muted-foreground">Response within 24 business hours</li>
-            </ul>
+            <div>
+              <h3 className="mb-3 text-sm font-semibold">Contact</h3>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li><Link href="/contact" className="transition-colors hover:text-foreground">Support</Link></li>
+                <li><a href={`mailto:${SUPPORT_EMAIL}`} className="transition-colors hover:text-foreground">Email us</a></li>
+              </ul>
+            </div>
           </div>
         </div>
 
-        <div className="flex flex-col items-start justify-between gap-4 border-t border-border/40 pt-8 md:flex-row md:items-center">
-          <p className="text-sm text-muted-foreground">
-            © 2026 Zenovee AI. All rights reserved.
-          </p>
-          <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
-            <span>Built with security, compliance, and SaaS best practices.</span>
-            <span>•</span>
-            <span>Secure billing messaging visible across the platform.</span>
-          </div>
+        <div className="mt-8 flex flex-col gap-3 border-t border-white/8 pt-6 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
+          <p>© 2026 Zenovee AI. All rights reserved.</p>
+          <p>Launch-ready AI SaaS with a focused, premium product experience.</p>
         </div>
       </div>
     </footer>

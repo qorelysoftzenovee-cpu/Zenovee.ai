@@ -26,7 +26,7 @@ as $$
     select 1
     from public.users u
     where u.id = auth.uid()
-      and u.role = 'ADMIN'
+      and u.role = 'admin'
       and u.status = 'ACTIVE'
   );
 $$;
@@ -39,7 +39,7 @@ create table if not exists public.users (
   id uuid primary key references auth.users(id) on delete cascade,
   email text not null unique,
   name text,
-  role text not null default 'USER' check (role in ('USER', 'ADMIN')),
+  role text not null default 'user' check (role in ('user', 'admin')),
   status text not null default 'ACTIVE' check (status in ('ACTIVE', 'SUSPENDED', 'BANNED')),
   plan text not null default 'starter',
   credits_balance integer not null default 0 check (credits_balance >= 0),

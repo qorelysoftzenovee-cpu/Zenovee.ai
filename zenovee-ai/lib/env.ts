@@ -16,8 +16,7 @@ const envSchema = z.object({
   RAZORPAY_WEBHOOK_SECRET: z.string().min(1),
   NEXTAUTH_URL: z.string().url(),
   NEXTAUTH_SECRET: z.string().min(1),
-  ADMIN_EMAIL: z.string().email(),
-  ADMIN_PANEL_PASSWORD: z.string().min(8),
+  ADMIN_EMAIL: z.string().email().optional(),
 
   // Optional / future email support
   RESEND_API_KEY: z.string().optional(),
@@ -38,7 +37,6 @@ const parsedEnv = envSchema.safeParse({
   NEXTAUTH_URL: process.env.NEXTAUTH_URL,
   NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
   ADMIN_EMAIL: process.env.ADMIN_EMAIL,
-  ADMIN_PANEL_PASSWORD: process.env.ADMIN_PANEL_PASSWORD,
   RESEND_API_KEY: process.env.RESEND_API_KEY,
   SUPPORT_EMAIL: process.env.SUPPORT_EMAIL,
 });
@@ -58,8 +56,7 @@ export const safeEnv = parsedEnv.success
       RAZORPAY_WEBHOOK_SECRET: process.env.RAZORPAY_WEBHOOK_SECRET ?? "",
       NEXTAUTH_URL: process.env.NEXTAUTH_URL ?? "",
       NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET ?? "",
-      ADMIN_EMAIL: process.env.ADMIN_EMAIL ?? "",
-      ADMIN_PANEL_PASSWORD: process.env.ADMIN_PANEL_PASSWORD ?? "",
+      ADMIN_EMAIL: process.env.ADMIN_EMAIL,
       RESEND_API_KEY: process.env.RESEND_API_KEY,
       SUPPORT_EMAIL: process.env.SUPPORT_EMAIL,
     };

@@ -1,20 +1,90 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertCircle, CheckCircle2, Copy, Download, ExternalLink, History, Loader2, Sparkles, Wand2 } from "lucide-react";
+import Link from "next/link";
+import {
+  AlertCircle,
+  Bookmark,
+  BookmarkCheck,
+  CheckCircle2,
+  Clock3,
+  Copy,
+  Download,
+  ExternalLink,
+  History,
+  Loader2,
+  RefreshCcw,
+  Search,
+  Sparkles,
+  Star,
+  Wand2,
+} from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 
+type ToolOutputType = "article" | "ad-copy" | "persona" | "landing-page" | "text" | "image";
+type ExportFormat = "txt" | "md" | "pdf" | "json" | "png";
+type OutputLength = "short" | "medium" | "long";
+type GenerationMode = "generate" | "regenerate" | "improve" | "shorten" | "expand";
+
+type GenerationControls = {
+  tone: string;
+  writingStyle: string;
+  outputLength: OutputLength;
+  language: string;
+  customInstructions?: string;
+};
+
+type PromptControlCatalog = {
+  tones: string[];
+  writingStyles: string[];
+  languages: string[];
+  outputLengths: OutputLength[];
+  supportedModes: GenerationMode[];
+  defaults: Omit<GenerationControls, "customInstructions">;
+  customInstructionsEnabled: boolean;
+};
+
+type GenerationMeta = {
+  promptVersion: string;
+  attempts: number;
+  qualityScore: number;
+  validationIssues: string[];
+  modelReason: string;
+  controls: GenerationControls;
+  mode: GenerationMode;
+  outputSections: string[];
+};
+
+type GenerationErrorDetails = {
+  title?: string;
+  description?: string;
+  retryable?: boolean;
+  issues?: string[];
+};
+
 type ToolField = {
   name: string;
   label: string;
   type: "textarea" | "text" | "select" | "number" | "file";
   placeholder?: string;
+  helperText?: string;
   required?: boolean;
   options?: Array<{ label: string; value: string }>;
+};
+
+type ToolPreset = {
+  label: string;
+  description?: string;
+  values: Record<string, string>;
+};
+
+type ToolExample = {
+  title: string;
+  description: string;
 };
 
 type ToolItem = {
@@ -24,12 +94,21 @@ type ToolItem = {
     description: string;
     category: string;
     icon: string;
+    tagline?: string;
+    estimatedTimeSeconds?: number;
+    outputType?: ToolOutputType;
+    tags?: string[];
+    featured?: boolean;
+    trending?: boolean;
     availability?: "active" | "coming_soon";
     disabledReason?: string;
   };
   creditCost: number;
   fields: ToolField[];
-  exportFormats?: Array<"txt" | "md" | "pdf" | "json" | "png">;
+  examples: ToolExample[];
+  presets: ToolPreset[];
+  exportFormats?: ExportFormat[];
+  generationControls?: PromptControlCatalog | null;
 };
 
 type ExportRecord = {
@@ -52,7 +131,9 @@ type UsageHistoryItem = {
   exports: ExportRecord[];
 };
 
-type ExportFormat = "txt" | "md" | "pdf" | "json" | "png";
+const FAVORITE_TOOLS_STORAGE_KEY = "zenovee_workspace_favorite_tools";
+const SAVED_OUTPUTS_STORAGE_KEY = "zenovee_workspace_saved_outputs";
+const OUTPUT_NAMES_STORAGE_KEY = "zenovee_workspace_output_names";
 
 function formatGlobalDateTime(dateValue: string) {
   return new Date(dateValue).toLocaleString("en-US", {
@@ -62,6 +143,12 @@ function formatGlobalDateTime(dateValue: string) {
     hour: "numeric",
     minute: "2-digit",
   });
+}
+
+function formatEta(seconds?: number) {
+  if (!seconds) return "~1 min";
+  if (seconds < 60) return `~${seconds}s`;
+  return `~${Math.round(seconds / 60)} min`;
 }
 
 function toReadableValue(value: unknown, depth = 0): string {
@@ -74,31 +161,503 @@ function toReadableValue(value: unknown, depth = 0): string {
     .join("\n");
 }
 
+function getGenerationSteps(outputType?: ToolOutputType) {
+  switch (outputType) {
+    case "article":
+      return ["Analyzing keyword intent", "Building structure and clusters", "Writing rich article sections", "Formatting export-ready output"];
+    case "ad-copy":
+      return ["Mapping campaign angles", "Generating hooks and headlines", "Creating CTA variations", "Packaging ad cards"];
+    case "persona":
+      return ["Extracting audience signals", "Mapping pains and motivations", "Building persona layers", "Preparing messaging insights"];
+    case "landing-page":
+      return ["Framing conversion narrative", "Writing page sections", "Refining benefits and FAQs", "Preparing page preview layout"];
+    default:
+      return ["Understanding context", "Generating output", "Refining structure", "Preparing final result"];
+  }
+}
+
+function readArrayFromStorage(key: string) {
+  if (typeof window === "undefined") return [] as string[];
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeArrayToStorage(key: string, value: string[]) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // noop
+  }
+}
+
+function readRecordFromStorage(key: string) {
+  if (typeof window === "undefined") return {} as Record<string, string>;
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    return Object.fromEntries(
+      Object.entries(parsed).filter((entry): entry is [string, string] => typeof entry[0] === "string" && typeof entry[1] === "string")
+    );
+  } catch {
+    return {};
+  }
+}
+
+function writeRecordToStorage(key: string, value: Record<string, string>) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // noop
+  }
+}
+
+function getDefaultGenerationControls(tool?: ToolItem | null): GenerationControls {
+  const defaults = tool?.generationControls?.defaults;
+  return {
+    tone: defaults?.tone ?? "Professional",
+    writingStyle: defaults?.writingStyle ?? "Publish-ready",
+    outputLength: defaults?.outputLength ?? "medium",
+    language: defaults?.language ?? "English",
+    customInstructions: "",
+  };
+}
+
+function asStringArray(value: unknown) {
+  return Array.isArray(value) ? value.map((item) => String(item)) : [];
+}
+
+function asFaqArray(value: unknown) {
+  return Array.isArray(value)
+    ? value
+        .map((item) => {
+          if (!item || typeof item !== "object") return null;
+          const question = String((item as { question?: unknown }).question ?? "");
+          const answer = String((item as { answer?: unknown }).answer ?? "");
+          return question || answer ? { question, answer } : null;
+        })
+        .filter((item): item is { question: string; answer: string } => Boolean(item))
+    : [];
+}
+
+function OutputWorkspace({
+  result,
+  outputType,
+  previewText,
+}: {
+  result: Record<string, unknown>;
+  outputType?: ToolOutputType;
+  previewText: string;
+}) {
+  if (outputType === "article") {
+    const title = String(result.seoTitle ?? "SEO Article Draft");
+    const metaDescription = String(result.metaDescription ?? "");
+    const searchIntent = String(result.searchIntent ?? "");
+    const keywordClusters = asStringArray(result.keywordClusters);
+    const outline = asStringArray(result.articleOutline);
+    const articleParagraphs = String(result.fullArticle ?? "")
+      .split(/\n{2,}/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+    const faqs = asFaqArray(result.faqSection);
+    const links = asStringArray(result.internalLinkSuggestions);
+
+    return (
+      <div className="space-y-5 animate-enter">
+        <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))] p-6">
+          <p className="premium-label">SEO article output</p>
+          <h3 className="mt-4 text-2xl font-semibold tracking-tight">{title}</h3>
+          <p className="mt-3 text-sm leading-6 text-muted-foreground">{metaDescription}</p>
+          {searchIntent ? <p className="mt-4 text-sm text-foreground"><span className="font-medium">Search intent:</span> {searchIntent}</p> : null}
+        </div>
+
+        {keywordClusters.length ? (
+          <div className="rounded-3xl border border-white/10 p-5">
+            <p className="text-sm font-medium">Keyword clusters</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {keywordClusters.map((item) => (
+                <span key={item} className="rounded-full border border-white/10 px-3 py-1 text-xs text-muted-foreground">
+                  {item}
+                </span>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        <div className="grid gap-5 xl:grid-cols-[0.78fr_1.22fr]">
+          {outline.length ? (
+            <div className="rounded-3xl border border-white/10 p-5">
+              <p className="text-sm font-medium">Article outline</p>
+              <div className="mt-4 space-y-3">
+                {outline.map((item, index) => (
+                  <div key={`${item}-${index}`} className="rounded-2xl border border-white/8 bg-white/[0.03] p-3 text-sm text-muted-foreground">
+                    <span className="mr-2 font-medium text-foreground">{index + 1}.</span>
+                    {item}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          <article className="rounded-3xl border border-white/10 p-5">
+            <p className="text-sm font-medium">Formatted draft</p>
+            <div className="prose prose-invert mt-4 max-w-none space-y-4 text-sm leading-7 text-muted-foreground">
+              {articleParagraphs.length
+                ? articleParagraphs.map((paragraph, index) => <p key={`${paragraph.slice(0, 20)}-${index}`}>{paragraph}</p>)
+                : <pre className="whitespace-pre-wrap text-xs">{previewText}</pre>}
+            </div>
+          </article>
+        </div>
+
+        {faqs.length ? (
+          <div className="rounded-3xl border border-white/10 p-5">
+            <p className="text-sm font-medium">FAQ section</p>
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              {faqs.map((faq) => (
+                <div key={faq.question} className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+                  <p className="font-medium text-foreground">{faq.question}</p>
+                  <p className="mt-2 text-sm text-muted-foreground">{faq.answer}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        {links.length ? (
+          <div className="rounded-3xl border border-white/10 p-5">
+            <p className="text-sm font-medium">Internal link suggestions</p>
+            <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
+              {links.map((item) => (
+                <li key={item} className="rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3">{item}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (outputType === "ad-copy") {
+    const headlines = asStringArray(result.headlines);
+    const primaryTexts = asStringArray(result.primaryTexts);
+    const ctas = asStringArray(result.ctaOptions);
+    const angles = asStringArray(result.angleExplanation);
+    const variations = Array.isArray(result.adVariations) ? result.adVariations : [];
+
+    return (
+      <div className="space-y-5 animate-enter">
+        <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))] p-6">
+          <p className="premium-label">Ad campaign pack</p>
+          <h3 className="mt-4 text-2xl font-semibold tracking-tight">High-converting copy variations ready for launch</h3>
+          <p className="mt-3 text-sm text-muted-foreground">Structured headlines, body copy, CTAs, and creative angles grouped into a more premium presentation.</p>
+        </div>
+
+        {headlines.length ? (
+          <div className="rounded-3xl border border-white/10 p-5">
+            <p className="text-sm font-medium">Headline bank</p>
+            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {headlines.map((item) => (
+                <div key={item} className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-foreground">{item}</div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        <div className="grid gap-5 xl:grid-cols-[1fr_0.88fr]">
+          <div className="rounded-3xl border border-white/10 p-5">
+            <p className="text-sm font-medium">Primary texts</p>
+            <div className="mt-4 space-y-3">
+              {primaryTexts.map((item) => (
+                <div key={item} className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm leading-6 text-muted-foreground">
+                  {item}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-5">
+            {ctas.length ? (
+              <div className="rounded-3xl border border-white/10 p-5">
+                <p className="text-sm font-medium">CTA options</p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {ctas.map((item) => (
+                    <span key={item} className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-muted-foreground">
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {angles.length ? (
+              <div className="rounded-3xl border border-white/10 p-5">
+                <p className="text-sm font-medium">Angle strategy</p>
+                <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
+                  {angles.map((item) => (
+                    <li key={item} className="rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3">{item}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </div>
+        </div>
+
+        {variations.length ? (
+          <div className="rounded-3xl border border-white/10 p-5">
+            <p className="text-sm font-medium">Creative-ready ad variations</p>
+            <div className="mt-4 grid gap-4 xl:grid-cols-3">
+              {variations.map((variation, index) => {
+                const headline = String((variation as { headline?: unknown }).headline ?? "");
+                const body = String((variation as { body?: unknown }).body ?? "");
+                const cta = String((variation as { cta?: unknown }).cta ?? "");
+                return (
+                  <div key={`${headline}-${index}`} className="rounded-[26px] border border-white/8 bg-white/[0.03] p-5">
+                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Variation {index + 1}</p>
+                    <p className="mt-4 text-lg font-semibold text-foreground">{headline}</p>
+                    <p className="mt-3 text-sm leading-6 text-muted-foreground">{body}</p>
+                    <div className="mt-4 inline-flex rounded-full bg-primary/15 px-3 py-1 text-xs font-medium text-primary">{cta}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (outputType === "persona") {
+    const buyerPersona = String(result.buyerPersona ?? "Buyer persona");
+    const sections = [
+      ["Demographics", asStringArray(result.demographics)],
+      ["Pain points", asStringArray(result.painPoints)],
+      ["Goals", asStringArray(result.goals)],
+      ["Objections", asStringArray(result.objections)],
+      ["Buying triggers", asStringArray(result.buyingTriggers)],
+      ["Content ideas", asStringArray(result.contentIdeas)],
+      ["Messaging angles", asStringArray(result.messagingAngles)],
+    ] as const;
+
+    return (
+      <div className="space-y-5 animate-enter">
+        <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))] p-6">
+          <p className="premium-label">Persona intelligence</p>
+          <h3 className="mt-4 text-2xl font-semibold tracking-tight">{buyerPersona}</h3>
+          <p className="mt-3 text-sm leading-6 text-muted-foreground">
+            Use this profile to sharpen positioning, align campaign messaging, and structure conversion assets around real buyer motivations.
+          </p>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {sections.map(([label, items]) => (
+            <div key={label} className="rounded-[26px] border border-white/10 p-5">
+              <p className="text-sm font-medium text-foreground">{label}</p>
+              <div className="mt-4 space-y-2">
+                {items.map((item) => (
+                  <div key={item} className="rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3 text-sm text-muted-foreground">
+                    {item}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (outputType === "landing-page") {
+    const ctas = asStringArray(result.ctaButtons);
+    const problemSection = asStringArray(result.problemSection);
+    const solutionSection = asStringArray(result.solutionSection);
+    const benefits = asStringArray(result.benefits);
+    const testimonialSuggestions = asStringArray(result.testimonialsSuggestions);
+    const faq = asFaqArray(result.faq);
+
+    return (
+      <div className="space-y-5 animate-enter">
+        <div className="overflow-hidden rounded-[32px] border border-white/10 bg-[linear-gradient(145deg,#0b1020_0%,#10182d_60%,#0a1224_100%)] p-6 text-white">
+          <p className="premium-label border-white/15 bg-white/5 text-white/75">Landing page preview</p>
+          <h3 className="mt-4 text-3xl font-semibold tracking-tight">{String(result.heroHeadline ?? "Conversion headline")}</h3>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-white/70">{String(result.subheadline ?? "")}</p>
+          <div className="mt-5 flex flex-wrap gap-3">
+            {ctas.map((cta) => (
+              <span key={cta} className="rounded-full bg-white px-4 py-2 text-xs font-medium text-slate-900">{cta}</span>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid gap-5 xl:grid-cols-2">
+          <div className="rounded-3xl border border-white/10 p-5">
+            <p className="text-sm font-medium">Problem narrative</p>
+            <div className="mt-4 space-y-3">
+              {problemSection.map((item) => (
+                <div key={item} className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-muted-foreground">{item}</div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-3xl border border-white/10 p-5">
+            <p className="text-sm font-medium">Solution narrative</p>
+            <div className="mt-4 space-y-3">
+              {solutionSection.map((item) => (
+                <div key={item} className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-muted-foreground">{item}</div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {benefits.length ? (
+          <div className="rounded-3xl border border-white/10 p-5">
+            <p className="text-sm font-medium">Benefit stack</p>
+            <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {benefits.map((item) => (
+                <div key={item} className="rounded-[24px] border border-white/8 bg-white/[0.03] p-5 text-sm text-muted-foreground">
+                  {item}
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        <div className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
+          {testimonialSuggestions.length ? (
+            <div className="rounded-3xl border border-white/10 p-5">
+              <p className="text-sm font-medium">Testimonial prompts</p>
+              <div className="mt-4 space-y-3">
+                {testimonialSuggestions.map((item) => (
+                  <div key={item} className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-muted-foreground">{item}</div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {faq.length ? (
+            <div className="rounded-3xl border border-white/10 p-5">
+              <p className="text-sm font-medium">FAQ preview</p>
+              <div className="mt-4 space-y-3">
+                {faq.map((item) => (
+                  <div key={item.question} className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+                    <p className="font-medium text-foreground">{item.question}</p>
+                    <p className="mt-2 text-sm text-muted-foreground">{item.answer}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="rounded-[28px] border border-primary/20 bg-primary/10 p-5">
+          <p className="text-xs uppercase tracking-[0.2em] text-primary">Final CTA</p>
+          <p className="mt-3 text-base font-medium text-foreground">{String(result.finalCta ?? "")}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (outputType === "text") {
+    const title = String(result.title ?? "AI output");
+    const body = String(result.result ?? previewText);
+    const suggestions = asStringArray(result.suggestions);
+
+    return (
+      <div className="space-y-5 animate-enter">
+        <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))] p-6">
+          <p className="premium-label">AI result</p>
+          <h3 className="mt-4 text-2xl font-semibold tracking-tight">{title}</h3>
+          <div className="mt-4 rounded-3xl border border-white/8 bg-white/[0.03] p-5 text-sm leading-7 text-muted-foreground">{body}</div>
+        </div>
+
+        {suggestions.length ? (
+          <div className="rounded-3xl border border-white/10 p-5">
+            <p className="text-sm font-medium">Suggested next moves</p>
+            <div className="mt-4 space-y-3">
+              {suggestions.map((item) => (
+                <div key={item} className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-muted-foreground">{item}</div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  return (
+    <pre className="subtle-scrollbar max-h-[520px] overflow-auto rounded-3xl border border-white/10 bg-white/[0.03] p-5 text-xs whitespace-pre-wrap">
+      {previewText}
+    </pre>
+  );
+}
+
 export function ToolsWorkspace() {
   const [tools, setTools] = useState<ToolItem[]>([]);
   const [credits, setCredits] = useState(0);
   const [activeToolId, setActiveToolId] = useState<string>("");
+  const [toolSearch, setToolSearch] = useState("");
   const [formData, setFormData] = useState<Record<string, string>>({});
+  const [generationControls, setGenerationControls] = useState<GenerationControls>(getDefaultGenerationControls());
+  const [generationMeta, setGenerationMeta] = useState<GenerationMeta | null>(null);
+  const [generationErrorDetails, setGenerationErrorDetails] = useState<GenerationErrorDetails | null>(null);
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
   const [resultExecutionId, setResultExecutionId] = useState<string | null>(null);
   const [history, setHistory] = useState<UsageHistoryItem[]>([]);
+  const [favoriteToolIds, setFavoriteToolIds] = useState<string[]>([]);
+  const [savedOutputIds, setSavedOutputIds] = useState<string[]>([]);
+  const [outputNames, setOutputNames] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [isBootLoading, setIsBootLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"result" | "history">("result");
+  const [activeTab, setActiveTab] = useState<"result" | "history" | "saved">("result");
   const [exportFormat, setExportFormat] = useState<ExportFormat>("json");
   const [isExporting, setIsExporting] = useState(false);
   const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [generationMode, setGenerationMode] = useState<GenerationMode>("generate");
+  const [generationStepIndex, setGenerationStepIndex] = useState(0);
 
-  const activeTool = useMemo(() => tools.find((t) => t.id === activeToolId) ?? null, [tools, activeToolId]);
+  const activeTool = useMemo(() => tools.find((tool) => tool.id === activeToolId) ?? null, [tools, activeToolId]);
+  const previewText = useMemo(() => (result ? toReadableValue(result) : ""), [result]);
   const availableFormats = activeTool?.exportFormats?.length ? activeTool.exportFormats : (["json"] as ExportFormat[]);
   const resolvedExportFormat = availableFormats.includes(exportFormat) ? exportFormat : availableFormats[0] ?? "json";
-  const previewText = useMemo(() => (result ? toReadableValue(result) : ""), [result]);
+  const generationSteps = useMemo(() => getGenerationSteps(activeTool?.metadata.outputType), [activeTool?.metadata.outputType]);
+  const currentHistoryItem = useMemo(() => history.find((item) => item.id === resultExecutionId) ?? null, [history, resultExecutionId]);
+  const savedHistoryItems = useMemo(() => history.filter((item) => savedOutputIds.includes(item.id)), [history, savedOutputIds]);
+  const currentResultName = useMemo(
+    () => (resultExecutionId ? outputNames[resultExecutionId] ?? `${activeTool?.metadata.name ?? "Generated"} Output` : `${activeTool?.metadata.name ?? "Generated"} Output`),
+    [activeTool?.metadata.name, outputNames, resultExecutionId]
+  );
+
+  const filteredTools = useMemo(() => {
+    const q = toolSearch.trim().toLowerCase();
+    if (!q) return tools;
+    return tools.filter((tool) => {
+      const searchPool = [tool.metadata.name, tool.metadata.description, tool.metadata.category, tool.metadata.tagline ?? "", ...(tool.metadata.tags ?? [])]
+        .join(" ")
+        .toLowerCase();
+      return searchPool.includes(q);
+    });
+  }, [toolSearch, tools]);
 
   useEffect(() => {
     const init = async () => {
       setIsBootLoading(true);
+      const [favoriteIds, savedIds, persistedOutputNames] = [
+        readArrayFromStorage(FAVORITE_TOOLS_STORAGE_KEY),
+        readArrayFromStorage(SAVED_OUTPUTS_STORAGE_KEY),
+        readRecordFromStorage(OUTPUT_NAMES_STORAGE_KEY),
+      ];
+      setFavoriteToolIds(favoriteIds);
+      setSavedOutputIds(savedIds);
+      setOutputNames(persistedOutputNames);
+
       const res = await fetch("/api/tools", { method: "GET" });
       const json = await res.json();
       if (!res.ok) {
@@ -106,30 +665,84 @@ export function ToolsWorkspace() {
         setIsBootLoading(false);
         return;
       }
+
       const loadedTools: ToolItem[] = json.data.tools;
       setTools(loadedTools);
       setCredits(json.data.credits ?? 0);
       if (loadedTools.length > 0) {
-        setActiveToolId(loadedTools[0].id);
+        setActiveToolId((current) => current || loadedTools[0].id);
         setExportFormat((loadedTools[0].exportFormats?.[0] as ExportFormat | undefined) ?? "json");
+        setGenerationControls(getDefaultGenerationControls(loadedTools[0]));
       }
       setIsBootLoading(false);
     };
+
     void init();
   }, []);
 
   useEffect(() => {
+    if (!activeToolId) return;
+
     const loadHistory = async () => {
-      if (!activeToolId) return;
       const res = await fetch(`/api/tools?mode=history&toolId=${encodeURIComponent(activeToolId)}&limit=12`);
       const json = await res.json();
       if (res.ok) setHistory(json.data ?? []);
     };
+
     void loadHistory();
   }, [activeToolId]);
 
+  useEffect(() => {
+    writeArrayToStorage(FAVORITE_TOOLS_STORAGE_KEY, favoriteToolIds);
+  }, [favoriteToolIds]);
+
+  useEffect(() => {
+    writeArrayToStorage(SAVED_OUTPUTS_STORAGE_KEY, savedOutputIds);
+  }, [savedOutputIds]);
+
+  useEffect(() => {
+    writeRecordToStorage(OUTPUT_NAMES_STORAGE_KEY, outputNames);
+  }, [outputNames]);
+
+  useEffect(() => {
+    if (!isLoading) return;
+
+    const timer = window.setInterval(() => {
+      setGenerationStepIndex((current) => (current < generationSteps.length - 1 ? current + 1 : current));
+    }, 1300);
+
+    return () => window.clearInterval(timer);
+  }, [generationSteps.length, isLoading]);
+
+  const selectTool = (tool: ToolItem) => {
+    setActiveToolId(tool.id);
+    setFormData({});
+    setGenerationControls(getDefaultGenerationControls(tool));
+    setGenerationMeta(null);
+    setGenerationErrorDetails(null);
+    setResult(null);
+    setResultExecutionId(null);
+    setPublishedUrl(null);
+    setError(null);
+    setSuccessMessage(null);
+    setActiveTab("result");
+    setExportFormat((tool.exportFormats?.[0] as ExportFormat | undefined) ?? "json");
+  };
+
   const onChange = (name: string, value: string) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const onGenerationControlChange = <TKey extends keyof GenerationControls>(name: TKey, value: GenerationControls[TKey]) => {
+    setGenerationControls((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const renameOutput = (executionId: string, fallbackName: string) => {
+    const nextName = window.prompt("Rename this saved output", outputNames[executionId] ?? fallbackName);
+    if (nextName == null) return;
+    const trimmed = nextName.trim();
+    setOutputNames((prev) => ({ ...prev, [executionId]: trimmed || fallbackName }));
+    setSuccessMessage(trimmed ? "Output renamed successfully." : "Output name reset to default.");
   };
 
   const validate = () => {
@@ -142,9 +755,20 @@ export function ToolsWorkspace() {
     return null;
   };
 
-  const runTool = async () => {
+  const refreshHistory = async (toolId = activeToolId) => {
+    if (!toolId) return;
+    const res = await fetch(`/api/tools?mode=history&toolId=${encodeURIComponent(toolId)}&limit=12`);
+    const json = await res.json();
+    if (res.ok) setHistory(json.data ?? []);
+  };
+
+  const runTool = async (mode: GenerationMode = "generate") => {
     setError(null);
+    setGenerationErrorDetails(null);
     setSuccessMessage(null);
+    setGenerationMode(mode);
+    setGenerationStepIndex(0);
+
     const validationError = validate();
     if (validationError) {
       setError(validationError);
@@ -153,8 +777,13 @@ export function ToolsWorkspace() {
 
     if (!activeTool) return;
 
+    if ((mode === "improve" || mode === "shorten" || mode === "expand") && !result) {
+      setError(`Generate an initial ${activeTool.metadata.name} output first before using ${mode}.`);
+      return;
+    }
+
     if (credits < activeTool.creditCost) {
-      setError(`Insufficient credits. This tool requires ${activeTool.creditCost} credits. Upgrade to Continue or buy a credit topup.`);
+      setError(`Insufficient credits. This tool requires ${activeTool.creditCost} credits. Upgrade to continue or buy a credit topup.`);
       return;
     }
 
@@ -165,24 +794,48 @@ export function ToolsWorkspace() {
 
     setIsLoading(true);
     setActiveTab("result");
-    const payload: Record<string, string> = { ...formData };
+
     const res = await fetch("/api/tools", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ toolId: activeTool.id, input: payload }),
+      body: JSON.stringify({
+        toolId: activeTool.id,
+        input: { ...formData },
+        options: {
+          mode,
+          controls: generationControls,
+          previousOutput: mode === "generate" ? undefined : result ?? undefined,
+        },
+      }),
     });
+
     const json = await res.json();
     setIsLoading(false);
 
     if (!res.ok) {
+      setGenerationErrorDetails((json.details ?? null) as GenerationErrorDetails | null);
       setError(json.error ?? "Generation failed.");
       return;
     }
 
     setResult(json.data);
     setResultExecutionId(json.executionId ?? null);
+    setGenerationMeta((json.generationMeta ?? null) as GenerationMeta | null);
     setCredits(json.metrics?.creditsAfter ?? credits);
-    setSuccessMessage("Output generated successfully. You can copy, publish, or export it now.");
+    if (json.executionId && !outputNames[json.executionId]) {
+      setOutputNames((prev) => ({ ...prev, [json.executionId]: `${activeTool.metadata.name} Output` }));
+    }
+    setSuccessMessage(
+      mode === "improve"
+        ? "Improved variation generated successfully. Review, save, or export it below."
+        : mode === "regenerate"
+          ? "Fresh variation generated successfully. Compare or export it below."
+          : mode === "shorten"
+            ? "Shortened variation generated successfully."
+            : mode === "expand"
+              ? "Expanded variation generated successfully."
+          : "Output generated successfully. You can copy, save, publish, or export it now."
+    );
 
     await refreshHistory(activeTool.id);
   };
@@ -191,13 +844,6 @@ export function ToolsWorkspace() {
     if (!result) return;
     await navigator.clipboard.writeText(previewText || JSON.stringify(result, null, 2));
     setSuccessMessage("Output copied to clipboard.");
-  };
-
-  const refreshHistory = async (toolId = activeToolId) => {
-    if (!toolId) return;
-    const hRes = await fetch(`/api/tools?mode=history&toolId=${encodeURIComponent(toolId)}&limit=12`);
-    const hJson = await hRes.json();
-    if (hRes.ok) setHistory(hJson.data ?? []);
   };
 
   const openSignedUrl = (signedUrl: string) => {
@@ -234,52 +880,6 @@ export function ToolsWorkspace() {
     openSignedUrl(json.data.signedUrl);
   };
 
-  const deleteGeneration = async (generationId: string) => {
-    setError(null);
-    const res = await fetch("/api/exports", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: generationId, kind: "generation" }),
-    });
-    const json = await res.json();
-    if (!res.ok) {
-      setError(json.error ?? "Failed to delete generation.");
-      return;
-    }
-    if (resultExecutionId === generationId) {
-      setResult(null);
-      setResultExecutionId(null);
-    }
-    await refreshHistory();
-  };
-
-  const publishCurrentResult = async () => {
-    if (!resultExecutionId || !activeTool) return;
-
-    setError(null);
-
-    const res = await fetch("/api/outputs/publish", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        toolUsageId: resultExecutionId,
-        title: `${activeTool.metadata.name} Output`,
-        description: `Public output generated with ${activeTool.metadata.name}.`,
-      }),
-    });
-
-    const json = await res.json();
-
-    if (!res.ok) {
-      setError(json.error ?? "Failed to publish output.");
-      return;
-    }
-
-    setPublishedUrl(json.data.url);
-    await navigator.clipboard.writeText(json.data.url);
-    setSuccessMessage("Published URL copied to clipboard.");
-  };
-
   const quickDownload = async (item: UsageHistoryItem | null, format: ExportFormat) => {
     if (!item) return;
     const existing = item.exports.find((entry) => entry.file_type === format);
@@ -301,239 +901,744 @@ export function ToolsWorkspace() {
     openSignedUrl(json.data.signedUrl);
   };
 
-  const currentHistoryItem = useMemo(() => history.find((item) => item.id === resultExecutionId) ?? null, [history, resultExecutionId]);
+  const deleteGeneration = async (generationId: string) => {
+    setError(null);
+    const res = await fetch("/api/exports", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: generationId, kind: "generation" }),
+    });
+    const json = await res.json();
+    if (!res.ok) {
+      setError(json.error ?? "Failed to delete generation.");
+      return;
+    }
+    if (resultExecutionId === generationId) {
+      setResult(null);
+      setResultExecutionId(null);
+      setGenerationMeta(null);
+    }
+    setSavedOutputIds((prev) => prev.filter((id) => id !== generationId));
+    await refreshHistory();
+  };
+
+  const publishCurrentResult = async () => {
+    if (!resultExecutionId || !activeTool) return;
+
+    setError(null);
+    const res = await fetch("/api/outputs/publish", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        toolUsageId: resultExecutionId,
+        title: currentResultName,
+        description: `Public output generated with ${activeTool.metadata.name}.`,
+      }),
+    });
+
+    const json = await res.json();
+    if (!res.ok) {
+      setError(json.error ?? "Failed to publish output.");
+      return;
+    }
+
+    setPublishedUrl(json.data.url);
+    await navigator.clipboard.writeText(json.data.url);
+    setSuccessMessage("Published URL copied to clipboard.");
+  };
+
+  const toggleFavoriteTool = (toolId: string) => {
+    setFavoriteToolIds((prev) => (prev.includes(toolId) ? prev.filter((item) => item !== toolId) : [toolId, ...prev]));
+  };
+
+  const toggleSavedOutput = (executionId: string) => {
+    setSavedOutputIds((prev) => (prev.includes(executionId) ? prev.filter((item) => item !== executionId) : [executionId, ...prev]));
+    setSuccessMessage(savedOutputIds.includes(executionId) ? "Removed from saved outputs." : "Saved to your premium workspace shelf.");
+  };
+
+  const duplicateGeneration = (item: UsageHistoryItem) => {
+    const nextForm = Object.fromEntries(Object.entries(item.input).map(([key, value]) => [key, String(value ?? "")]));
+    if (item.tool_id !== activeToolId) {
+      const nextTool = tools.find((tool) => tool.id === item.tool_id);
+      if (nextTool) setActiveToolId(nextTool.id);
+    }
+    setFormData(nextForm);
+    setSuccessMessage("Previous generation duplicated into the input workspace.");
+  };
+
+  const reopenHistoryItem = (item: UsageHistoryItem) => {
+    setResult(item.output);
+    setResultExecutionId(item.id);
+    setGenerationMeta(null);
+    setGenerationErrorDetails(null);
+    setFormData(Object.fromEntries(Object.entries(item.input).map(([key, value]) => [key, String(value ?? "")])));
+    setActiveTab("result");
+    setSuccessMessage("Previous output reopened in the workspace.");
+  };
+
+  const applyPreset = (preset: ToolPreset) => {
+    setFormData((prev) => ({ ...prev, ...preset.values }));
+    setSuccessMessage(`Applied preset: ${preset.label}`);
+  };
+
+  const favoriteTools = useMemo(() => tools.filter((tool) => favoriteToolIds.includes(tool.id)), [favoriteToolIds, tools]);
   const primaryDownloadFormat = (availableFormats[0] ?? "json") as ExportFormat;
+  const generationProgress = Math.round(((generationStepIndex + 1) / generationSteps.length) * 100);
 
   if (isBootLoading) {
     return (
-      <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
-        <Card className="h-fit">
-          <CardHeader><CardTitle>Loading tools</CardTitle></CardHeader>
+      <div className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
+        <Card className="h-fit overflow-hidden">
+          <CardHeader><CardTitle>Loading premium workspace</CardTitle></CardHeader>
           <CardContent className="space-y-3">
-            {[1, 2, 3].map((item) => <div key={item} className="h-16 animate-pulse rounded-2xl bg-muted/70" />)}
+            {[1, 2, 3, 4].map((item) => <div key={item} className="h-20 animate-pulse rounded-3xl bg-muted/70" />)}
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader><CardTitle>Preparing workspace</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
-            <div className="h-11 animate-pulse rounded-xl bg-muted/70" />
-            <div className="h-28 animate-pulse rounded-xl bg-muted/70" />
-            <div className="h-11 animate-pulse rounded-xl bg-muted/70" />
-          </CardContent>
-        </Card>
+        <div className="space-y-6">
+          <Card>
+            <CardHeader><CardTitle>Preparing AI tools</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <div className="h-28 animate-pulse rounded-[28px] bg-muted/70" />
+              <div className="grid gap-4 lg:grid-cols-2">
+                <div className="h-72 animate-pulse rounded-[28px] bg-muted/70" />
+                <div className="h-72 animate-pulse rounded-[28px] bg-muted/70" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
-      <Card className="h-fit">
-        <CardHeader>
-          <CardTitle>Tools</CardTitle>
-          <p className="text-xs text-muted-foreground">Remaining credits: {credits}</p>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <div className="surface-muted mb-3 px-3 py-3 text-sm text-muted-foreground">
-            Select a tool to generate a structured output, then export, publish, or reopen it from history.
-          </div>
-          {tools.map((tool) => (
-            <button
-              key={tool.id}
-              type="button"
-              onClick={() => {
-                setActiveToolId(tool.id);
-                setFormData({});
-                setResult(null);
-                 setResultExecutionId(null);
-                setPublishedUrl(null);
-                setError(null);
-                setSuccessMessage(null);
-                setExportFormat((tool.exportFormats?.[0] as ExportFormat | undefined) ?? "json");
-              }}
-              className={`w-full rounded-2xl border px-3 py-3 text-left text-sm transition-all ${tool.id === activeToolId ? "border-primary bg-primary/5 shadow-sm" : "border-border/70 hover:bg-muted/50"}`}
-            >
-              <div className="flex items-center justify-between">
-                <span className="font-medium">{tool.metadata.name}</span>
-                <span className="text-xs">{tool.creditCost} cr</span>
-              </div>
-              <p className="mt-1 text-xs text-muted-foreground">{tool.metadata.description}</p>
-            </button>
-          ))}
-        </CardContent>
-      </Card>
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
+    <div className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
+      <div className="space-y-6 xl:sticky xl:top-24 xl:self-start">
+        <Card className="overflow-hidden border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))]">
           <CardHeader>
-            <CardTitle>{activeTool?.metadata.name ?? "Tool"}</CardTitle>
-            <p className="text-xs text-muted-foreground">Credit cost: {activeTool?.creditCost ?? 0}</p>
+            <div className="premium-label">Workspace control</div>
+            <CardTitle className="mt-3">Premium AI tools</CardTitle>
+            <p className="text-sm text-muted-foreground">Browse tools, favorite what you use most, and keep recent outputs export-ready.</p>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="surface-muted flex items-start gap-3 px-4 py-4 text-sm text-muted-foreground">
-              <Wand2 size={18} className="mt-0.5 shrink-0 text-accent" />
-              <p>Fill in the required fields clearly for the best result. Your output is stored in history and can be exported later.</p>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+              <div className="dashboard-metric">
+                <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Credits</p>
+                <p className="mt-3 text-2xl font-semibold tracking-tight">{credits}</p>
+              </div>
+              <div className="dashboard-metric">
+                <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Saved outputs</p>
+                <p className="mt-3 text-2xl font-semibold tracking-tight">{savedHistoryItems.length}</p>
+              </div>
             </div>
-            {activeTool?.fields.map((field) => (
-              <div key={field.name} className="space-y-2">
-                <Label>{field.label}</Label>
-                {field.type === "textarea" ? (
-                  <Textarea
-                    placeholder={field.placeholder}
-                    value={formData[field.name] ?? ""}
-                    onChange={(e) => onChange(field.name, e.target.value)}
-                  />
-                ) : field.type === "select" ? (
-                  <select
-                    className="flex h-11 w-full rounded-xl border border-border/80 bg-background/85 px-3.5 py-2.5 text-sm shadow-sm outline-none transition-all focus-visible:border-accent/50 focus-visible:ring-2 focus-visible:ring-accent/35"
-                    value={formData[field.name] ?? ""}
-                    onChange={(e) => onChange(field.name, e.target.value)}
-                  >
-                    <option value="">Select</option>
-                    {field.options?.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                ) : field.type === "file" ? (
-                  <Input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => onChange(field.name, e.target.files?.[0]?.name ?? "")}
-                  />
-                ) : (
-                  <Input
-                    placeholder={field.placeholder}
-                    value={formData[field.name] ?? ""}
-                    onChange={(e) => onChange(field.name, e.target.value)}
-                  />
-                )}
-              </div>
-            ))}
-            {error ? <div className="status-danger flex items-start gap-2 rounded-2xl px-4 py-3 text-sm"><AlertCircle size={16} className="mt-0.5 shrink-0" /> <span>{error}</span></div> : null}
-            {successMessage ? <div className="status-success flex items-start gap-2 rounded-2xl px-4 py-3 text-sm"><CheckCircle2 size={16} className="mt-0.5 shrink-0" /> <span>{successMessage}</span></div> : null}
-            <Button
-              onClick={runTool}
-              disabled={isLoading || activeTool?.metadata.availability === "coming_soon"}
-              className="w-full"
-            >
-              {isLoading ? <><Loader2 size={16} className="animate-spin" /> Generating...</> : activeTool?.metadata.availability === "coming_soon" ? "Coming soon" : <><Sparkles size={16} /> Run Tool</>}
-            </Button>
-            {activeTool && credits < activeTool.creditCost ? (
-              <div className="status-warning rounded-2xl px-4 py-3 text-sm">
-                Insufficient credits for this tool. <a href="/pricing" className="underline font-medium">Upgrade to Continue</a>
-              </div>
-            ) : null}
+
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={toolSearch}
+                onChange={(e) => setToolSearch(e.target.value)}
+                placeholder="Search tools, categories, or tags"
+                className="pl-10"
+              />
+            </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <CardTitle>Output</CardTitle>
-              <div className="flex flex-wrap items-center gap-2">
-                <Button variant={activeTab === "result" ? "default" : "outline"} size="sm" onClick={() => setActiveTab("result")}>Result</Button>
-                <Button variant={activeTab === "history" ? "default" : "outline"} size="sm" onClick={() => setActiveTab("history")}><History size={14} /> History</Button>
-                <Button variant="outline" size="sm" onClick={copyResult} disabled={!result}><Copy size={14} /> Copy</Button>
-                <Button variant="outline" size="sm" onClick={() => void publishCurrentResult()} disabled={!resultExecutionId}><ExternalLink size={14} /> Publish</Button>
-                <Button variant="outline" size="sm" onClick={() => void quickDownload(currentHistoryItem, primaryDownloadFormat)} disabled={!resultExecutionId || isExporting}><Download size={14} /> Download</Button>
-                <select
-                  className="h-9 rounded-lg border border-border/80 bg-background/85 px-2 text-sm"
-                  value={resolvedExportFormat}
-                  onChange={(e) => setExportFormat(e.target.value as ExportFormat)}
-                  disabled={!resultExecutionId || isExporting}
+        {favoriteTools.length ? (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Favorites</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {favoriteTools.map((tool) => (
+                <button
+                  key={tool.id}
+                  type="button"
+                  onClick={() => selectTool(tool)}
+                  className="flex w-full items-center justify-between rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3 text-left transition hover:border-white/15 hover:bg-white/[0.05]"
                 >
-                  {availableFormats.map((format) => (
-                    <option key={format} value={format}>
-                      Export {format.toUpperCase()}
-                    </option>
-                  ))}
-                </select>
-                <Button variant="outline" size="sm" onClick={() => void exportCurrentResult(resolvedExportFormat)} disabled={!resultExecutionId || isExporting}>
-                  {isExporting ? <><Loader2 size={14} className="animate-spin" /> Exporting...</> : "Export"}
-                </Button>
-              </div>
-            </div>
+                  <span>
+                    <span className="mr-2 text-lg">{tool.metadata.icon}</span>
+                    <span className="text-sm font-medium">{tool.metadata.name}</span>
+                  </span>
+                  <Star size={14} className="fill-amber-300 text-amber-300" />
+                </button>
+              ))}
+            </CardContent>
+          </Card>
+        ) : null}
+
+        <Card className="max-h-[70vh] overflow-hidden">
+          <CardHeader>
+            <CardTitle className="text-base">Tool catalog</CardTitle>
+            <p className="text-xs text-muted-foreground">Featured, searchable, and optimized for fast switching.</p>
           </CardHeader>
-          <CardContent>
-            {activeTab === "result" ? (
-              result ? (
-                <div className="space-y-4">
-                  {publishedUrl ? (
-                    <div className="status-success rounded-2xl px-4 py-3 text-sm">
-                      Published URL copied: <a href={publishedUrl} target="_blank" rel="noreferrer" className="text-accent underline">{publishedUrl}</a>
+          <CardContent className="subtle-scrollbar space-y-3 overflow-auto">
+            {filteredTools.map((tool) => {
+              const isFavorite = favoriteToolIds.includes(tool.id);
+              const isActive = tool.id === activeToolId;
+              return (
+                <div
+                  key={tool.id}
+                  className={`rounded-[24px] border p-4 transition-all ${
+                    isActive ? "border-primary/40 bg-primary/10 shadow-[0_18px_55px_-35px_rgba(99,102,241,0.85)]" : "border-white/8 bg-white/[0.03] hover:border-white/15 hover:bg-white/[0.05]"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <button type="button" onClick={() => selectTool(tool)} className="flex-1 text-left">
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl">{tool.metadata.icon}</span>
+                        <div>
+                          <p className="text-sm font-medium text-foreground">{tool.metadata.name}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">{tool.metadata.category} • {tool.creditCost} credits</p>
+                        </div>
+                      </div>
+                      <p className="mt-3 text-xs leading-5 text-muted-foreground">{tool.metadata.tagline ?? tool.metadata.description}</p>
+                    </button>
+                    <button type="button" onClick={() => toggleFavoriteTool(tool.id)} className="rounded-full border border-white/10 p-2 text-muted-foreground transition hover:text-foreground">
+                      <Star size={14} className={isFavorite ? "fill-amber-300 text-amber-300" : ""} />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="space-y-6">
+        <Card className="hero-panel overflow-hidden">
+          <CardHeader className="space-y-5">
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex size-14 items-center justify-center rounded-[20px] border border-white/10 bg-white/[0.04] text-3xl">
+                    {activeTool?.metadata.icon ?? "✨"}
+                  </div>
+                  <div>
+                    <p className="premium-label">{activeTool?.metadata.category ?? "Tool workspace"}</p>
+                    <h2 className="mt-3 text-3xl font-semibold tracking-tight">{activeTool?.metadata.name ?? "Select a tool"}</h2>
+                  </div>
+                </div>
+                <p className="max-w-4xl text-sm leading-6 text-muted-foreground">
+                  {activeTool?.metadata.tagline ?? activeTool?.metadata.description ?? "Choose a tool to begin."}
+                </p>
+              </div>
+
+              {activeTool ? (
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => toggleFavoriteTool(activeTool.id)}
+                    className="stat-chip transition hover:border-white/20 hover:bg-white/10 hover:text-foreground"
+                  >
+                    <Star size={12} className={favoriteToolIds.includes(activeTool.id) ? "fill-amber-300 text-amber-300" : "text-accent"} />
+                    {favoriteToolIds.includes(activeTool.id) ? "Favorited" : "Add favorite"}
+                  </button>
+                  <div className="stat-chip"><Clock3 size={12} className="text-accent" /> {formatEta(activeTool.metadata.estimatedTimeSeconds)}</div>
+                  <div className="stat-chip"><Sparkles size={12} className="text-accent" /> {activeTool.creditCost} credits</div>
+                  <div className="stat-chip"><History size={12} className="text-accent" /> {history.length} recent runs</div>
+                </div>
+              ) : null}
+            </div>
+
+            {activeTool?.metadata.tags?.length ? (
+              <div className="flex flex-wrap gap-2">
+                {activeTool.metadata.tags.map((tag) => (
+                  <span key={tag} className="rounded-full border border-white/10 px-3 py-1 text-xs text-muted-foreground">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+          </CardHeader>
+        </Card>
+
+        <div className="grid gap-6 2xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Input workspace</CardTitle>
+                <p className="text-sm text-muted-foreground">Use presets, follow the field guidance, and structure your brief for better quality output.</p>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                {activeTool?.presets?.length ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm font-medium">Presets & templates</p>
+                      <span className="text-xs text-muted-foreground">One-click structured inputs</span>
                     </div>
-                  ) : null}
-                  <pre className="subtle-scrollbar max-h-[420px] overflow-auto rounded-2xl border border-border/70 bg-muted/75 p-4 text-xs whitespace-pre-wrap">{previewText}</pre>
-                  {currentHistoryItem?.exports?.length ? (
-                    <div className="rounded-2xl border border-border/70 p-4">
-                      <p className="mb-2 text-xs font-medium text-muted-foreground">Saved exports</p>
-                      <div className="flex flex-wrap gap-2">
-                        {currentHistoryItem.exports.map((file) => (
-                          <Button key={file.id} variant="outline" size="sm" onClick={() => void redownloadExport(file.id)}>
-                            {String(file.file_type).toUpperCase()}
-                          </Button>
-                        ))}
+                    <div className="grid gap-3">
+                      {activeTool.presets.map((preset) => (
+                        <button
+                          key={preset.label}
+                          type="button"
+                          onClick={() => applyPreset(preset)}
+                          className="rounded-[24px] border border-white/8 bg-white/[0.03] px-4 py-4 text-left transition hover:border-white/15 hover:bg-white/[0.05]"
+                        >
+                          <p className="text-sm font-medium text-foreground">{preset.label}</p>
+                          {preset.description ? <p className="mt-1 text-sm text-muted-foreground">{preset.description}</p> : null}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                <div className="grid gap-4">
+                  {activeTool?.fields.length ? (
+                    activeTool.fields.map((field) => (
+                      <div key={field.name} className="space-y-2">
+                        <div className="flex items-center justify-between gap-3">
+                          <Label>{field.label}</Label>
+                          {field.required ? <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Required</span> : null}
+                        </div>
+
+                        {field.type === "textarea" ? (
+                          <Textarea
+                            placeholder={field.placeholder}
+                            value={formData[field.name] ?? ""}
+                            onChange={(e) => onChange(field.name, e.target.value)}
+                            className="min-h-32 rounded-2xl"
+                          />
+                        ) : field.type === "select" ? (
+                          <select
+                            className="flex h-11 w-full rounded-2xl border border-border/80 bg-background/85 px-3.5 py-2.5 text-sm shadow-sm outline-none transition-all focus-visible:border-accent/50 focus-visible:ring-2 focus-visible:ring-accent/35"
+                            value={formData[field.name] ?? ""}
+                            onChange={(e) => onChange(field.name, e.target.value)}
+                          >
+                            <option value="">Select an option</option>
+                            {field.options?.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        ) : field.type === "file" ? (
+                          <Input type="file" accept="image/*" onChange={(e) => onChange(field.name, e.target.files?.[0]?.name ?? "")} className="rounded-2xl" />
+                        ) : (
+                          <Input
+                            placeholder={field.placeholder}
+                            value={formData[field.name] ?? ""}
+                            onChange={(e) => onChange(field.name, e.target.value)}
+                            className="rounded-2xl"
+                          />
+                        )}
+
+                        {field.helperText ? <p className="text-xs leading-5 text-muted-foreground">{field.helperText}</p> : null}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="surface-muted px-5 py-8 text-center text-sm text-muted-foreground">
+                      This tool uses page or browser context automatically, so no manual fields are required here.
+                    </div>
+                  )}
+                </div>
+
+                {activeTool?.generationControls ? (
+                  <div className="rounded-[28px] border border-white/10 p-5">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-medium">Generation controls</p>
+                        <p className="mt-1 text-xs text-muted-foreground">Adjust tone, style, output depth, and language for more consistent premium results.</p>
+                      </div>
+                      <span className="rounded-full border border-white/10 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+                        Smart prompting
+                      </span>
+                    </div>
+
+                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+                      <div>
+                        <Label>Tone</Label>
+                        <select
+                          className="mt-2 flex h-11 w-full rounded-2xl border border-border/80 bg-background/85 px-3.5 py-2.5 text-sm"
+                          value={generationControls.tone}
+                          onChange={(e) => onGenerationControlChange("tone", e.target.value)}
+                        >
+                          {activeTool.generationControls.tones.map((tone) => (
+                            <option key={tone} value={tone}>{tone}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <Label>Writing style</Label>
+                        <select
+                          className="mt-2 flex h-11 w-full rounded-2xl border border-border/80 bg-background/85 px-3.5 py-2.5 text-sm"
+                          value={generationControls.writingStyle}
+                          onChange={(e) => onGenerationControlChange("writingStyle", e.target.value)}
+                        >
+                          {activeTool.generationControls.writingStyles.map((style) => (
+                            <option key={style} value={style}>{style}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <Label>Output length</Label>
+                        <select
+                          className="mt-2 flex h-11 w-full rounded-2xl border border-border/80 bg-background/85 px-3.5 py-2.5 text-sm"
+                          value={generationControls.outputLength}
+                          onChange={(e) => onGenerationControlChange("outputLength", e.target.value as OutputLength)}
+                        >
+                          {activeTool.generationControls.outputLengths.map((length) => (
+                            <option key={length} value={length}>{length[0].toUpperCase() + length.slice(1)}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <Label>Language</Label>
+                        <select
+                          className="mt-2 flex h-11 w-full rounded-2xl border border-border/80 bg-background/85 px-3.5 py-2.5 text-sm"
+                          value={generationControls.language}
+                          onChange={(e) => onGenerationControlChange("language", e.target.value)}
+                        >
+                          {activeTool.generationControls.languages.map((language) => (
+                            <option key={language} value={language}>{language}</option>
+                          ))}
+                        </select>
                       </div>
                     </div>
-                  ) : null}
+
+                    {activeTool.generationControls.customInstructionsEnabled ? (
+                      <div className="mt-4">
+                        <Label>Custom instructions</Label>
+                        <Textarea
+                          className="mt-2 min-h-24 rounded-2xl"
+                          placeholder="Optional: add specific instructions for structure, emphasis, or exclusions."
+                          value={generationControls.customInstructions ?? ""}
+                          onChange={(e) => onGenerationControlChange("customInstructions", e.target.value)}
+                        />
+                      </div>
+                    ) : null}
+
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {activeTool.generationControls.supportedModes.map((mode) => (
+                        <span key={mode} className="rounded-full border border-white/10 px-3 py-1 text-[11px] text-muted-foreground">
+                          {mode}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                {activeTool?.examples?.length ? (
+                  <div className="rounded-[28px] border border-white/10 p-5">
+                    <p className="text-sm font-medium">Examples</p>
+                    <div className="mt-4 grid gap-3">
+                      {activeTool.examples.map((example) => (
+                        <div key={example.title} className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+                          <p className="text-sm font-medium text-foreground">{example.title}</p>
+                          <p className="mt-2 text-sm text-muted-foreground">{example.description}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                {error ? (
+                  <div className="status-danger flex items-start gap-2 rounded-2xl px-4 py-3 text-sm">
+                    <AlertCircle size={16} className="mt-0.5 shrink-0" />
+                    <div className="space-y-2">
+                      <span>{generationErrorDetails?.title ? `${generationErrorDetails.title}: ` : ""}{error}</span>
+                      {generationErrorDetails?.description ? <p className="text-xs text-red-100/80">{generationErrorDetails.description}</p> : null}
+                      {generationErrorDetails?.issues?.length ? (
+                        <ul className="space-y-1 text-xs text-red-100/80">
+                          {generationErrorDetails.issues.map((issue) => (
+                            <li key={issue}>• {issue}</li>
+                          ))}
+                        </ul>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : null}
+
+                {successMessage ? (
+                  <div className="status-success flex items-start gap-2 rounded-2xl px-4 py-3 text-sm">
+                    <CheckCircle2 size={16} className="mt-0.5 shrink-0" />
+                    <span>{successMessage}</span>
+                  </div>
+                ) : null}
+
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  <Button onClick={() => void runTool("generate")} disabled={isLoading || activeTool?.metadata.availability === "coming_soon"} className="flex-1">
+                    {isLoading ? <><Loader2 size={16} className="animate-spin" /> {generationMode === "improve" ? "Improving..." : generationMode === "regenerate" ? "Regenerating..." : "Generating..."}</> : <><Sparkles size={16} /> Generate premium output</>}
+                  </Button>
+                  <Button variant="outline" onClick={() => setFormData({})} disabled={isLoading}>Reset</Button>
                 </div>
-              ) : (
-                <div className="surface-muted px-5 py-8 text-center">
-                  <p className="text-base font-semibold">No output yet</p>
-                  <p className="mt-2 text-sm text-muted-foreground">Choose a tool, enter your prompt or input, and run it to generate a structured result you can copy, publish, and export.</p>
+
+                {activeTool && credits < activeTool.creditCost ? (
+                  <div className="status-warning rounded-2xl px-4 py-3 text-sm">
+                    Insufficient credits for this tool. <Link href="/pricing" className="font-medium underline">Upgrade to continue</Link>
+                  </div>
+                ) : null}
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>AI generation panel</CardTitle>
+                <p className="text-sm text-muted-foreground">Premium loading states, live feedback, and a clearer sense of progress while the model works.</p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] p-5">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{isLoading ? "AI is thinking" : "Workspace ready"}</p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {isLoading
+                          ? generationSteps[generationStepIndex]
+                          : activeTool
+                            ? `Expected generation time ${formatEta(activeTool.metadata.estimatedTimeSeconds)}.`
+                            : "Select a tool to begin."}
+                      </p>
+                    </div>
+                    <div className="flex size-11 items-center justify-center rounded-full border border-white/10 bg-white/[0.04]">
+                      {isLoading ? <Loader2 size={18} className="animate-spin text-accent" /> : <Wand2 size={18} className="text-accent" />}
+                    </div>
+                  </div>
+
+                  <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/[0.06]">
+                    <div className="h-full rounded-full bg-primary transition-all duration-700" style={{ width: `${isLoading ? generationProgress : result ? 100 : 12}%` }} />
+                  </div>
+
+                  <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    {generationSteps.map((step, index) => {
+                      const status = isLoading
+                        ? index < generationStepIndex
+                          ? "done"
+                          : index === generationStepIndex
+                            ? "active"
+                            : "upcoming"
+                        : result
+                          ? "done"
+                          : "upcoming";
+
+                      return (
+                        <div
+                          key={step}
+                          className={`rounded-2xl border p-3 text-sm transition-all ${
+                            status === "done"
+                              ? "border-success/20 bg-success/10 text-foreground"
+                              : status === "active"
+                                ? "border-primary/25 bg-primary/10 text-foreground"
+                                : "border-white/8 bg-white/[0.03] text-muted-foreground"
+                          }`}
+                        >
+                          <p className="text-[11px] uppercase tracking-[0.18em]">Step {index + 1}</p>
+                          <p className="mt-2 leading-5">{step}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-              )
-            ) : history.length > 0 ? (
-              <div className="space-y-3">
-                {history.map((item) => (
-                  <div key={item.id} className="rounded-2xl border border-border/70 p-4">
-                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                      <div>
-                        <p className="text-sm font-medium">{item.tool_name}</p>
-                        <p className="text-xs text-muted-foreground">{formatGlobalDateTime(item.created_at)} • {item.credits_consumed} credits</p>
-                        {item.exports.length ? (
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            {item.exports.map((file) => (
-                              <span key={file.id} className="rounded-full border px-2 py-1 text-[11px] text-muted-foreground">
-                                {String(file.file_type).toUpperCase()}
-                              </span>
-                            ))}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                  <div>
+                    <CardTitle>Output workspace</CardTitle>
+                    <p className="mt-1 text-sm text-muted-foreground">Review structured results, reopen history, save favorites, and export polished deliverables.</p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button variant={activeTab === "result" ? "default" : "outline"} size="sm" onClick={() => setActiveTab("result")}>Result</Button>
+                    <Button variant={activeTab === "history" ? "default" : "outline"} size="sm" onClick={() => setActiveTab("history")}><History size={14} /> History</Button>
+                    <Button variant={activeTab === "saved" ? "default" : "outline"} size="sm" onClick={() => setActiveTab("saved")}><Bookmark size={14} /> Saved</Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                {activeTab === "result" ? (
+                  result ? (
+                    <>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {resultExecutionId ? (
+                          <Button variant="outline" size="sm" onClick={() => renameOutput(resultExecutionId, `${activeTool?.metadata.name ?? "Generated"} Output`)}>
+                            Rename
+                          </Button>
+                        ) : null}
+                        <Button variant="outline" size="sm" onClick={copyResult}><Copy size={14} /> Copy</Button>
+                        <Button variant="outline" size="sm" onClick={() => void publishCurrentResult()} disabled={!resultExecutionId}><ExternalLink size={14} /> Publish</Button>
+                        <Button variant="outline" size="sm" onClick={() => void quickDownload(currentHistoryItem, primaryDownloadFormat)} disabled={!resultExecutionId || isExporting}><Download size={14} /> Quick download</Button>
+                        <Button variant="outline" size="sm" onClick={() => void runTool("regenerate")} disabled={isLoading}><RefreshCcw size={14} /> Regenerate</Button>
+                        <Button variant="outline" size="sm" onClick={() => void runTool("improve")} disabled={isLoading}><Wand2 size={14} /> Improve</Button>
+                        <Button variant="outline" size="sm" onClick={() => void runTool("shorten")} disabled={isLoading}><Wand2 size={14} /> Shorten</Button>
+                        <Button variant="outline" size="sm" onClick={() => void runTool("expand")} disabled={isLoading}><Wand2 size={14} /> Expand</Button>
+                        {resultExecutionId ? (
+                          <Button variant="outline" size="sm" onClick={() => toggleSavedOutput(resultExecutionId)}>
+                            {savedOutputIds.includes(resultExecutionId) ? <BookmarkCheck size={14} /> : <Bookmark size={14} />}
+                            {savedOutputIds.includes(resultExecutionId) ? "Saved" : "Save result"}
+                          </Button>
+                        ) : null}
+                        <select
+                          className="h-9 rounded-xl border border-border/80 bg-background/85 px-3 text-sm"
+                          value={resolvedExportFormat}
+                          onChange={(e) => setExportFormat(e.target.value as ExportFormat)}
+                          disabled={!resultExecutionId || isExporting}
+                        >
+                          {availableFormats.map((format) => (
+                            <option key={format} value={format}>Export {format.toUpperCase()}</option>
+                          ))}
+                        </select>
+                        <Button variant="outline" size="sm" onClick={() => void exportCurrentResult(resolvedExportFormat)} disabled={!resultExecutionId || isExporting}>
+                          {isExporting ? <><Loader2 size={14} className="animate-spin" /> Exporting...</> : "Export"}
+                        </Button>
+                      </div>
+
+                      {publishedUrl ? (
+                        <div className="status-success rounded-2xl px-4 py-3 text-sm">
+                          Published URL copied: <a href={publishedUrl} target="_blank" rel="noreferrer" className="text-accent underline">{publishedUrl}</a>
+                        </div>
+                      ) : null}
+
+                      <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))] p-5">
+                        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                          <div>
+                            <p className="premium-label">Output identity</p>
+                            <h3 className="mt-3 text-xl font-semibold tracking-tight">{currentResultName}</h3>
+                            <p className="mt-2 text-sm text-muted-foreground">Reusable, export-ready generation with centralized prompt orchestration behind it.</p>
+                          </div>
+                          {generationMeta ? (
+                            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                              <div className="stat-chip">Quality {generationMeta.qualityScore}/100</div>
+                              <div className="stat-chip">Attempts {generationMeta.attempts}</div>
+                              <div className="stat-chip">Mode {generationMeta.mode}</div>
+                            </div>
+                          ) : null}
+                        </div>
+
+                        {generationMeta ? (
+                          <div className="mt-4 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+                            <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+                              <p className="text-sm font-medium">Prompt and model insights</p>
+                              <div className="mt-3 space-y-2 text-sm text-muted-foreground">
+                                <p><span className="font-medium text-foreground">Prompt version:</span> {generationMeta.promptVersion}</p>
+                                <p><span className="font-medium text-foreground">Tone:</span> {generationMeta.controls.tone}</p>
+                                <p><span className="font-medium text-foreground">Writing style:</span> {generationMeta.controls.writingStyle}</p>
+                                <p><span className="font-medium text-foreground">Output length:</span> {generationMeta.controls.outputLength}</p>
+                                <p><span className="font-medium text-foreground">Language:</span> {generationMeta.controls.language}</p>
+                                <p><span className="font-medium text-foreground">Model strategy:</span> {generationMeta.modelReason}</p>
+                              </div>
+                            </div>
+
+                            <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+                              <p className="text-sm font-medium">Section coverage</p>
+                              <div className="mt-3 flex flex-wrap gap-2">
+                                {generationMeta.outputSections.map((section) => (
+                                  <span key={section} className="rounded-full border border-white/10 px-3 py-1 text-[11px] text-muted-foreground">
+                                    {section}
+                                  </span>
+                                ))}
+                              </div>
+                              {generationMeta.validationIssues.length ? (
+                                <div className="mt-4">
+                                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Validation notes</p>
+                                  <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
+                                    {generationMeta.validationIssues.map((issue) => (
+                                      <li key={issue}>• {issue}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              ) : (
+                                <p className="mt-4 text-sm text-emerald-300">All configured quality checks passed.</p>
+                              )}
+                            </div>
                           </div>
                         ) : null}
                       </div>
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setResult(item.output);
-                            setResultExecutionId(item.id);
-                            setActiveTab("result");
-                            setSuccessMessage("Previous output reopened.");
-                          }}
-                        >
-                          Reopen
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={() => void quickDownload(item, primaryDownloadFormat)}>
-                          Download
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={() => void deleteGeneration(item.id)}>
-                          Delete
-                        </Button>
-                      </div>
+
+                      <OutputWorkspace result={result} outputType={activeTool?.metadata.outputType} previewText={previewText} />
+
+                      {currentHistoryItem?.exports?.length ? (
+                        <div className="rounded-3xl border border-white/10 p-5">
+                          <p className="text-sm font-medium">Existing exports</p>
+                          <div className="mt-4 flex flex-wrap gap-2">
+                            {currentHistoryItem.exports.map((file) => (
+                              <Button key={file.id} variant="outline" size="sm" onClick={() => void redownloadExport(file.id)}>
+                                {String(file.file_type).toUpperCase()}
+                              </Button>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                    </>
+                  ) : (
+                    <div className="surface-muted px-6 py-10 text-center">
+                      <p className="text-lg font-semibold">No output yet</p>
+                      <p className="mt-2 text-sm text-muted-foreground">Pick a tool, structure the input, and generate a premium result preview here.</p>
                     </div>
+                  )
+                ) : activeTab === "history" ? (
+                  history.length ? (
+                    <div className="space-y-4">
+                      {history.map((item) => (
+                        <div key={item.id} className="rounded-[28px] border border-white/10 p-5">
+                          <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-foreground">{outputNames[item.id] ?? item.tool_name}</p>
+                              <p className="mt-1 text-xs text-muted-foreground">{formatGlobalDateTime(item.created_at)} • {item.credits_consumed} credits</p>
+                              <div className="mt-3 flex flex-wrap gap-2">
+                                {item.exports.map((file) => (
+                                  <span key={file.id} className="rounded-full border border-white/10 px-2.5 py-1 text-[11px] text-muted-foreground">
+                                    {String(file.file_type).toUpperCase()}
+                                  </span>
+                                ))}
+                                {savedOutputIds.includes(item.id) ? <span className="rounded-full bg-primary/15 px-2.5 py-1 text-[11px] text-primary">Saved</span> : null}
+                              </div>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2">
+                              <Button variant="outline" size="sm" onClick={() => renameOutput(item.id, item.tool_name)}>Rename</Button>
+                              <Button variant="outline" size="sm" onClick={() => reopenHistoryItem(item)}>Reopen</Button>
+                              <Button variant="outline" size="sm" onClick={() => duplicateGeneration(item)}>Duplicate</Button>
+                              <Button variant="outline" size="sm" onClick={() => toggleSavedOutput(item.id)}>
+                                {savedOutputIds.includes(item.id) ? "Unsave" : "Save"}
+                              </Button>
+                              <Button variant="outline" size="sm" onClick={() => void quickDownload(item, primaryDownloadFormat)}>Download</Button>
+                              <Button variant="outline" size="sm" onClick={() => void deleteGeneration(item.id)}>Delete</Button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="surface-muted px-6 py-10 text-center">
+                      <p className="text-lg font-semibold">No generations yet</p>
+                      <p className="mt-2 text-sm text-muted-foreground">Your recent generations will appear here with duplicate, save, reopen, and export actions.</p>
+                    </div>
+                  )
+                ) : savedHistoryItems.length ? (
+                  <div className="space-y-4">
+                    {savedHistoryItems.map((item) => (
+                      <div key={item.id} className="rounded-[28px] border border-white/10 p-5">
+                        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-foreground">{outputNames[item.id] ?? item.tool_name}</p>
+                            <p className="mt-1 text-xs text-muted-foreground">Saved from {formatGlobalDateTime(item.created_at)}</p>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <Button variant="outline" size="sm" onClick={() => renameOutput(item.id, item.tool_name)}>Rename</Button>
+                            <Button variant="outline" size="sm" onClick={() => reopenHistoryItem(item)}>Open</Button>
+                            <Button variant="outline" size="sm" onClick={() => duplicateGeneration(item)}>Duplicate</Button>
+                            <Button variant="outline" size="sm" onClick={() => toggleSavedOutput(item.id)}>Remove</Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="surface-muted px-5 py-8 text-center">
-                <p className="text-base font-semibold">No history for this tool yet</p>
-                <p className="mt-2 text-sm text-muted-foreground">Once you generate results, they will appear here with export actions and quick reopen controls.</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                ) : (
+                  <div className="surface-muted px-6 py-10 text-center">
+                    <p className="text-lg font-semibold">No saved outputs yet</p>
+                    <p className="mt-2 text-sm text-muted-foreground">Save important results to build your own curated workspace shelf.</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
     </div>
   );

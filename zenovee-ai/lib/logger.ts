@@ -5,6 +5,7 @@ type LogInput = {
   route: string;
   message: string;
   error?: unknown;
+  metadata?: Record<string, unknown>;
 };
 
 function sanitizeError(error: unknown) {
@@ -19,13 +20,14 @@ function sanitizeError(error: unknown) {
   return { message: "Unknown error" };
 }
 
-export function serverLog({ level, route, message, error }: LogInput) {
+export function serverLog({ level, route, message, error, metadata }: LogInput) {
   const payload = {
     level,
     route,
     message,
     timestamp: new Date().toISOString(),
     error: sanitizeError(error),
+    metadata,
   };
 
   if (level === "error") {

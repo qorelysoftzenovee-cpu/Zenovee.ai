@@ -13,7 +13,7 @@ as $$
     select 1
     from public.users u
     where u.id = auth.uid()
-      and u.role = 'ADMIN'
+      and u.role = 'admin'
       and u.status = 'ACTIVE'
   );
 $$;

@@ -1,6 +1,7 @@
 import Navigation from "@/app/components/Navigation";
 import { Footer } from "@/components/layout/footer";
 import { getCurrentUser } from "@/lib/auth";
+import { SUPPORT_EMAIL } from "@/lib/seo/site";
 
 export const metadata = {
   title: "Refund Policy | Zenovee AI",
@@ -12,7 +13,7 @@ export default async function RefundPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navigation isAuthenticated={Boolean(user)} />
+      <Navigation isAuthenticated={Boolean(user)} isAdmin={user?.role === "admin"} />
 
       <main className="section-shell py-12 md:py-20">
         <div className="max-w-4xl mx-auto space-y-8">
@@ -75,7 +76,7 @@ export default async function RefundPage() {
               <div>
                 <h3 className="font-semibold text-foreground mb-2">4.1 How to Cancel</h3>
                 <p className="text-foreground/90 leading-relaxed">
-                  You can cancel your subscription at any time through your account settings or by contacting support@yourdomain.com. Cancellation takes effect at the end of your current billing cycle.
+                  You can cancel your subscription at any time through your account settings or by contacting {SUPPORT_EMAIL}. Cancellation takes effect at the end of your current billing cycle.
                 </p>
               </div>
               <div>
@@ -136,7 +137,7 @@ export default async function RefundPage() {
               <div>
                 <h3 className="font-semibold text-foreground mb-2">7.1 Submitting a Refund Request</h3>
                 <p className="text-foreground/90 leading-relaxed">
-                  To request a refund, email support@yourdomain.com with your account information, order ID, and reason for the refund request. Include any supporting documentation.
+                  To request a refund, email {SUPPORT_EMAIL} with your account information, order ID, and reason for the refund request. Include any supporting documentation.
                 </p>
               </div>
               <div>
@@ -166,7 +167,7 @@ export default async function RefundPage() {
               <li>Reserve the right to pursue legal action if appropriate</li>
             </ul>
             <p className="text-foreground/90 leading-relaxed mt-4">
-              Always contact support@yourdomain.com first to resolve billing disputes before initiating a chargeback.
+              Always contact {SUPPORT_EMAIL} first to resolve billing disputes before initiating a chargeback.
             </p>
           </section>
 
@@ -191,7 +192,7 @@ export default async function RefundPage() {
             </p>
             <div className="bg-muted/50 rounded-lg p-4 mt-4">
               <p className="text-foreground font-semibold">Support Team</p>
-              <p className="text-foreground/90">Email: support@yourdomain.com</p>
+              <p className="text-foreground/90">Email: {SUPPORT_EMAIL}</p>
               <p className="text-foreground/90">Response time: Within 24-48 hours</p>
             </div>
           </section>

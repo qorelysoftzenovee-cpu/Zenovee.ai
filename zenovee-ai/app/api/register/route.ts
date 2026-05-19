@@ -39,7 +39,7 @@ export async function POST(request: Request) {
       id: userId,
       email,
       name: payload.name.trim(),
-      role: "USER",
+      role: "user",
       status: "ACTIVE",
       plan: "starter",
       credits_balance: 0,

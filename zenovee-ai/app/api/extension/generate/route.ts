@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { ToolEngine } from "@/engine";
+import { ToolExecutionService } from "@/services/tool-execution-service";
 import { getExtensionUser, getRequestIpAddress } from "@/lib/extension-auth";
-import { CreditService } from "@/credit-service";
 import { AIProtectionError } from "@/services/ai/protection";
+import { AIGenerationError, toClientErrorDetails } from "@/services/ai/prompt-orchestrator";
 
 function getErrorMessage(error: unknown) {
   if (error instanceof Error) {
@@ -19,16 +19,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { toolId, input } = await request.json();
-    const creditsBefore = await CreditService.getCredits(user.id);
-    const engine = new ToolEngine(user.id);
-    const result = await engine.executeTool(toolId, input, getRequestIpAddress(request));
+    const { toolId, input, options } = await request.json();
+    const creditsBefore = await ToolExecutionService.getCredits(user.id);
+    const result = await ToolExecutionService.execute({
+      userId: user.id,
+      toolId,
+      rawInput: input,
+      options,
+      ipAddress: getRequestIpAddress(request),
+      idempotencyKey: request.headers.get("x-idempotency-key"),
+    });
 
     return NextResponse.json({
       success: true,
       data: result.output,
       executionId: result.executionId,
       usage: result.usage,
+      generationMeta: result.meta,
       metrics: {
         creditsBefore,
         creditsAfter: result.remainingCredits,
@@ -37,6 +44,10 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof AIProtectionError) {
       return NextResponse.json({ error: error.message, code: error.code }, { status: error.status });
+    }
+
+    if (error instanceof AIGenerationError) {
+      return NextResponse.json({ error: error.message, code: error.code, details: toClientErrorDetails(error) }, { status: error.status });
     }
 
     return NextResponse.json({ error: getErrorMessage(error) }, { status: 400 });

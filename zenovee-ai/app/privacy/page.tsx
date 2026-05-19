@@ -1,6 +1,7 @@
 import Navigation from "@/app/components/Navigation";
 import { Footer } from "@/components/layout/footer";
 import { getCurrentUser } from "@/lib/auth";
+import { SUPPORT_EMAIL } from "@/lib/seo/site";
 
 export const metadata = {
   title: "Privacy Policy | Zenovee AI",
@@ -12,7 +13,7 @@ export default async function PrivacyPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navigation isAuthenticated={Boolean(user)} />
+      <Navigation isAuthenticated={Boolean(user)} isAdmin={user?.role === "admin"} />
 
       <main className="section-shell py-12 md:py-20">
         <div className="max-w-4xl mx-auto space-y-8">
@@ -138,7 +139,7 @@ export default async function PrivacyPage() {
               <li>Request a copy of your data in a portable format</li>
             </ul>
             <p className="text-foreground/90 leading-relaxed mt-4">
-              To exercise these rights, please contact us at support@yourdomain.com.
+              To exercise these rights, please contact us at {SUPPORT_EMAIL}.
             </p>
           </section>
 
@@ -156,7 +157,7 @@ export default async function PrivacyPage() {
             </p>
             <div className="bg-muted/50 rounded-lg p-4 mt-4">
               <p className="text-foreground font-semibold">Support Team</p>
-              <p className="text-foreground/90">Email: support@yourdomain.com</p>
+              <p className="text-foreground/90">Email: {SUPPORT_EMAIL}</p>
             </div>
           </section>
         </div>

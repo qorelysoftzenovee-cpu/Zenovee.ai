@@ -53,7 +53,8 @@ export default function RegisterPage() {
       return;
     }
 
-    router.push("/dashboard");
+    router.replace("/auth/callback");
+    router.refresh();
   };
 
   return (

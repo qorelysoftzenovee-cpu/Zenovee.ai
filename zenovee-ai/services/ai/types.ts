@@ -1,6 +1,7 @@
 import type { ZodSchema } from "zod";
 
 export type AIModel = "llama-3.1-70b-versatile" | "llama-3.1-8b-instant" | "mixtral-8x7b";
+export type AIProvider = "groq";
 
 export interface AIUsage {
   promptTokens: number;
@@ -26,7 +27,7 @@ export interface AIGenerateTextResult {
   content: string;
   usage: AIUsage;
   model: AIModel;
-  provider: "groq";
+  provider: AIProvider;
   costUsd: number;
   latencyMs?: number;
 }

@@ -1,9 +1,10 @@
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { normalizeRole, type AppRole } from "@/lib/auth";
 
 export type ExtensionAuthUser = {
   id: string;
   email: string;
-  role: "USER" | "ADMIN";
+  role: AppRole;
 };
 
 function getBearerToken(request: Request) {
@@ -38,12 +39,12 @@ export async function getExtensionUser(request: Request): Promise<ExtensionAuthU
     .from("users")
     .select("id,email,role")
     .eq("id", user.id)
-    .maybeSingle<{ id: string; email: string; role: "USER" | "ADMIN" }>();
+    .maybeSingle<{ id: string; email: string; role: string | null }>();
 
   return {
     id: user.id,
-    email: user.email,
-    role: profile?.role ?? "USER",
+    email: user.email.toLowerCase(),
+    role: normalizeRole(profile?.role),
   };
 }
 

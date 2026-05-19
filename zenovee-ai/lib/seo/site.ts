@@ -3,8 +3,9 @@ import { env } from "@/lib/env";
 
 export const SITE_NAME = env.NEXT_PUBLIC_APP_NAME || "Zenovee AI";
 export const SITE_URL = (env.NEXT_PUBLIC_APP_URL || "https://zenovee.ai").replace(/\/$/, "");
+export const SUPPORT_EMAIL = "qoresoftzenovee@gmail.com";
 export const SITE_DESCRIPTION =
-  "Zenovee AI is an AI tools platform for SEO, marketing, SaaS growth, and productivity with publishable outputs, tool landing pages, and programmatic discovery routes.";
+  "Zenovee AI is a premium AI workspace for content, marketing, and growth teams that need fast, structured outputs from a focused set of tools.";
 
 export function absoluteUrl(path = "/") {
   if (!path.startsWith("/")) {

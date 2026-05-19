@@ -19,7 +19,6 @@ export function getServerEnv() {
     razorpayKeyId: process.env.RAZORPAY_KEY_ID?.trim() ?? "",
     razorpayKeySecret: process.env.RAZORPAY_KEY_SECRET?.trim() ?? "",
     razorpayWebhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET?.trim() ?? "",
-    adminPanelPassword: process.env.ADMIN_PANEL_PASSWORD?.trim() ?? "",
   };
 }
 

@@ -43,3 +43,4 @@ export async function runAIStructuredWithSchema<TSchema extends ZodSchema>(input
 }
 
 export type { AIGenerateTextInput, AIGenerateStructuredInput } from "@/services/ai/types";
+export type { AIModel, AIProvider } from "@/services/ai/types";

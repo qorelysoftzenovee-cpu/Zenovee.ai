@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { ToolEngine } from "@/engine";
-import { CreditService } from "@/credit-service";
+import { ToolExecutionService } from "@/services/tool-execution-service";
 import { AIProtectionError } from "@/services/ai/protection";
+import { AIGenerationError, toClientErrorDetails } from "@/services/ai/prompt-orchestrator";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { jsonApiError, safeErrorMessage, withApiErrorHandling } from "@/lib/runtime";
 import { serverLog } from "@/lib/logger";
@@ -23,19 +23,27 @@ export async function POST(req: Request) {
         return jsonApiError("Unauthorized", 401);
       }
 
-      const { toolId, input } = await req.json();
-      const creditsBefore = await CreditService.getCredits(user.id);
+      const { toolId, input, options } = await req.json();
+      const creditsBefore = await ToolExecutionService.getCredits(user.id);
       const forwardedFor = req.headers.get("x-forwarded-for") ?? "";
       const ipAddress = forwardedFor.split(",")[0]?.trim() || "0.0.0.0";
+      const idempotencyKey = req.headers.get("x-idempotency-key");
 
-      const engine = new ToolEngine(user.id);
-      const result = await engine.executeTool(toolId, input, ipAddress);
+      const result = await ToolExecutionService.execute({
+        userId: user.id,
+        toolId,
+        rawInput: input,
+        options,
+        ipAddress,
+        idempotencyKey,
+      });
 
       return NextResponse.json({
         success: true,
         data: result.output,
         executionId: result.executionId,
         usage: result.usage,
+        generationMeta: result.meta,
         metrics: {
           creditsBefore,
           creditsAfter: result.remainingCredits,
@@ -45,6 +53,10 @@ export async function POST(req: Request) {
       if (error instanceof AIProtectionError) {
         serverLog({ level: "warn", route: "/api/tools:POST", message: error.message });
         return NextResponse.json({ success: false, error: error.message, code: error.code }, { status: error.status });
+      }
+      if (error instanceof AIGenerationError) {
+        serverLog({ level: "warn", route: "/api/tools:POST", message: error.message, metadata: error.details });
+        return NextResponse.json({ success: false, error: error.message, code: error.code, details: toClientErrorDetails(error) }, { status: error.status });
       }
       return jsonApiError(safeErrorMessage(error, "Tool execution failed."), 400);
     }
@@ -124,9 +136,8 @@ export async function GET(req: Request) {
         });
       }
 
-      const engine = new ToolEngine(user.id);
-      const tools = engine.getToolList();
-      const credits = await CreditService.getCredits(user.id);
+      const tools = await ToolExecutionService.listToolsWithPricing();
+      const credits = await ToolExecutionService.getCredits(user.id);
 
       return NextResponse.json({ success: true, data: { tools, credits } });
     } catch (error) {
