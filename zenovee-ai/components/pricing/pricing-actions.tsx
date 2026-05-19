@@ -80,7 +80,7 @@ export function PricingActions({ planId, planName }: { planId: string; planName:
             window.location.href = "/dashboard";
             return;
           }
-          setStatus("Payment captured but verification failed. Contact support.");
+          setStatus("Payment captured but billing verification failed. Please contact support.");
           setLoading(false);
         },
         prefill: {
@@ -92,7 +92,7 @@ export function PricingActions({ planId, planName }: { planId: string; planName:
         },
         modal: {
           ondismiss: function () {
-            setStatus(null);
+            setStatus("Checkout cancelled.");
             setLoading(false);
           },
         },
@@ -106,7 +106,7 @@ export function PricingActions({ planId, planName }: { planId: string; planName:
         setLoading(false);
       }
     } catch {
-      setStatus("An error occurred. Please try again.");
+      setStatus("Checkout failed. Please try again.");
       setLoading(false);
     }
   };
@@ -167,7 +167,7 @@ export function TopupActions({ topupId, label }: { topupId: string; label: strin
         theme: { color: "#6366f1" },
         modal: {
           ondismiss: function () {
-            setStatus(null);
+            setStatus("Checkout cancelled.");
             setLoading(false);
           },
         },
@@ -181,7 +181,7 @@ export function TopupActions({ topupId, label }: { topupId: string; label: strin
         setLoading(false);
       }
     } catch {
-      setStatus("An error occurred. Please try again.");
+      setStatus("Topup checkout failed. Please try again.");
       setLoading(false);
     }
   };

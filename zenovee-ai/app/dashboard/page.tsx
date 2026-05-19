@@ -25,6 +25,11 @@ type PaymentItem = {
   failure_reason: string | null;
 };
 
+type CreditSummary = {
+  available_credits: number;
+  used_credits: number;
+};
+
 function formatInr(amount: number) {
   return `₹${amount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
@@ -50,7 +55,7 @@ function formatGlobalDateTime(dateValue: string) {
 export default async function DashboardPage() {
   const user = await requireUser();
 
-  const [profileRes, creditRes, usageRes, latestSubscriptionRes, paymentsRes] = await Promise.all([
+  const [profileRes, creditRes, usageRes, latestSubscriptionRes, paymentsRes, creditSummaryRes, monthlyUsedRes] = await Promise.all([
     supabaseAdmin.from("users").select("name,status").eq("id", user.id).maybeSingle<{ name: string | null; status: string }>(),
     supabaseAdmin.from("credits").select("balance").eq("user_id", user.id).maybeSingle<{ balance: number }>(),
     supabaseAdmin
@@ -77,18 +82,38 @@ export default async function DashboardPage() {
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(10),
+    supabaseAdmin
+      .from("user_credits")
+      .select("available_credits,used_credits")
+      .eq("user_id", user.id)
+      .maybeSingle<CreditSummary>(),
+    supabaseAdmin
+      .from("credit_transactions")
+      .select("credits,created_at")
+      .eq("user_id", user.id)
+      .eq("transaction_type", "usage_debit"),
   ]);
 
   const profile = profileRes.data;
-  const credits = creditRes.data?.balance ?? 0;
+  const credits = creditSummaryRes.data?.available_credits ?? creditRes.data?.balance ?? 0;
+  const monthlyUsageRows = (monthlyUsedRes.data ?? []) as Array<{ credits: number; created_at: string }>;
+
+  const creditsUsed =
+    creditSummaryRes.data?.used_credits ??
+    monthlyUsageRows.reduce((sum, row) => {
+      const d = new Date(row.created_at);
+      const now = new Date();
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear() ? sum + Math.abs(Number(row.credits ?? 0)) : sum;
+    }, 0);
   const usage = (usageRes.data ?? []) as UsageItem[];
   const latestSubscription = latestSubscriptionRes.data;
   const payments = (paymentsRes.data ?? []) as PaymentItem[];
 
   const metrics = [
-    { label: "Available Credits", value: String(credits), hint: "Ready for new generations" },
+    { label: "Remaining Credits", value: String(credits), hint: "Ready for new generations" },
+    { label: "Credits Used (Month)", value: String(creditsUsed), hint: "Current billing cycle" },
     { label: "Recent Runs", value: String(usage.length), hint: "Latest tracked activity" },
-    { label: "Current Plan", value: latestSubscription?.plan_name ?? "No plan", hint: latestSubscription?.status ?? "Inactive" },
+    { label: "Current Plan", value: latestSubscription?.plan_name ?? "Not Subscribed", hint: latestSubscription?.status ?? "Inactive" },
   ];
 
   const recentActivity = usage.slice(0, 4);
@@ -142,7 +167,7 @@ export default async function DashboardPage() {
             </div>
           </section>
 
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-4">
             {metrics.map((metric) => (
               <Card key={metric.label} className="hover:-translate-y-1">
                 <CardHeader>
@@ -213,7 +238,7 @@ export default async function DashboardPage() {
               <div className="surface-muted p-4 text-sm">
                 <p className="text-muted-foreground">Plan lifecycle</p>
                 <p className="mt-1 font-semibold">
-                  {latestSubscription ? `${latestSubscription.plan_name} • ${latestSubscription.status}` : "No active subscription"}
+                  {latestSubscription ? `${latestSubscription.plan_name} • ${latestSubscription.status}` : "Not subscribed"}
                 </p>
                 <p className="mt-1 text-muted-foreground">
                   Renewal: {latestSubscription?.next_renewal_at ? formatGlobalDate(latestSubscription.next_renewal_at) : "Not scheduled"}
@@ -249,7 +274,7 @@ export default async function DashboardPage() {
                 </div>
               ) : (
                 <div className="surface-muted px-5 py-6 text-sm text-muted-foreground">
-                  No billing transactions yet. Your payment history will appear here once you subscribe or renew a plan.
+                  No billing transactions yet. Your payment history will appear here after your first successful charge.
                 </div>
               )}
             </CardContent>
@@ -269,7 +294,7 @@ export default async function DashboardPage() {
             <div className="surface-muted p-4">
               <p className="text-muted-foreground">Subscription</p>
               <p className="mt-1 text-base font-semibold">
-                {latestSubscription ? `${latestSubscription.plan_name} • ${latestSubscription.status}` : "No active subscription"}
+                {latestSubscription ? `${latestSubscription.plan_name} • ${latestSubscription.status}` : "Not subscribed"}
               </p>
             </div>
             <div className="surface-muted p-4">

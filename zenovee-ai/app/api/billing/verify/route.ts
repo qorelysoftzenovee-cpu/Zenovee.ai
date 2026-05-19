@@ -5,35 +5,37 @@ import { getPlanById } from "@/app/subscription-plans";
 import { getCreditTopupById } from "@/app/credit-topups";
 import { assignPlanCredits, computeNextRenewalDate } from "@/services/billing";
 import { verifyCheckoutSignature } from "@/services/razorpay";
+import { serverLog } from "@/lib/logger";
 
 export async function POST(request: Request) {
-  const user = await getCurrentUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const body = (await request.json()) as {
-    razorpay_payment_id?: string;
-    razorpay_subscription_id?: string;
-    razorpay_order_id?: string;
-    razorpay_signature?: string;
-  };
+    const body = (await request.json()) as {
+      razorpay_payment_id?: string;
+      razorpay_subscription_id?: string;
+      razorpay_order_id?: string;
+      razorpay_signature?: string;
+    };
 
-  if (!body.razorpay_payment_id || !body.razorpay_signature || (!body.razorpay_subscription_id && !body.razorpay_order_id)) {
-    return NextResponse.json({ error: "Missing verification payload" }, { status: 400 });
-  }
+    if (!body.razorpay_payment_id || !body.razorpay_signature || (!body.razorpay_subscription_id && !body.razorpay_order_id)) {
+      return NextResponse.json({ error: "Missing verification payload" }, { status: 400 });
+    }
 
-  const verificationRef = body.razorpay_order_id ?? body.razorpay_subscription_id!;
+    const verificationRef = body.razorpay_order_id ?? body.razorpay_subscription_id!;
 
-  const valid = verifyCheckoutSignature({
-    razorpay_order_id: verificationRef,
-    razorpay_payment_id: body.razorpay_payment_id,
-    razorpay_signature: body.razorpay_signature,
-  });
+    const valid = verifyCheckoutSignature({
+      razorpay_order_id: verificationRef,
+      razorpay_payment_id: body.razorpay_payment_id,
+      razorpay_signature: body.razorpay_signature,
+    });
 
-  if (!valid) return NextResponse.json({ error: "Invalid payment signature" }, { status: 400 });
+    if (!valid) return NextResponse.json({ error: "Invalid payment signature" }, { status: 400 });
 
-  const supabaseAdmin = getSupabaseAdmin();
+    const supabaseAdmin = getSupabaseAdmin();
 
-  if (body.razorpay_order_id) {
+    if (body.razorpay_order_id) {
     const { data: pendingTopup } = await supabaseAdmin
       .from("payments")
       .select("id,plan,status")
@@ -61,9 +63,9 @@ export async function POST(request: Request) {
 
     const currentBalance = Number(currentCreditsRow?.remaining_balance ?? 0);
     const nextBalance = currentBalance + topup.credits;
-    const nowIso = new Date().toISOString();
+      const nowIso = new Date().toISOString();
 
-    await Promise.all([
+      await Promise.all([
       supabaseAdmin.from("credits").insert({
         user_id: user.id,
         credits_added: topup.credits,
@@ -77,57 +79,92 @@ export async function POST(request: Request) {
         .from("users")
         .update({ credits_balance: nextBalance, updated_at: nowIso } as never)
         .eq("id", user.id),
+        supabaseAdmin
+          .from("payments")
+          .update({ status: "CREDIT_TOPUP", razorpay_transaction_id: body.razorpay_payment_id, updated_at: nowIso } as never)
+          .eq("id", pendingTopup.id),
+      ]);
+
+      await supabaseAdmin.from("user_credits").upsert(
+        {
+          user_id: user.id,
+          total_credits: nextBalance,
+          used_credits: 0,
+          available_credits: nextBalance,
+          updated_at: nowIso,
+        } as never,
+        { onConflict: "user_id" }
+      );
+
+      await supabaseAdmin.from("credit_transactions").insert({
+        user_id: user.id,
+        transaction_type: "topup_credit",
+        credits: topup.credits,
+        balance_before: currentBalance,
+        balance_after: nextBalance,
+        plan_id: `topup:${topup.id}`,
+        reference: `order:${body.razorpay_order_id}`,
+        metadata: { source: "verify_route" },
+      } as never);
+
+      return NextResponse.json({ success: true, mode: "topup", creditsAdded: topup.credits, creditsAfter: nextBalance });
+    }
+    const subscriptionId = body.razorpay_subscription_id;
+    if (!subscriptionId) {
+      return NextResponse.json({ error: "Subscription id missing" }, { status: 400 });
+    }
+
+    const { data: subscription } = await supabaseAdmin
+      .from("subscriptions")
+      .select("plan_name")
+      .eq("user_id", user.id)
+      .eq("razorpay_subscription_id", subscriptionId)
+      .maybeSingle<{ plan_name: string }>();
+
+    if (!subscription) return NextResponse.json({ error: "Subscription not found" }, { status: 404 });
+    const plan = getPlanById(subscription.plan_name);
+    if (!plan) return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
+
+    const nowIso = new Date().toISOString();
+    const nextRenewal = computeNextRenewalDate();
+
+    await Promise.all([
       supabaseAdmin
-        .from("payments")
-        .update({ status: "CREDIT_TOPUP", razorpay_transaction_id: body.razorpay_payment_id, updated_at: nowIso } as never)
-        .eq("id", pendingTopup.id),
+        .from("subscriptions")
+        .update({
+          status: "ACTIVE",
+          renewal_date: nextRenewal,
+          current_period_end: nextRenewal,
+          next_renewal_at: nextRenewal,
+          last_payment_at: nowIso,
+          grace_until: null,
+          updated_at: nowIso,
+        } as never)
+        .eq("user_id", user.id),
+      supabaseAdmin.from("payments").upsert(
+        {
+          user_id: user.id,
+          payment_amount: Number((plan.amountInPaise / 100).toFixed(2)),
+          plan: plan.id,
+          currency: plan.currency,
+          status: "SUCCESS",
+          razorpay_transaction_id: body.razorpay_payment_id,
+          subscription_id: subscriptionId,
+          updated_at: nowIso,
+        } as never,
+        { onConflict: "razorpay_transaction_id" }
+      ),
+      assignPlanCredits(user.id, plan.id),
     ]);
 
-    return NextResponse.json({ success: true, mode: "topup", creditsAdded: topup.credits, creditsAfter: nextBalance });
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    serverLog({
+      level: "error",
+      route: "api/billing/verify",
+      message: "Billing verification failed",
+      error,
+    });
+    return NextResponse.json({ error: "Billing verification failed" }, { status: 500 });
   }
-  const subscriptionId = body.razorpay_subscription_id;
-  if (!subscriptionId) {
-    return NextResponse.json({ error: "Subscription id missing" }, { status: 400 });
-  }
-
-  const { data: subscription } = await supabaseAdmin
-    .from("subscriptions")
-    .select("plan_name")
-    .eq("user_id", user.id)
-    .eq("razorpay_subscription_id", subscriptionId)
-    .maybeSingle<{ plan_name: string }>();
-
-  if (!subscription) return NextResponse.json({ error: "Subscription not found" }, { status: 404 });
-  const plan = getPlanById(subscription.plan_name);
-  if (!plan) return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
-
-  const nowIso = new Date().toISOString();
-  const nextRenewal = computeNextRenewalDate();
-
-  await Promise.all([
-    supabaseAdmin
-      .from("subscriptions")
-      .update({
-        status: "ACTIVE",
-        renewal_date: nextRenewal,
-        current_period_end: nextRenewal,
-        next_renewal_at: nextRenewal,
-        last_payment_at: nowIso,
-        grace_until: null,
-        updated_at: nowIso,
-      } as never)
-      .eq("user_id", user.id),
-    supabaseAdmin.from("payments").insert({
-      user_id: user.id,
-      payment_amount: Number((plan.amountInPaise / 100).toFixed(2)),
-      plan: plan.id,
-      currency: plan.currency,
-      status: "SUCCESS",
-      razorpay_transaction_id: body.razorpay_payment_id,
-      subscription_id: subscriptionId,
-    }),
-    assignPlanCredits(user.id, plan.id),
-  ]);
-
-  return NextResponse.json({ success: true });
 }

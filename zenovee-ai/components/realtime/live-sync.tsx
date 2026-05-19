@@ -14,7 +14,9 @@ export function LiveSync({ userId, admin = false }: { userId: string; admin?: bo
     channel
       .on("postgres_changes", { event: "*", schema: "public", table: "subscriptions", filter: `user_id=eq.${userId}` }, () => router.refresh())
       .on("postgres_changes", { event: "*", schema: "public", table: "tool_usage", filter: `user_id=eq.${userId}` }, () => router.refresh())
-      .on("postgres_changes", { event: "*", schema: "public", table: "payments", filter: `user_id=eq.${userId}` }, () => router.refresh());
+      .on("postgres_changes", { event: "*", schema: "public", table: "payments", filter: `user_id=eq.${userId}` }, () => router.refresh())
+      .on("postgres_changes", { event: "*", schema: "public", table: "user_credits", filter: `user_id=eq.${userId}` }, () => router.refresh())
+      .on("postgres_changes", { event: "*", schema: "public", table: "credit_transactions", filter: `user_id=eq.${userId}` }, () => router.refresh());
 
     if (admin) {
       channel

@@ -1,0 +1,17 @@
+
+> zenovee-root@1.0.0 lint
+> npm --prefix zenovee-ai run lint --format json
+
+npm warn Expanding --format to --format-package-lock. This will stop working in the next major version of npm.
+
+> zenovee-ai@1.0.0 lint
+> eslint . json
+
+
+Oops! Something went wrong! :(
+
+ESLint: 9.39.4
+
+No files matching the pattern "json" were found.
+Please check for typing mistakes in the pattern.
+

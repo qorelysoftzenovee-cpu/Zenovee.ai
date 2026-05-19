@@ -9,11 +9,6 @@ import { getCurrentUser } from "@/lib/auth";
 
 export default async function PricingPage() {
   const user = await getCurrentUser();
-  const approxUsdByPlan: Record<string, string> = {
-    starter: "~$3",
-    growth: "~$9",
-    scale: "~$24",
-  };
   return (
     <div className="min-h-screen bg-background">
       <Navigation isAuthenticated={Boolean(user)} />
@@ -45,7 +40,6 @@ export default async function PricingPage() {
                   ₹{plan.price.toLocaleString("en-IN")}
                   <span className="text-base font-normal text-muted-foreground">/month</span>
                 </p>
-                <p className="text-sm text-muted-foreground">({approxUsdByPlan[plan.id]})</p>
                 <ul className="space-y-2 text-sm text-muted-foreground">
                   <li>• {plan.credits.toLocaleString()} monthly credits</li>
                   {plan.features.map((point) => (
