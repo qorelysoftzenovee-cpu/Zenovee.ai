@@ -76,7 +76,11 @@ export default function RegisterPage() {
           </CardHeader>
           <CardContent>
             <form className="space-y-4" onSubmit={handleSubmit}>
-              {error ? <p className="text-sm font-medium text-red-500">{error}</p> : null}
+              {error ? (
+                <p className="max-w-full break-words whitespace-pre-wrap text-sm font-medium leading-relaxed text-red-500">
+                  {error}
+                </p>
+              ) : null}
               <div className="space-y-2">
                 <Label htmlFor="name">Full name</Label>
                 <Input id="name" name="name" autoComplete="name" required />
