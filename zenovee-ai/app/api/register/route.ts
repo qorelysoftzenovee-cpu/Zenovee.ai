@@ -42,7 +42,6 @@ export async function POST(request: Request) {
       role: "user",
       status: "ACTIVE",
       plan: "starter",
-      credits_balance: 0,
       signup_date: new Date().toISOString(),
     });
     if (profileError) {
