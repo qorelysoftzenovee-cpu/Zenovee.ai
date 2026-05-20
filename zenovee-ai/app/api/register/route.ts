@@ -74,14 +74,33 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: profileError.message }, { status: 400 });
     }
 
-    const { error: creditError } = await supabaseAdmin.from("credits").insert({
+    const creditsPayload: Record<string, unknown> = {
       user_id: userId,
       credits_added: 0,
       credits_consumed: 0,
       remaining_balance: 0,
       reason: "account_created",
       reset_interval: "monthly",
-    } as never);
+    };
+
+    let creditError: { message: string } | null = null;
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      const { error } = await supabaseAdmin.from("credits").insert(creditsPayload as never);
+      if (!error) {
+        creditError = null;
+        break;
+      }
+
+      const missingColumnMatch = error.message.match(/Could not find the '([^']+)' column of 'credits' in the schema cache/i);
+      if (missingColumnMatch?.[1]) {
+        delete creditsPayload[missingColumnMatch[1]];
+        continue;
+      }
+
+      creditError = { message: error.message };
+      break;
+    }
+
     if (creditError) {
       await supabaseAdmin.auth.admin.deleteUser(userId);
       return NextResponse.json({ error: creditError.message }, { status: 400 });
