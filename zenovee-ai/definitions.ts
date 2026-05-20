@@ -61,9 +61,6 @@ const personaOutput = z.object({
   messagingAngles: z.array(z.string()),
 });
 
-const bgInput = z.object({ imageName: z.string().min(1, "Image is required") });
-const bgOutput = z.object({ status: z.string(), message: z.string() });
-
 const landingInput = z.object({
   productName: z.string().min(2),
   targetAudience: z.string().min(2),
@@ -290,38 +287,9 @@ export const toolRegistry: Record<string, ToolDefinition> = {
     creditCost: 5,
     usageClass: "standard",
     aiModel: "llama-3.1-70b-versatile",
-    exportFormats: ["pdf", "md", "txt", "json"],
+    exportFormats: ["txt", "json"],
     promptTemplate: (i: z.infer<typeof personaInput>) => buildLegacyToolPrompt("customer-persona-builder", i as Record<string, unknown>),
     outputFormatter: (r) => parseJsonResponse<z.infer<typeof personaOutput>>(r),
-  },
-  "background-remover": {
-    id: "background-remover",
-    metadata: {
-      name: "AI Background Remover",
-      description: "Image background removal is temporarily unavailable.",
-      category: "Productivity",
-      icon: "🖼️",
-      tagline: "Fast cleanup for product visuals and creative assets.",
-      estimatedTimeSeconds: 20,
-      outputType: "image",
-      tags: ["Visual Cleanup", "Creative Ops", "Productivity"],
-      featured: false,
-      trending: false,
-      availability: "coming_soon",
-      visibility: "internal",
-      disabledReason: "Coming soon",
-    },
-    fields: [{ name: "imageName", label: "Image Upload", type: "file", helperText: "Upload a product, portrait, or social asset.", required: true }],
-    examples: [{ title: "Product cutout", description: "Prepare ecommerce product shots for cleaner landing pages and ads." }],
-    presets: [],
-    inputSchema: bgInput,
-    outputSchema: bgOutput,
-    creditCost: 4,
-    usageClass: "standard",
-    aiModel: "llama-3.1-8b-instant",
-    exportFormats: ["png"],
-    promptTemplate: () => "",
-    outputFormatter: () => ({ status: "coming_soon", message: "Background remover is coming soon." }),
   },
   "landing-page-copy-generator": {
     id: "landing-page-copy-generator",

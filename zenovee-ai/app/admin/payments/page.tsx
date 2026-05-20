@@ -24,7 +24,7 @@ export default async function AdminPaymentsPage() {
   const successfulRevenue = payments.filter((payment) => payment.status === "SUCCESS").reduce((sum, payment) => sum + Number(payment.payment_amount ?? 0), 0);
 
   return (
-    <PageShell title="Payments" description="Live payment operations, webhook history, revenue tracking, and failed payment investigation." variant="admin" className="bg-transparent">
+    <PageShell title="Payments" description="Live payment operations, subscription sync visibility, and webhook-backed billing review." variant="admin" className="bg-transparent">
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <Card className="admin-surface"><CardHeader><CardTitle>Total Payments</CardTitle></CardHeader><CardContent><p className="text-3xl font-semibold">{payments.length}</p></CardContent></Card>
         <Card className="admin-surface"><CardHeader><CardTitle>Successful Revenue</CardTitle></CardHeader><CardContent><p className="text-3xl font-semibold">{formatInr(successfulRevenue)}</p></CardContent></Card>
@@ -36,7 +36,7 @@ export default async function AdminPaymentsPage() {
         <Card className="admin-surface">
           <CardHeader><CardTitle>Recent Payments</CardTitle></CardHeader>
           <CardContent className="space-y-3">
-            {payments.slice(0, 30).map((payment) => {
+            {payments.length ? payments.slice(0, 30).map((payment) => {
               const user = users.get(payment.user_id);
               return (
                 <div key={payment.id} className="admin-row flex flex-col gap-3 text-sm md:flex-row md:items-center md:justify-between">
@@ -50,14 +50,14 @@ export default async function AdminPaymentsPage() {
                   </div>
                 </div>
               );
-            })}
+            }) : <div className="admin-row text-sm text-slate-400">No payment records yet.</div>}
           </CardContent>
         </Card>
 
         <Card className="admin-surface">
           <CardHeader><CardTitle>Subscription Billing Health</CardTitle></CardHeader>
           <CardContent className="space-y-3">
-            {(subscriptionsRes.data ?? []).slice(0, 30).map((subscription) => {
+            {(subscriptionsRes.data ?? []).length ? (subscriptionsRes.data ?? []).slice(0, 30).map((subscription) => {
               const user = users.get(subscription.user_id);
               return (
                 <div key={subscription.id} className="admin-row text-sm">
@@ -73,7 +73,25 @@ export default async function AdminPaymentsPage() {
                   </div>
                 </div>
               );
-            })}
+            }) : <div className="admin-row text-sm text-slate-400">No subscription records yet.</div>}
+          </CardContent>
+        </Card>
+
+        <Card className="admin-surface xl:col-span-2">
+          <CardHeader><CardTitle>Recent Billing Events</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            {(eventsRes.data ?? []).length ? (eventsRes.data ?? []).slice(0, 30).map((event) => {
+              const user = event.user_id ? users.get(event.user_id) : undefined;
+              return (
+                <div key={event.id} className="admin-row flex flex-col gap-3 text-sm md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <p className="font-medium text-white">{event.event_type}</p>
+                    <p className="text-xs text-slate-400">{user?.name ?? user?.email ?? event.user_id ?? "System"}</p>
+                  </div>
+                  <p className="text-xs text-slate-300">{new Date(event.created_at).toLocaleString()}</p>
+                </div>
+              );
+            }) : <div className="admin-row text-sm text-slate-400">No billing events recorded yet.</div>}
           </CardContent>
         </Card>
       </div>

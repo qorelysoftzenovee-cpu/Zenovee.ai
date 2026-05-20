@@ -1,9 +1,8 @@
+import Link from "next/link";
 import Navigation from "@/app/components/Navigation";
 import { Footer } from "@/components/layout/footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { getCurrentUser } from "@/lib/auth";
 import { SUPPORT_EMAIL } from "@/lib/seo/site";
 
@@ -55,23 +54,27 @@ export default async function ContactPage() {
 
             <Card className="border-border bg-card">
               <CardHeader>
-                <CardTitle>Send a message</CardTitle>
+                <CardTitle>Contact support</CardTitle>
               </CardHeader>
-              <CardContent>
-                <form className="space-y-4">
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <Input placeholder="Full name" required />
-                    <Input type="email" placeholder="Email address" required />
-                  </div>
-                  <Input placeholder="Subject" required />
-                  <Textarea placeholder="How can we help?" rows={6} required />
-                  <Button type="button" className="w-full" disabled>
-                    Email support instead
+              <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground">For the fastest help, email support directly instead of using a temporary contact form.</p>
+                <div className="surface-muted rounded-2xl p-4 text-sm text-muted-foreground">
+                  <p className="font-medium text-foreground">Include these details</p>
+                  <ul className="mt-2 space-y-1">
+                    <li>• Your account email</li>
+                    <li>• Plan name or billing question</li>
+                    <li>• Payment date or issue summary</li>
+                  </ul>
+                </div>
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  <Button asChild className="w-full sm:w-auto">
+                    <a href={`mailto:${SUPPORT_EMAIL}`}>Email support</a>
                   </Button>
-                  <p className="text-xs text-muted-foreground">
-                    Direct form sending is temporarily unavailable. Please email {SUPPORT_EMAIL} and we’ll reply within 24 business hours.
-                  </p>
-                </form>
+                  <Button asChild variant="secondary" className="w-full sm:w-auto">
+                    <Link href={user ? "/billing" : "/pricing"}>{user ? "Billing help" : "View pricing"}</Link>
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">We usually reply within 24 business hours.</p>
               </CardContent>
             </Card>
           </div>

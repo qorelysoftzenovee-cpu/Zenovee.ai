@@ -77,7 +77,13 @@ export default function Navigation({ isAuthenticated, isAdmin = false }: { isAut
                 </Button>
               </Link>
             )
-          ) : null}
+          ) : (
+            <Link href="/pricing">
+              <Button variant="default" className="px-5 font-semibold">
+                Get started
+              </Button>
+            </Link>
+          )}
         </div>
 
         <button
@@ -111,7 +117,11 @@ export default function Navigation({ isAuthenticated, isAdmin = false }: { isAut
                 <Button className="w-full">Dashboard</Button>
               </Link>
             )
-          ) : null}
+          ) : (
+            <Link href="/pricing" className="block" onClick={() => setIsOpen(false)}>
+              <Button className="w-full">Get started</Button>
+            </Link>
+          )}
         </div>
       </div>
     </nav>

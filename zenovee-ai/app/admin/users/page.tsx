@@ -55,7 +55,7 @@ export default async function AdminUsersPage() {
       <Card className="admin-surface">
         <CardHeader><CardTitle>Users</CardTitle></CardHeader>
         <CardContent className="space-y-3">
-          {(usersRes.data ?? []).map((u) => {
+          {(usersRes.data ?? []).length ? (usersRes.data ?? []).map((u) => {
             const sub = subscriptions.find((s) => s.user_id === u.id);
             const credit = credits.find((item) => item.user_id === u.id);
             const userPayments = payments.filter((p) => p.user_id === u.id).slice(0, 3);
@@ -92,7 +92,7 @@ export default async function AdminUsersPage() {
                 </div>
               </div>
             );
-          })}
+          }) : <div className="admin-row text-sm text-slate-400">No users found yet.</div>}
         </CardContent>
       </Card>
     </PageShell>

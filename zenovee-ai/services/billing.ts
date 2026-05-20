@@ -36,7 +36,7 @@ export async function getOrCreateRazorpayPlanId(appPlanId: string) {
   return razorpayPlanId;
 }
 
-export async function assignPlanCredits(userId: string, appPlanId: string) {
+export async function assignPlanCredits(userId: string, appPlanId: string, reference = `plan_allocation:${appPlanId}`) {
   const plan = getPlanById(appPlanId);
   if (!plan) throw new Error("Invalid plan");
 
@@ -49,7 +49,7 @@ export async function assignPlanCredits(userId: string, appPlanId: string) {
     p_user_id: userId,
     p_credits: plan.credits,
     p_plan_id: appPlanId,
-    p_reference: `plan_allocation:${appPlanId}`,
+    p_reference: reference,
     p_reset_at: nextResetAt,
     p_metadata: { source: "webhook", planName: plan.name },
   });

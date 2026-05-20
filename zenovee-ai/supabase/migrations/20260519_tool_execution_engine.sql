@@ -145,7 +145,22 @@ as $$
 declare
   v_available integer;
   v_addon_remaining integer;
+  v_existing record;
 begin
+  select balance_before, balance_after
+  into v_existing
+  from public.credit_transactions
+  where user_id = p_user_id
+    and transaction_type = 'subscription_credit'
+    and reference = p_reference
+  order by created_at desc
+  limit 1;
+
+  if v_existing.balance_after is not null then
+    return query select v_existing.balance_before, v_existing.balance_after;
+    return;
+  end if;
+
   insert into public.user_credits (
     user_id, total_credits, used_credits, available_credits,
     subscription_credits, subscription_used, addon_credits, addon_used
@@ -189,7 +204,22 @@ security definer
 as $$
 declare
   v_available integer;
+  v_existing record;
 begin
+  select balance_before, balance_after
+  into v_existing
+  from public.credit_transactions
+  where user_id = p_user_id
+    and transaction_type = 'topup_credit'
+    and reference = p_reference
+  order by created_at desc
+  limit 1;
+
+  if v_existing.balance_after is not null then
+    return query select v_existing.balance_before, v_existing.balance_after;
+    return;
+  end if;
+
   insert into public.user_credits (
     user_id, total_credits, used_credits, available_credits,
     subscription_credits, subscription_used, addon_credits, addon_used

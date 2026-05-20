@@ -32,6 +32,25 @@ function getEventId(event: RazorpayEvent, paymentId: string | null, subscription
   );
 }
 
+async function wasPaymentAlreadyProcessed(
+  supabaseAdmin: ReturnType<typeof getSupabaseAdmin>,
+  razorpayPaymentId: string | null
+) {
+  if (!razorpayPaymentId) {
+    return false;
+  }
+
+  const { data } = await supabaseAdmin
+    .from("payments")
+    .select("id,status")
+    .eq("razorpay_transaction_id", razorpayPaymentId)
+    .in("status", ["SUCCESS", "CREDIT_TOPUP"])
+    .limit(1)
+    .maybeSingle<{ id: string; status: string }>();
+
+  return Boolean(data?.id);
+}
+
 export async function POST(request: Request) {
   try {
     const rawBody = await request.text();
@@ -74,6 +93,7 @@ export async function POST(request: Request) {
     const eventId = getEventId(event, razorpayPaymentId, razorpaySubscriptionId);
     const supabaseAdmin = getSupabaseAdmin();
     const nowIso = new Date().toISOString();
+    let processingStatus: "processed" | "duplicate" | "ignored" | "failed" = supportedEvents.has(eventType) ? "processed" : "ignored";
 
     const { data: existingEvent } = await supabaseAdmin
       .from("billing_events")
@@ -98,6 +118,11 @@ export async function POST(request: Request) {
 
     if (supportedEvents.has(eventType) && userId && planName) {
       if (eventType === "payment.captured" || eventType === "subscription.charged") {
+        const alreadyProcessed = await wasPaymentAlreadyProcessed(supabaseAdmin, razorpayPaymentId);
+
+        if (alreadyProcessed) {
+          processingStatus = "duplicate";
+        } else {
         const nextRenewal =
           toIsoFromUnixSeconds((subscriptionEntity.current_end as number | undefined) ?? undefined) ?? computeNextRenewalDate();
 
@@ -136,10 +161,11 @@ export async function POST(request: Request) {
           } as never)
           .eq("user_id", userId);
 
-        await assignPlanCredits(userId, planName);
+        await assignPlanCredits(userId, planName, `subscription:${razorpayPaymentId ?? razorpaySubscriptionId ?? eventId}`);
 
         if (!paymentRow?.id) {
           throw new Error("Payment persisted without id");
+        }
         }
       }
 
@@ -213,7 +239,7 @@ export async function POST(request: Request) {
       razorpay_subscription_id: razorpaySubscriptionId,
       razorpay_payment_id: razorpayPaymentId,
       payload,
-      processing_status: supportedEvents.has(eventType) ? "processed" : "ignored",
+      processing_status: processingStatus,
       processed_at: nowIso,
     } as never);
 
@@ -224,7 +250,7 @@ export async function POST(request: Request) {
       throw new Error(eventErr.message);
     }
 
-    return NextResponse.json({ success: true, received: true, handled: supportedEvents.has(eventType) });
+    return NextResponse.json({ success: true, received: true, handled: supportedEvents.has(eventType), duplicate: processingStatus === "duplicate" });
   } catch (error) {
     serverLog({
       level: "error",

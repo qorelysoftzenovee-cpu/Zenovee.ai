@@ -10,7 +10,7 @@ export default async function ToolsWorkspacePage() {
   return (
     <PageShell
       title="Tools Workspace"
-      description="Fill the inputs to generate structured AI content for SEO, ads, personas, or landing pages."
+      description="Use focused launch tools to generate structured SEO, ad, persona, and landing page outputs."
       actions={
         <Button asChild variant="secondary" size="sm">
           <Link href="/dashboard">Back to dashboard</Link>

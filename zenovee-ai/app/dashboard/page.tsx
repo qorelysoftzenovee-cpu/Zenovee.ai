@@ -84,12 +84,12 @@ export default async function DashboardPage() {
   return (
     <PageShell
       title="Dashboard"
-      description={`Welcome back${profile?.name ? `, ${profile.name}` : ""}. Start by generating your first AI asset.`}
+      description={`Welcome back${profile?.name ? `, ${profile.name}` : ""}. Review your credits, recent work, billing status, and fastest path back into the workspace.`}
       actions={
         <div className="flex items-center gap-2">
           <LogoutButton />
           <Button asChild variant="secondary" size="sm">
-            <Link href="/pricing">Billing</Link>
+            <Link href="/billing">Billing</Link>
           </Button>
         </div>
       }
@@ -107,13 +107,16 @@ export default async function DashboardPage() {
 
             <Card className="border-border bg-card">
               <CardHeader><CardTitle>Credits remaining</CardTitle></CardHeader>
-              <CardContent><p className="text-xl font-semibold">{credits.toLocaleString()}</p></CardContent>
+              <CardContent>
+                <p className="text-xl font-semibold">{credits.toLocaleString()}</p>
+                <p className="mt-2 text-sm text-muted-foreground">Use your credits across every launch tool in the workspace.</p>
+              </CardContent>
             </Card>
 
             <Card className="border-border bg-card">
               <CardHeader><CardTitle>What to do next</CardTitle></CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground">Start by generating your first AI asset, then save or export the result.</p>
+                <p className="text-sm text-muted-foreground">Open the tools workspace, generate a structured result, then save or export it when it’s ready.</p>
               </CardContent>
             </Card>
           </div>
@@ -163,6 +166,7 @@ export default async function DashboardPage() {
                 <p className="text-muted-foreground">Current subscription</p>
                 <p className="mt-1 text-base font-semibold">{latestSubscription ? `${latestSubscription.plan_name} • ${latestSubscription.status}` : "No active plan"}</p>
                 <p className="mt-2 text-muted-foreground">Renewal: {latestSubscription?.next_renewal_at ? new Date(latestSubscription.next_renewal_at).toLocaleDateString() : "Not scheduled"}</p>
+                <p className="mt-2 text-muted-foreground">Secure payments via Razorpay. Your subscription updates automatically after payment.</p>
               </div>
               <BillingActions />
             </CardContent>
@@ -182,7 +186,7 @@ export default async function DashboardPage() {
                   </div>
                 ))
               ) : (
-                <div className="surface-muted px-5 py-6 text-sm text-muted-foreground">No payment history yet.</div>
+                <div className="surface-muted px-5 py-6 text-sm text-muted-foreground">No payment history yet. When billing activity starts, it will appear here for quick review.</div>
               )}
             </CardContent>
           </Card>

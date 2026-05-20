@@ -45,11 +45,13 @@ export function PricingActions({ planId, planName }: { planId: string; planName:
   const router = useRouter();
   const [status, setStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [statusTone, setStatusTone] = useState<"default" | "success" | "error">("default");
 
   const handleCheckout = async () => {
     if (loading) return;
     setLoading(true);
     setStatus(null);
+    setStatusTone("default");
 
     try {
       const response = await fetch("/api/billing/checkout", {
@@ -61,7 +63,8 @@ export function PricingActions({ planId, planName }: { planId: string; planName:
       const data = await response.json();
 
       if (!response.ok) {
-        setStatus(data.error ?? "Checkout failed");
+        setStatusTone("error");
+        setStatus(data.error ?? "We couldn't start checkout right now.");
         setLoading(false);
         return;
       }
@@ -79,12 +82,15 @@ export function PricingActions({ planId, planName }: { planId: string; planName:
             body: JSON.stringify(response),
           });
           if (verify.ok) {
-            setStatus("Payment successful. Subscription activated.");
+            setStatusTone("success");
+            setStatus("Payment successful. Your subscription is active and your workspace is updating.");
+            setLoading(false);
             router.push("/dashboard");
             router.refresh();
             return;
           }
-          setStatus("Payment captured but billing verification failed. Please contact support.");
+          setStatusTone("error");
+          setStatus("Payment was received, but your subscription is still syncing. Please contact support if it does not update shortly.");
           setLoading(false);
         },
         prefill: {
@@ -96,7 +102,8 @@ export function PricingActions({ planId, planName }: { planId: string; planName:
         },
         modal: {
           ondismiss: function () {
-            setStatus("Checkout cancelled.");
+            setStatus("Checkout closed. You can resume whenever you're ready.");
+            setStatusTone("default");
             setLoading(false);
           },
         },
@@ -106,10 +113,12 @@ export function PricingActions({ planId, planName }: { planId: string; planName:
         const razorpay = new window.Razorpay(options);
         razorpay.open();
       } else {
+        setStatusTone("error");
         setStatus("Payments are temporarily unavailable.");
         setLoading(false);
       }
     } catch {
+      setStatusTone("error");
       setStatus("Unable to start checkout right now. Please try again.");
       setLoading(false);
     }
@@ -121,8 +130,12 @@ export function PricingActions({ planId, planName }: { planId: string; planName:
       <Button className="w-full min-h-11" onClick={handleCheckout} disabled={loading} aria-label={`Checkout ${planName} plan`}>
         {loading ? "Preparing..." : `Choose ${planName}`}
       </Button>
-      <p className="text-xs text-muted-foreground">Charges are processed securely in INR.</p>
-      {status ? <p className="text-xs text-muted-foreground">{status}</p> : null}
+      <p className="text-xs text-muted-foreground">Secure payments via Razorpay. Your subscription updates automatically after payment.</p>
+      {status ? (
+        <p className={`text-xs ${statusTone === "error" ? "text-rose-500" : statusTone === "success" ? "text-emerald-600 dark:text-emerald-300" : "text-muted-foreground"}`}>
+          {status}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -131,11 +144,13 @@ export function TopupActions({ topupId, label }: { topupId: string; label: strin
   const router = useRouter();
   const [status, setStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [statusTone, setStatusTone] = useState<"default" | "success" | "error">("default");
 
   const handleTopupCheckout = async () => {
     if (loading) return;
     setLoading(true);
     setStatus(null);
+    setStatusTone("default");
     try {
       const response = await fetch("/api/billing/checkout", {
         method: "POST",
@@ -145,7 +160,8 @@ export function TopupActions({ topupId, label }: { topupId: string; label: strin
 
       const data = await response.json();
       if (!response.ok) {
-        setStatus(data.error ?? "Topup checkout failed");
+        setStatusTone("error");
+        setStatus(data.error ?? "We couldn't start checkout right now.");
         setLoading(false);
         return;
       }
@@ -162,19 +178,23 @@ export function TopupActions({ topupId, label }: { topupId: string; label: strin
             body: JSON.stringify(payload),
           });
           if (verify.ok) {
-            setStatus("Topup successful. Credits added.");
+            setStatusTone("success");
+            setStatus("Top-up successful. Your credits have been added and your workspace is updating.");
+            setLoading(false);
             router.push("/dashboard/tools");
             router.refresh();
             return;
           }
-          setStatus("Payment captured but credit verification failed. Please contact support.");
+          setStatusTone("error");
+          setStatus("Payment was received, but your credits are still syncing. Please contact support if they do not update shortly.");
           setLoading(false);
         },
         prefill: { name: "", email: "" },
         theme: { color: "#6366f1" },
         modal: {
           ondismiss: function () {
-            setStatus("Checkout cancelled.");
+            setStatus("Checkout closed. You can resume whenever you're ready.");
+            setStatusTone("default");
             setLoading(false);
           },
         },
@@ -184,10 +204,12 @@ export function TopupActions({ topupId, label }: { topupId: string; label: strin
         const razorpay = new window.Razorpay(options as unknown as RazorpayOptions);
         razorpay.open();
       } else {
+        setStatusTone("error");
         setStatus("Payments are temporarily unavailable.");
         setLoading(false);
       }
     } catch {
+      setStatusTone("error");
       setStatus("Unable to start checkout right now. Please try again.");
       setLoading(false);
     }
@@ -199,8 +221,12 @@ export function TopupActions({ topupId, label }: { topupId: string; label: strin
       <Button className="w-full min-h-11" onClick={handleTopupCheckout} disabled={loading} aria-label={`Buy ${label} topup`}>
         {loading ? "Preparing..." : `Buy ${label}`}
       </Button>
-      <p className="text-xs text-muted-foreground">Secure payments via Razorpay. Charged in INR.</p>
-      {status ? <p className="text-xs text-muted-foreground">{status}</p> : null}
+      <p className="text-xs text-muted-foreground">Secure payments via Razorpay. Your credits update automatically after payment.</p>
+      {status ? (
+        <p className={`text-xs ${statusTone === "error" ? "text-rose-500" : statusTone === "success" ? "text-emerald-600 dark:text-emerald-300" : "text-muted-foreground"}`}>
+          {status}
+        </p>
+      ) : null}
     </div>
   );
 }

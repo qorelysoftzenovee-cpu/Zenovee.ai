@@ -112,6 +112,29 @@ export class ToolExecutionService {
       }
     }
 
+    const cooldownSeconds = Number(price?.cooldown_seconds ?? 0);
+    if (cooldownSeconds > 0) {
+      const cooldownCutoff = new Date(Date.now() - cooldownSeconds * 1000).toISOString();
+      const { data: recentExecution } = await supabase
+        .from("tool_executions")
+        .select("id,status,created_at")
+        .eq("user_id", args.userId)
+        .eq("tool_id", tool.id)
+        .gte("created_at", cooldownCutoff)
+        .in("status", ["pending", "running", "success"])
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle<{ id: string; status: "pending" | "running" | "success"; created_at: string }>();
+
+      if (recentExecution?.created_at) {
+        const retryAfterSeconds = Math.max(
+          1,
+          Math.ceil((new Date(recentExecution.created_at).getTime() + cooldownSeconds * 1000 - Date.now()) / 1000)
+        );
+        throw new Error(`Please wait ${retryAfterSeconds}s before running this tool again.`);
+      }
+    }
+
     const sanitizedInput = AIProtectionService.sanitizeInput(args.rawInput);
     const validatedInput = tool.inputSchema.parse(sanitizedInput) as Record<string, unknown>;
     const executionOptions = generationExecutionOptionsSchema.parse(args.options ?? {});

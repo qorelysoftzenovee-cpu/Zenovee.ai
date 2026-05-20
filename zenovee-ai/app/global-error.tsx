@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
 export default function GlobalError({ reset }: { error: Error & { digest?: string }; reset: () => void }) {
@@ -10,7 +11,12 @@ export default function GlobalError({ reset }: { error: Error & { digest?: strin
           <div className="max-w-lg w-full rounded-2xl border bg-card p-6 text-center space-y-3">
             <h1 className="text-xl font-semibold">We couldn’t load the app</h1>
             <p className="text-sm text-muted-foreground">Please retry. If this keeps happening, contact support.</p>
-            <Button onClick={reset}>Retry</Button>
+            <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
+              <Button onClick={reset}>Retry</Button>
+              <Button asChild variant="secondary">
+                <Link href="/">Back to home</Link>
+              </Button>
+            </div>
           </div>
         </main>
       </body>

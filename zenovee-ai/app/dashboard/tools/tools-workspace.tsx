@@ -785,62 +785,76 @@ export function ToolsWorkspace() {
     }
 
     if (activeTool.metadata.availability === "coming_soon") {
-      setError(activeTool.metadata.disabledReason ?? "Coming soon");
+      setError(activeTool.metadata.disabledReason ?? "This tool is not available in the launch MVP.");
       return;
     }
 
     setIsLoading(true);
     setActiveTab("result");
 
-    const res = await fetch("/api/tools", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        toolId: activeTool.id,
-        input: { ...formData },
-        options: {
-          mode,
-          controls: generationControls,
-          previousOutput: mode === "generate" ? undefined : result ?? undefined,
-        },
-      }),
-    });
+    try {
+      const res = await fetch("/api/tools", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          toolId: activeTool.id,
+          input: { ...formData },
+          options: {
+            mode,
+            controls: generationControls,
+            previousOutput: mode === "generate" ? undefined : result ?? undefined,
+          },
+        }),
+      });
 
-    const json = await res.json();
-    setIsLoading(false);
+      const json = await res.json();
 
-    if (!res.ok) {
-      setGenerationErrorDetails((json.details ?? null) as GenerationErrorDetails | null);
-      setError(json.error ?? "Generation failed.");
-      return;
+      if (!res.ok) {
+        setGenerationErrorDetails((json.details ?? null) as GenerationErrorDetails | null);
+        setError(json.error ?? "Generation failed.");
+        return;
+      }
+
+      setResult(json.data);
+      setResultExecutionId(json.executionId ?? null);
+      setGenerationMeta((json.generationMeta ?? null) as GenerationMeta | null);
+      setCredits(json.metrics?.creditsAfter ?? credits);
+      if (json.executionId && !outputNames[json.executionId]) {
+        setOutputNames((prev) => ({ ...prev, [json.executionId]: `${activeTool.metadata.name} Output` }));
+      }
+      setSuccessMessage(
+        mode === "improve"
+          ? "Improved variation generated successfully. Review, save, or export it below."
+          : mode === "regenerate"
+            ? "Fresh variation generated successfully. Compare or export it below."
+            : mode === "shorten"
+              ? "Shortened variation generated successfully."
+              : mode === "expand"
+                ? "Expanded variation generated successfully."
+                : "Output generated successfully. You can copy, save, or export it now."
+      );
+
+      await refreshHistory(activeTool.id);
+    } catch {
+      setGenerationErrorDetails({
+        title: "Temporary issue",
+        description: "Your credits were not deducted unless the generation completed successfully.",
+        retryable: true,
+      });
+      setError("We couldn't generate your output right now. Please check your connection and try again.");
+    } finally {
+      setIsLoading(false);
     }
-
-    setResult(json.data);
-    setResultExecutionId(json.executionId ?? null);
-    setGenerationMeta((json.generationMeta ?? null) as GenerationMeta | null);
-    setCredits(json.metrics?.creditsAfter ?? credits);
-    if (json.executionId && !outputNames[json.executionId]) {
-      setOutputNames((prev) => ({ ...prev, [json.executionId]: `${activeTool.metadata.name} Output` }));
-    }
-    setSuccessMessage(
-      mode === "improve"
-        ? "Improved variation generated successfully. Review, save, or export it below."
-        : mode === "regenerate"
-          ? "Fresh variation generated successfully. Compare or export it below."
-          : mode === "shorten"
-            ? "Shortened variation generated successfully."
-            : mode === "expand"
-              ? "Expanded variation generated successfully."
-          : "Output generated successfully. You can copy, save, or export it now."
-    );
-
-    await refreshHistory(activeTool.id);
   };
 
   const copyResult = async () => {
     if (!result) return;
-    await navigator.clipboard.writeText(previewText || JSON.stringify(result, null, 2));
-    setSuccessMessage("Output copied to clipboard.");
+    try {
+      await navigator.clipboard.writeText(previewText || JSON.stringify(result, null, 2));
+      setSuccessMessage("Output copied to clipboard.");
+    } catch {
+      setError("We couldn't copy this output automatically. Please try again.");
+    }
   };
 
   const openSignedUrl = (signedUrl: string) => {
@@ -851,30 +865,41 @@ export function ToolsWorkspace() {
     if (!resultExecutionId) return;
     setError(null);
     setIsExporting(true);
-    const res = await fetch("/api/exports", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ toolUsageId: resultExecutionId, format }),
-    });
-    const json = await res.json();
-    setIsExporting(false);
-    if (!res.ok) {
-      setError(json.error ?? "Export failed.");
-      return;
+    try {
+      const res = await fetch("/api/exports", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ toolUsageId: resultExecutionId, format }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setError(json.error ?? "Export failed.");
+        return;
+      }
+      await refreshHistory();
+      setSuccessMessage(`${format.toUpperCase()} export ready.`);
+      openSignedUrl(json.data.signedUrl);
+    } catch {
+      setError("We couldn't prepare your export right now. Please try again.");
+    } finally {
+      setIsExporting(false);
     }
-    await refreshHistory();
-    openSignedUrl(json.data.signedUrl);
   };
 
   const redownloadExport = async (exportId: string) => {
     setError(null);
-    const res = await fetch(`/api/exports?id=${encodeURIComponent(exportId)}`);
-    const json = await res.json();
-    if (!res.ok) {
-      setError(json.error ?? "Failed to download export.");
-      return;
+    try {
+      const res = await fetch(`/api/exports?id=${encodeURIComponent(exportId)}`);
+      const json = await res.json();
+      if (!res.ok) {
+        setError(json.error ?? "Failed to download export.");
+        return;
+      }
+      setSuccessMessage("Your export is ready.");
+      openSignedUrl(json.data.signedUrl);
+    } catch {
+      setError("We couldn't download that export right now. Please try again.");
     }
-    openSignedUrl(json.data.signedUrl);
   };
 
   const quickDownload = async (item: UsageHistoryItem | null, format: ExportFormat) => {
@@ -884,39 +909,49 @@ export function ToolsWorkspace() {
       await redownloadExport(existing.id);
       return;
     }
-    const res = await fetch("/api/exports", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ toolUsageId: item.id, format }),
-    });
-    const json = await res.json();
-    if (!res.ok) {
-      setError(json.error ?? "Failed to create export.");
-      return;
+    try {
+      const res = await fetch("/api/exports", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ toolUsageId: item.id, format }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setError(json.error ?? "Failed to create export.");
+        return;
+      }
+      await refreshHistory();
+      setSuccessMessage(`${format.toUpperCase()} export ready.`);
+      openSignedUrl(json.data.signedUrl);
+    } catch {
+      setError("We couldn't prepare that export right now. Please try again.");
     }
-    await refreshHistory();
-    openSignedUrl(json.data.signedUrl);
   };
 
   const deleteGeneration = async (generationId: string) => {
     setError(null);
-    const res = await fetch("/api/exports", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: generationId, kind: "generation" }),
-    });
-    const json = await res.json();
-    if (!res.ok) {
-      setError(json.error ?? "Failed to delete generation.");
-      return;
+    try {
+      const res = await fetch("/api/exports", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: generationId, kind: "generation" }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setError(json.error ?? "Failed to delete generation.");
+        return;
+      }
+      if (resultExecutionId === generationId) {
+        setResult(null);
+        setResultExecutionId(null);
+        setGenerationMeta(null);
+      }
+      setSavedOutputIds((prev) => prev.filter((id) => id !== generationId));
+      setSuccessMessage("Generation removed successfully.");
+      await refreshHistory();
+    } catch {
+      setError("We couldn't delete that generation right now. Please try again.");
     }
-    if (resultExecutionId === generationId) {
-      setResult(null);
-      setResultExecutionId(null);
-      setGenerationMeta(null);
-    }
-    setSavedOutputIds((prev) => prev.filter((id) => id !== generationId));
-    await refreshHistory();
   };
 
   const toggleFavoriteTool = (toolId: string) => {
@@ -1213,7 +1248,7 @@ export function ToolsWorkspace() {
                         <p className="mt-1 text-xs text-muted-foreground">Adjust tone, style, output depth, and language for more consistent premium results.</p>
                       </div>
                       <span className="rounded-full border border-white/10 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-                        Smart prompting
+                        Quality controls
                       </span>
                     </div>
 
@@ -1320,6 +1355,11 @@ export function ToolsWorkspace() {
                           ))}
                         </ul>
                       ) : null}
+                      {generationErrorDetails?.retryable ? (
+                        <Button variant="outline" size="sm" onClick={() => void runTool(generationMode)} disabled={isLoading}>
+                          Retry
+                        </Button>
+                      ) : null}
                     </div>
                   </div>
                 ) : null}
@@ -1340,7 +1380,7 @@ export function ToolsWorkspace() {
 
                 {activeTool && credits < activeTool.creditCost ? (
                   <div className="status-warning rounded-2xl px-4 py-3 text-sm">
-                    Insufficient credits for this tool. <Link href="/pricing" className="font-medium underline">Upgrade to continue</Link>
+                    Insufficient credits for this tool. <Link href="/billing" className="font-medium underline">Review billing or buy more credits</Link>
                   </div>
                 ) : null}
               </CardContent>
@@ -1433,7 +1473,7 @@ export function ToolsWorkspace() {
                           </Button>
                         ) : null}
                         <Button variant="outline" size="sm" onClick={copyResult}><Copy size={14} /> Copy</Button>
-                        <Button variant="outline" size="sm" onClick={() => void quickDownload(currentHistoryItem, primaryDownloadFormat)} disabled={!resultExecutionId || isExporting}><Download size={14} /> Export</Button>
+                        <Button variant="outline" size="sm" onClick={() => void quickDownload(currentHistoryItem, primaryDownloadFormat)} disabled={!resultExecutionId || isExporting}><Download size={14} /> Quick export</Button>
                         <Button variant="outline" size="sm" onClick={() => void runTool("regenerate")} disabled={isLoading}><RefreshCcw size={14} /> Regenerate</Button>
                         {resultExecutionId ? (
                           <Button variant="outline" size="sm" onClick={() => toggleSavedOutput(resultExecutionId)}>
@@ -1461,7 +1501,7 @@ export function ToolsWorkspace() {
                           <div>
                             <p className="premium-label">Output identity</p>
                             <h3 className="mt-3 text-xl font-semibold tracking-tight">{currentResultName}</h3>
-                            <p className="mt-2 text-sm text-muted-foreground">Reusable, export-ready generation with centralized prompt orchestration behind it.</p>
+                            <p className="mt-2 text-sm text-muted-foreground">Structured output ready to review, refine, save, and export.</p>
                           </div>
                           {generationMeta ? (
                             <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
@@ -1475,14 +1515,13 @@ export function ToolsWorkspace() {
                         {generationMeta ? (
                           <div className="mt-4 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
                             <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
-                              <p className="text-sm font-medium">Prompt and model insights</p>
+                              <p className="text-sm font-medium">Generation settings used</p>
                               <div className="mt-3 space-y-2 text-sm text-muted-foreground">
-                                <p><span className="font-medium text-foreground">Prompt version:</span> {generationMeta.promptVersion}</p>
                                 <p><span className="font-medium text-foreground">Tone:</span> {generationMeta.controls.tone}</p>
                                 <p><span className="font-medium text-foreground">Writing style:</span> {generationMeta.controls.writingStyle}</p>
                                 <p><span className="font-medium text-foreground">Output length:</span> {generationMeta.controls.outputLength}</p>
                                 <p><span className="font-medium text-foreground">Language:</span> {generationMeta.controls.language}</p>
-                                <p><span className="font-medium text-foreground">Model strategy:</span> {generationMeta.modelReason}</p>
+                                <p><span className="font-medium text-foreground">Generation mode:</span> {generationMeta.mode}</p>
                               </div>
                             </div>
 
@@ -1505,7 +1544,7 @@ export function ToolsWorkspace() {
                                   </ul>
                                 </div>
                               ) : (
-                                <p className="mt-4 text-sm text-emerald-300">All configured quality checks passed.</p>
+                                <p className="mt-4 text-sm text-emerald-300">Quality checks passed.</p>
                               )}
                             </div>
                           </div>
@@ -1530,7 +1569,7 @@ export function ToolsWorkspace() {
                   ) : (
                     <div className="surface-muted px-6 py-10 text-center">
                       <p className="text-lg font-semibold">No output yet</p>
-                      <p className="mt-2 text-sm text-muted-foreground">Start by choosing a tool and generating your first marketing output.</p>
+                      <p className="mt-2 text-sm text-muted-foreground">Choose a tool, add your brief, and generate your first result.</p>
                     </div>
                   )
                 ) : activeTab === "history" ? (
@@ -1569,7 +1608,7 @@ export function ToolsWorkspace() {
                   ) : (
                     <div className="surface-muted px-6 py-10 text-center">
                       <p className="text-lg font-semibold">No generations yet</p>
-                      <p className="mt-2 text-sm text-muted-foreground">Generate your first result to build your history and iterate faster.</p>
+                      <p className="mt-2 text-sm text-muted-foreground">Your recent runs will appear here after the first generation.</p>
                     </div>
                   )
                 ) : savedHistoryItems.length ? (
@@ -1594,7 +1633,7 @@ export function ToolsWorkspace() {
                 ) : (
                   <div className="surface-muted px-6 py-10 text-center">
                     <p className="text-lg font-semibold">No saved outputs yet</p>
-                    <p className="mt-2 text-sm text-muted-foreground">Save strong outputs here so you can reuse and export them later.</p>
+                    <p className="mt-2 text-sm text-muted-foreground">Save your strongest results here for quick reuse and export.</p>
                   </div>
                 )}
               </CardContent>

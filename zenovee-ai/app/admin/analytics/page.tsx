@@ -25,7 +25,7 @@ export default async function AdminAnalyticsPage() {
         <Card className="admin-surface">
           <CardHeader><CardTitle>Recent API Usage</CardTitle></CardHeader>
           <CardContent className="space-y-3">
-            {data.recentApiUsage.map((row) => (
+            {data.recentApiUsage.length ? data.recentApiUsage.map((row) => (
               <div key={row.id} className="admin-row flex flex-col gap-3 text-sm md:flex-row md:items-center md:justify-between">
                 <div>
                   <p className="font-medium text-white">{row.provider} • {row.model}</p>
@@ -37,14 +37,14 @@ export default async function AdminAnalyticsPage() {
                   <p>{row.status}</p>
                 </div>
               </div>
-            ))}
+            )) : <div className="admin-row text-sm text-slate-400">No API activity yet.</div>}
           </CardContent>
         </Card>
 
         <Card className="admin-surface">
           <CardHeader><CardTitle>Tool Performance Snapshot</CardTitle></CardHeader>
           <CardContent className="space-y-3">
-            {data.toolsAnalytics.slice(0, 10).map((tool) => (
+            {data.toolsAnalytics.length ? data.toolsAnalytics.slice(0, 10).map((tool) => (
               <div key={tool.tool} className="admin-row text-sm">
                 <div className="flex items-center justify-between gap-4">
                   <p className="font-medium text-white">{tool.tool}</p>
@@ -57,7 +57,7 @@ export default async function AdminAnalyticsPage() {
                   <span>Failure: {tool.failureRate}%</span>
                 </div>
               </div>
-            ))}
+            )) : <div className="admin-row text-sm text-slate-400">No tool performance data yet.</div>}
           </CardContent>
         </Card>
       </div>

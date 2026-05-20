@@ -16,6 +16,7 @@ export default async function PricingPage() {
         <div className="mb-6 max-w-2xl space-y-2">
           <p className="text-sm text-muted-foreground">Choose a plan, open your workspace, and start generating your first AI asset.</p>
           <p className="text-sm text-muted-foreground">Secure payments via Razorpay.</p>
+          <p className="text-sm text-muted-foreground">Your subscription updates automatically after payment.</p>
         </div>
         <div className="grid gap-5 md:grid-cols-3">
           {subscriptionPlans.map((plan) => (

@@ -49,11 +49,11 @@
   h2,
   h3,
   h4 {
-    @apply font-semibold tracking-tight text-foreground;
+    @apply font-semibold tracking-tight;
   }
 
   p {
-    @apply text-foreground/90;
+    @apply text-inherit;
   }
 
   html {
