@@ -35,7 +35,7 @@ export async function POST(request: Request) {
 
     const userId = createdAuth.user.id;
 
-    const { error: profileError } = await supabaseAdmin.from("users").insert({
+    const profilePayload: Record<string, unknown> = {
       id: userId,
       email,
       name: payload.name.trim(),
@@ -43,7 +43,26 @@ export async function POST(request: Request) {
       status: "ACTIVE",
       plan: "starter",
       signup_date: new Date().toISOString(),
-    });
+    };
+
+    let profileError: { message: string } | null = null;
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      const { error } = await supabaseAdmin.from("users").insert(profilePayload as never);
+      if (!error) {
+        profileError = null;
+        break;
+      }
+
+      const missingColumnMatch = error.message.match(/Could not find the '([^']+)' column of 'users' in the schema cache/i);
+      if (missingColumnMatch?.[1]) {
+        delete profilePayload[missingColumnMatch[1]];
+        continue;
+      }
+
+      profileError = { message: error.message };
+      break;
+    }
+
     if (profileError) {
       await supabaseAdmin.auth.admin.deleteUser(userId);
       if (profileError.message.includes("Could not find the table 'public.users'")) {
