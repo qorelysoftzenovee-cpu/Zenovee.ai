@@ -7,6 +7,21 @@ import { addTopupCredits, assignPlanCredits, computeNextRenewalDate } from "@/se
 import { verifyCheckoutSignature } from "@/services/razorpay";
 import { serverLog } from "@/lib/logger";
 
+async function wasPaymentAlreadyProcessed(
+  supabaseAdmin: ReturnType<typeof getSupabaseAdmin>,
+  razorpayPaymentId: string
+) {
+  const { data } = await supabaseAdmin
+    .from("payments")
+    .select("id,status")
+    .eq("razorpay_transaction_id", razorpayPaymentId)
+    .eq("status", "SUCCESS")
+    .limit(1)
+    .maybeSingle<{ id: string; status: string }>();
+
+  return Boolean(data?.id);
+}
+
 export async function POST(request: Request) {
   try {
     const user = await getCurrentUser();
@@ -34,6 +49,10 @@ export async function POST(request: Request) {
     if (!valid) return NextResponse.json({ error: "Invalid payment signature" }, { status: 400 });
 
     const supabaseAdmin = getSupabaseAdmin();
+
+    if (await wasPaymentAlreadyProcessed(supabaseAdmin, body.razorpay_payment_id)) {
+      return NextResponse.json({ success: true, duplicate: true });
+    }
 
     if (body.razorpay_order_id) {
     const { data: pendingTopup } = await supabaseAdmin

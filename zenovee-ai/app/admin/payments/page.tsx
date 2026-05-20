@@ -26,20 +26,20 @@ export default async function AdminPaymentsPage() {
   return (
     <PageShell title="Payments" description="Live payment operations, webhook history, revenue tracking, and failed payment investigation." variant="admin" className="bg-transparent">
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <Card className="border-white/10 bg-white/[0.04] text-white"><CardHeader><CardTitle>Total Payments</CardTitle></CardHeader><CardContent><p className="text-3xl font-semibold">{payments.length}</p></CardContent></Card>
-        <Card className="border-white/10 bg-white/[0.04] text-white"><CardHeader><CardTitle>Successful Revenue</CardTitle></CardHeader><CardContent><p className="text-3xl font-semibold">{formatInr(successfulRevenue)}</p></CardContent></Card>
-        <Card className="border-white/10 bg-white/[0.04] text-white"><CardHeader><CardTitle>Failed Payments</CardTitle></CardHeader><CardContent><p className="text-3xl font-semibold">{failed.length}</p></CardContent></Card>
-        <Card className="border-white/10 bg-white/[0.04] text-white"><CardHeader><CardTitle>Webhook Events</CardTitle></CardHeader><CardContent><p className="text-3xl font-semibold">{(eventsRes.data ?? []).length}</p></CardContent></Card>
+        <Card className="admin-surface"><CardHeader><CardTitle>Total Payments</CardTitle></CardHeader><CardContent><p className="text-3xl font-semibold">{payments.length}</p></CardContent></Card>
+        <Card className="admin-surface"><CardHeader><CardTitle>Successful Revenue</CardTitle></CardHeader><CardContent><p className="text-3xl font-semibold">{formatInr(successfulRevenue)}</p></CardContent></Card>
+        <Card className="admin-surface"><CardHeader><CardTitle>Failed Payments</CardTitle></CardHeader><CardContent><p className="text-3xl font-semibold">{failed.length}</p></CardContent></Card>
+        <Card className="admin-surface"><CardHeader><CardTitle>Webhook Events</CardTitle></CardHeader><CardContent><p className="text-3xl font-semibold">{(eventsRes.data ?? []).length}</p></CardContent></Card>
       </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-2">
-        <Card className="border-white/10 bg-white/[0.04] text-white">
+        <Card className="admin-surface">
           <CardHeader><CardTitle>Recent Payments</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             {payments.slice(0, 30).map((payment) => {
               const user = users.get(payment.user_id);
               return (
-                <div key={payment.id} className="surface-muted flex flex-col gap-3 px-4 py-4 text-sm md:flex-row md:items-center md:justify-between">
+                <div key={payment.id} className="admin-row flex flex-col gap-3 text-sm md:flex-row md:items-center md:justify-between">
                   <div>
                     <p className="font-medium text-white">{user?.name ?? user?.email ?? payment.user_id}</p>
                     <p className="text-xs text-slate-400">{payment.plan} • {payment.status} • {new Date(payment.created_at).toLocaleString()}</p>
@@ -54,13 +54,13 @@ export default async function AdminPaymentsPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-white/10 bg-white/[0.04] text-white">
+        <Card className="admin-surface">
           <CardHeader><CardTitle>Subscription Billing Health</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             {(subscriptionsRes.data ?? []).slice(0, 30).map((subscription) => {
               const user = users.get(subscription.user_id);
               return (
-                <div key={subscription.id} className="surface-muted px-4 py-4 text-sm">
+                <div key={subscription.id} className="admin-row text-sm">
                   <div className="flex items-center justify-between gap-4">
                     <div>
                       <p className="font-medium text-white">{user?.name ?? user?.email ?? subscription.user_id}</p>

@@ -37,15 +37,23 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    background:
-      radial-gradient(circle at top, rgba(120, 119, 198, 0.18), transparent 26%),
-      radial-gradient(circle at 85% 14%, rgba(56, 189, 248, 0.12), transparent 22%),
-      linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--background)) 100%);
     text-rendering: optimizeLegibility;
+    line-height: 1.6;
   }
 
   .section-shell {
-    @apply mx-auto max-w-6xl px-5 md:px-8 lg:px-10;
+    @apply mx-auto w-full max-w-7xl px-4 md:px-6 lg:px-8;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-semibold tracking-tight text-foreground;
+  }
+
+  p {
+    @apply text-foreground/90;
   }
 
   html {
@@ -65,23 +73,24 @@
 
 @layer utilities {
   .surface-card {
-    @apply rounded-[28px] border border-white/10 bg-card/80 shadow-[0_30px_120px_-48px_rgba(7,12,28,0.92)] backdrop-blur-xl;
+    @apply rounded-2xl border border-border/80 bg-card shadow-[0_10px_28px_-18px_rgba(15,23,42,0.28)];
   }
 
   .surface-muted {
-    @apply rounded-2xl border border-white/8 bg-muted/55 backdrop-blur-xl;
+    @apply rounded-xl border border-border/70 bg-muted/45;
   }
 
-  .hero-glow {
-    background:
-      radial-gradient(circle at top left, rgba(129, 140, 248, 0.32), transparent 28%),
-      radial-gradient(circle at 80% 20%, rgba(56, 189, 248, 0.18), transparent 24%),
-      linear-gradient(145deg, #090d18 0%, #11182b 44%, #0d1425 100%);
-    color: #f8fafc;
+  .hero-panel {
+    @apply rounded-3xl border border-border/80 bg-card shadow-[0_18px_40px_-24px_rgba(15,23,42,0.32)];
   }
 
-  .bg-primary-gradient {
-    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  .hero-glow,
+  .page-glow,
+  .interactive-card,
+  .text-gradient {
+    background: none;
+    box-shadow: none;
+    color: inherit;
   }
 
   .landing-dark {
@@ -94,65 +103,32 @@
     color: #0f172a;
   }
 
-  .premium-grid {
-    @apply grid gap-5 md:gap-6;
-  }
-
   .premium-label {
-    @apply inline-flex w-fit items-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground;
-  }
-
-  .hero-panel {
-    @apply rounded-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] shadow-[0_40px_120px_-56px_rgba(56,189,248,0.3)] backdrop-blur-2xl;
+    @apply inline-flex w-fit items-center rounded-full border border-border/70 bg-muted/60 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground;
   }
 
   .stat-chip {
-    @apply inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-muted-foreground;
-  }
-
-  .interactive-card {
-    @apply transition-all duration-300 hover:-translate-y-1 hover:border-white/20 hover:shadow-[0_32px_90px_-48px_rgba(129,140,248,0.38)];
-  }
-
-  .soft-divider {
-    @apply border-t border-white/8;
+    @apply inline-flex items-center gap-2 rounded-full border border-border bg-muted px-3 py-1.5 text-xs text-muted-foreground;
   }
 
   .dashboard-metric {
-    @apply rounded-3xl border border-white/10 bg-white/[0.03] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)];
+    @apply rounded-2xl border border-border/80 bg-card p-5 shadow-[0_10px_30px_-24px_rgba(15,23,42,0.45)];
   }
 
-  .page-glow {
-    position: relative;
+  .admin-surface {
+    @apply border-white/10 bg-slate-900/85 text-slate-100 shadow-[0_20px_50px_-30px_rgba(2,6,23,0.9)];
   }
 
-  .page-glow::before {
-    content: "";
-    position: absolute;
-    inset: -1px;
-    border-radius: inherit;
-    background: linear-gradient(135deg, rgba(129, 140, 248, 0.22), rgba(56, 189, 248, 0.1), transparent 60%);
-    opacity: 0.9;
-    pointer-events: none;
-    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    mask-composite: exclude;
-    padding: 1px;
+  .admin-row {
+    @apply rounded-xl border border-white/10 bg-white/[0.03] px-4 py-4;
   }
 
-  .subtle-scrollbar::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
+  .interactive-lift {
+    @apply transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_18px_36px_-24px_rgba(15,23,42,0.35)];
   }
 
-  .subtle-scrollbar::-webkit-scrollbar-thumb {
-    @apply rounded-full bg-border;
-  }
-
-  .text-gradient {
-    background: linear-gradient(135deg, #f8fbff 0%, #c4b5fd 42%, #67e8f9 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+  .animate-enter {
+    animation: enter 220ms ease-out both;
   }
 
   .status-success {
@@ -166,16 +142,12 @@
   .status-danger {
     @apply border border-danger/20 bg-danger/10 text-danger;
   }
-
-  .animate-enter {
-    animation: enterUp 0.45s ease-out;
-  }
 }
 
-@keyframes enterUp {
+@keyframes enter {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(6px);
   }
   to {
     opacity: 1;

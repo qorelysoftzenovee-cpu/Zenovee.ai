@@ -3,17 +3,17 @@ import { SUPPORT_EMAIL } from "@/lib/seo/site";
 
 export function Footer() {
   return (
-    <footer className="border-t border-white/10 bg-black/10">
+    <footer className="border-t border-border/70 bg-background">
       <div className="section-shell py-10 md:py-12">
-        <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-start">
+        <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#7c3aed_0%,#38bdf8_100%)] shadow-[0_16px_40px_-20px_rgba(124,58,237,0.8)]">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-900 shadow-sm">
                 <span className="text-base font-semibold text-white">Z</span>
               </div>
               <div>
                 <p className="text-base font-semibold tracking-tight">Zenovee AI</p>
-                <p className="text-sm text-muted-foreground">Focused AI tools for content, marketing, and growth teams.</p>
+                <p className="text-sm text-muted-foreground">Focused AI tools for content and marketing workflows.</p>
               </div>
             </div>
             <a href={`mailto:${SUPPORT_EMAIL}`} className="text-sm text-muted-foreground transition-colors hover:text-foreground">
@@ -49,9 +49,9 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-8 flex flex-col gap-3 border-t border-white/8 pt-6 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
+        <div className="mt-8 flex flex-col gap-3 border-t border-border/70 pt-6 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
           <p>© 2026 Zenovee AI. All rights reserved.</p>
-          <p>Launch-ready AI SaaS with a focused, premium product experience.</p>
+          <p>Premium AI workspace for focused execution.</p>
         </div>
       </div>
     </footer>

@@ -22,41 +22,45 @@ export default function RegisterPage() {
     event.preventDefault();
     setError(null);
     setIsSubmitting(true);
+    try {
+      const formData = new FormData(event.currentTarget);
+      const payload = {
+        name: formData.get("name"),
+        email: formData.get("email"),
+        password: formData.get("password"),
+      };
 
-    const formData = new FormData(event.currentTarget);
-    const payload = {
-      name: formData.get("name"),
-      email: formData.get("email"),
-      password: formData.get("password"),
-    };
+      const response = await fetch("/api/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
 
-    const response = await fetch("/api/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+      const data = await response.json();
 
-    const data = await response.json();
+      if (!response.ok) {
+        setError(data.error ?? "Registration failed.");
+        return;
+      }
 
-    if (!response.ok) {
-      setError(data.error ?? "Registration failed.");
+      const { error: loginError } = await supabase.auth.signInWithPassword({
+        email: String(payload.email ?? ""),
+        password: String(payload.password ?? ""),
+      });
+
+      if (loginError) {
+        setError("Your account was created, but automatic sign-in failed. Please login manually.");
+        router.push("/login");
+        return;
+      }
+
+      router.replace("/auth/callback");
+      router.refresh();
+    } catch {
+      setError("Unable to create your account right now. Please try again in a moment.");
+    } finally {
       setIsSubmitting(false);
-      return;
     }
-
-    const { error: loginError } = await supabase.auth.signInWithPassword({
-      email: String(payload.email ?? ""),
-      password: String(payload.password ?? ""),
-    });
-
-    if (loginError) {
-      setError("Account created, but automatic sign-in failed. Please login manually.");
-      router.push("/login");
-      return;
-    }
-
-    router.replace("/auth/callback");
-    router.refresh();
   };
 
   return (

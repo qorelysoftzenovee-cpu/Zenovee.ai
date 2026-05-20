@@ -22,22 +22,28 @@ export default function LoginPage() {
     e.preventDefault();
     setError(null);
     setIsSubmitting(true);
-    const formData = new FormData(e.currentTarget);
-    const email = formData.get("email");
-    const password = formData.get("password");
+    try {
+      const formData = new FormData(e.currentTarget);
+      const email = formData.get("email");
+      const password = formData.get("password");
 
-    const { error: loginError } = await supabase.auth.signInWithPassword({
-      email: String(email ?? ""),
-      password: String(password ?? ""),
-    });
+      const { error: loginError } = await supabase.auth.signInWithPassword({
+        email: String(email ?? ""),
+        password: String(password ?? ""),
+      });
 
-    if (loginError) {
-      setError(loginError.message);
-    } else {
+      if (loginError) {
+        setError(loginError.message);
+        return;
+      }
+
       router.replace("/auth/callback");
       router.refresh();
+    } catch {
+      setError("Unable to sign in right now. Please check your connection and try again.");
+    } finally {
+      setIsSubmitting(false);
     }
-    setIsSubmitting(false);
   };
 
   return (

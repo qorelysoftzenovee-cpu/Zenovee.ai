@@ -30,6 +30,10 @@ export function serverLog({ level, route, message, error, metadata }: LogInput) 
     metadata,
   };
 
+  if (process.env.NODE_ENV === "production") {
+    return;
+  }
+
   if (level === "error") {
     console.error(payload);
     return;

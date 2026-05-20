@@ -8,16 +8,23 @@ import { Button } from "@/components/ui/button";
 import { Breadcrumbs } from "@/components/seo/breadcrumbs";
 import { JsonLd } from "@/components/seo/json-ld";
 import { createBreadcrumbSchema, createFAQSchema, createMetadata, createSoftwareSchema } from "@/lib/seo/site";
-import { getRelatedBlogPosts, getToolSeoEntry, getToolsBySlugs, toolSeoPages } from "@/lib/seo/content";
+import { getToolSeoEntry, getToolsBySlugs, toolSeoPages } from "@/lib/seo/content";
+
+const launchToolSlugs = new Set([
+  "seo-article-generator",
+  "ad-copy-generator",
+  "customer-persona-builder",
+  "landing-page-copy-generator",
+]);
 
 export async function generateStaticParams() {
-  return toolSeoPages.map((tool) => ({ slug: tool.slug }));
+  return toolSeoPages.filter((tool) => launchToolSlugs.has(tool.slug)).map((tool) => ({ slug: tool.slug }));
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const tool = getToolSeoEntry(slug);
-  if (!tool) return {};
+  if (!tool || !launchToolSlugs.has(tool.slug)) return {};
 
   return createMetadata({
     title: tool.heroTitle,
@@ -30,10 +37,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 export default async function ToolSeoPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const tool = getToolSeoEntry(slug);
-  if (!tool) notFound();
+  if (!tool || !launchToolSlugs.has(tool.slug)) notFound();
 
   const relatedTools = getToolsBySlugs(tool.relatedToolSlugs);
-  const relatedBlogs = getRelatedBlogPosts(tool.slug);
 
   return (
     <div className="min-h-screen bg-background">
@@ -140,24 +146,10 @@ export default async function ToolSeoPage({ params }: { params: Promise<{ slug: 
 
             <Card>
               <CardHeader>
-                <CardTitle>Related blog posts</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {relatedBlogs.map((post) => (
-                  <Link key={post.slug} href={`/blog/${post.slug}`} className="block rounded-xl border p-4 hover:bg-muted/40">
-                    <p className="font-medium">{post.title}</p>
-                    <p className="text-sm text-muted-foreground">{post.description}</p>
-                  </Link>
-                ))}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
                 <CardTitle>CTA</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <p className="text-sm text-muted-foreground">Use {tool.name} inside Zenovee AI and export or publish your outputs with shareable URLs.</p>
+                <p className="text-sm text-muted-foreground">Use {tool.name} inside Zenovee AI and export or save your output after the first run.</p>
                 <Button asChild className="w-full">
                   <Link href="/register" data-analytics-event="conversion" data-analytics-label={`tool-sidebar-register-${tool.slug}`}>
                     Launch tool

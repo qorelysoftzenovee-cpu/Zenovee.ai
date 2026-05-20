@@ -12,21 +12,21 @@ export default async function AdminSettingsPage() {
   return (
     <PageShell title="Admin settings" description="Operational configuration, initial admin assignment, and production-safe setup guidance." variant="admin" className="bg-transparent">
       <div className="grid gap-6 xl:grid-cols-2">
-        <Card className="border-white/10 bg-white/[0.04] text-white">
+        <Card className="admin-surface">
           <CardHeader><CardTitle>Initial admin setup</CardTitle></CardHeader>
           <CardContent className="space-y-4 text-sm text-slate-300">
             <p>
               This deployment supports secure initial admin assignment through the <code className="rounded bg-white/10 px-1.5 py-0.5 text-white">ADMIN_EMAIL</code> environment variable.
               When that user signs in, their role is server-upgraded to <code className="rounded bg-white/10 px-1.5 py-0.5 text-white">admin</code>.
             </p>
-            <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+            <div className="admin-row">
               <p className="text-xs uppercase tracking-[0.24em] text-slate-400">Configured admin email</p>
               <p className="mt-2 break-all font-medium text-white">{configuredAdminEmail}</p>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-white/10 bg-white/[0.04] text-white">
+        <Card className="admin-surface">
           <CardHeader><CardTitle>Secure SQL promotion</CardTitle></CardHeader>
           <CardContent className="space-y-4 text-sm text-slate-300">
             <p>If you need to promote the first admin manually, use the secure SQL helper from a service-role session or Supabase SQL editor:</p>

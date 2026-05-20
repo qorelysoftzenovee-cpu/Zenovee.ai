@@ -40,18 +40,18 @@ export default async function AdminToolsPage() {
 
   return (
     <PageShell title="Tools" description="Pricing controls, usage trends, cost analytics, and per-tool performance monitoring." variant="admin" className="bg-transparent">
-      <Card className="mb-6 border-white/10 bg-white/[0.04] text-white">
+      <Card className="mb-6 admin-surface">
         <CardHeader><CardTitle>Tool Pricing Management</CardTitle></CardHeader>
         <CardContent>
           <ToolPricingManager items={pricingItems} />
         </CardContent>
       </Card>
 
-      <Card className="border-white/10 bg-white/[0.04] text-white">
+      <Card className="admin-surface">
         <CardHeader><CardTitle>Per Tool Analytics</CardTitle></CardHeader>
         <CardContent className="space-y-3">
           {data.toolsAnalytics.map((t) => (
-            <div key={t.tool} className="surface-muted p-4 text-sm">
+            <div key={t.tool} className="admin-row text-sm">
               <div className="flex items-center justify-between">
                 <p className="font-semibold text-white">{t.tool}</p>
                 <p>{t.usageCount} runs</p>

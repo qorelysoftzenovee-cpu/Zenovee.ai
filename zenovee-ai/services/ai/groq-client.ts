@@ -1,5 +1,5 @@
 import { z, type ZodSchema } from "zod";
-import { env, validateProductionEnv } from "@/lib/env";
+import { env, validateAiEnv } from "@/lib/env";
 import type {
   AIGenerateStructuredInput,
   AIGenerateStructuredResult,
@@ -58,7 +58,7 @@ async function sleep(ms: number) {
 
 export class GroqAIService {
   constructor(private readonly apiKey = env.GROQ_API_KEY) {
-    validateProductionEnv();
+    validateAiEnv();
 
     if (!this.apiKey) {
       throw new Error("Groq API key is not configured.");

@@ -136,7 +136,9 @@ export async function GET(req: Request) {
         });
       }
 
-      const tools = await ToolExecutionService.listToolsWithPricing();
+      const tools = (await ToolExecutionService.listToolsWithPricing()).filter(
+        (tool) => tool.metadata.availability === "active" && (tool.metadata.visibility ?? "public") === "public"
+      );
       const credits = await ToolExecutionService.getCredits(user.id);
 
       return NextResponse.json({ success: true, data: { tools, credits } });

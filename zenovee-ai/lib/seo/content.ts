@@ -51,7 +51,7 @@ const toolSpecificCopy: Record<string, ToolSeoNarrative> = {
     faqs: [
       { question: "What can this SEO article generator create?", answer: "It generates SEO titles, descriptions, intent framing, clustered keywords, outlines, long-form drafts, FAQs, and internal linking ideas." },
       { question: "Who is this tool best for?", answer: "It is built for SEO teams, marketers, SaaS operators, and agencies who need production-ready article workflows." },
-      { question: "Can I export the results?", answer: "Yes. Generated outputs can be exported and published with shareable public URLs." },
+      { question: "Can I export the results?", answer: "Yes. Generated outputs can be exported for reuse in your workflow." },
     ],
     relatedToolSlugs: ["landing-page-copy-generator", "ad-copy-generator", "customer-persona-builder"],
     primaryKeyword: "AI SEO article generator",
@@ -120,7 +120,7 @@ const toolSpecificCopy: Record<string, ToolSeoNarrative> = {
 };
 
 export const toolSeoPages: ToolSeoEntry[] = listToolDefinitions()
-  .filter((tool) => tool.metadata.availability !== "coming_soon")
+  .filter((tool) => tool.metadata.availability !== "coming_soon" && (tool.metadata.visibility ?? "public") === "public")
   .map((tool) => {
     const specific = toolSpecificCopy[tool.id] || {
       heroTitle: `${tool.metadata.name} for practical AI workflows`,
@@ -259,7 +259,7 @@ export const blogPosts = [
     content: [
       "An SEO system compounds when every tool page targets a clear problem, audience, and use case.",
       "Instead of publishing shallow directories, create pages with examples, FAQs, structured metadata, and strong internal linking.",
-      "For SaaS teams, the content engine should connect blog content to tool pages, use-case pages, and shareable public outputs.",
+      "For SaaS teams, the content engine should connect blog content to tool pages, use-case pages, and reusable structured outputs.",
     ],
   },
   {

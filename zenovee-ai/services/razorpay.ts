@@ -1,10 +1,10 @@
 import Razorpay from "razorpay";
 import crypto from "crypto";
-import { env, validateProductionEnv } from "@/lib/env";
+import { env, validateBillingEnv } from "@/lib/env";
 import { getPlanById } from "@/app/subscription-plans";
 
 export function getRazorpayClient() {
-  validateProductionEnv();
+  validateBillingEnv();
 
   if (!env.RAZORPAY_KEY_ID || !env.RAZORPAY_KEY_SECRET) {
     throw new Error("Razorpay is not configured.");

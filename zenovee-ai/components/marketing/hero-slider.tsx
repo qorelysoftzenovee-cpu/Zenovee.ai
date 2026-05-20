@@ -8,8 +8,8 @@ import { Button } from "@/components/ui/button";
 const slides = [
   {
     eyebrow: "SEO & content",
-    headline: "From brief to structured content systems in minutes",
-    subtext: "Plan, draft, and refine high-intent SEO work with outputs that stay organized from the first prompt.",
+    headline: "Turn a simple brief into structured SEO content",
+    subtext: "Generate organized article drafts with clearer structure, faster review, and cleaner export flow.",
     cta: "Explore SEO tools",
     href: "/tools/seo-article-generator",
     stats: [
@@ -20,8 +20,8 @@ const slides = [
   },
   {
     eyebrow: "Campaign execution",
-    headline: "Sharper ad copy and landing pages without the clutter",
-    subtext: "Move from offer to conversion-ready messaging with focused tools for ads, personas, and landing page copy.",
+    headline: "Create ad copy and landing page messaging faster",
+    subtext: "Use focused tools for paid campaigns, landing pages, and customer research without extra dashboard noise.",
     cta: "See marketing tools",
     href: "/tools",
     stats: [
@@ -32,8 +32,8 @@ const slides = [
   },
   {
     eyebrow: "Focused workspace",
-    headline: "A premium AI workspace designed to stay calm under real work",
-    subtext: "Zenovee keeps the interface minimal so users can check credits, run tools, and manage billing without dashboard noise.",
+    headline: "A calm workspace for daily marketing work",
+    subtext: "Check credits, open a tool, generate an asset, and manage billing in one clear workflow.",
     cta: "View pricing",
     href: "/pricing",
     stats: [
@@ -57,7 +57,7 @@ export function HeroSlider() {
   const active = slides[index];
 
   return (
-    <div className="hero-glow overflow-hidden rounded-[32px] border border-white/10 p-6 shadow-[0_30px_120px_-50px_rgba(56,189,248,0.26)] md:p-8 lg:p-10">
+    <div className="overflow-hidden rounded-[32px] border border-white/10 bg-white/[0.03] p-6 shadow-[0_24px_80px_-56px_rgba(15,23,42,0.6)] md:p-8 lg:p-10">
       <div className="grid gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
         <div className="space-y-5 transition-all duration-500">
           <div className="stat-chip border-white/10 bg-white/6 text-slate-200">{active.eyebrow}</div>
@@ -76,7 +76,6 @@ export function HeroSlider() {
         </div>
 
         <div className="hero-panel relative overflow-hidden p-5 md:p-6">
-          <div className="absolute inset-x-10 top-0 h-28 rounded-full bg-violet-400/20 blur-3xl" />
           <div className="relative grid gap-3">
             <div className="rounded-3xl border border-white/10 bg-slate-950/35 p-4">
               <div className="flex items-center justify-between gap-3">
@@ -85,7 +84,7 @@ export function HeroSlider() {
                   <p className="mt-2 text-lg font-semibold text-white">{active.eyebrow}</p>
                 </div>
                 <div className="rounded-full border border-emerald-400/25 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-200">
-                  Premium flow
+                  Launch-ready workflow
                 </div>
               </div>
             </div>
@@ -99,7 +98,7 @@ export function HeroSlider() {
               ))}
             </div>
 
-            <div className="rounded-[28px] border border-white/10 bg-gradient-to-br from-white/8 via-white/[0.04] to-transparent p-5">
+            <div className="rounded-[28px] border border-white/10 bg-white/[0.03] p-5">
               <div className="grid gap-3">
                 {["Clean search", "Focused tool runs", "Clear billing status"].map((item, lineIndex) => (
                   <div key={item} className="flex items-center gap-3 rounded-2xl border border-white/6 bg-slate-950/25 px-4 py-3">

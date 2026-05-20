@@ -9,7 +9,7 @@ import { SUPPORT_EMAIL } from "@/lib/seo/site";
 
 export const metadata = {
   title: "Contact | Zenovee AI",
-  description: "Contact support for account, billing, and product help.",
+  description: "Contact support for product, account, or billing help.",
 };
 
 export default async function ContactPage() {
@@ -32,25 +32,28 @@ export default async function ContactPage() {
   return (
     <div className="min-h-screen bg-background">
       <Navigation isAuthenticated={Boolean(user)} isAdmin={user?.role === "admin"} />
-      <main className="section-shell py-14 md:py-20">
+      <main className="section-shell py-14 md:py-16">
         <div className="space-y-10">
-          <div className="grid gap-8 lg:grid-cols-[1fr_0.92fr] lg:items-start">
+          <div className="grid gap-8 lg:grid-cols-[1fr_0.95fr]">
             <div className="space-y-4">
-              <div className="premium-label">Contact</div>
-              <h1 className="text-4xl font-semibold tracking-tight md:text-5xl">One simple place for support</h1>
-              <p className="max-w-2xl text-base text-muted-foreground md:text-lg">
-                If you need help with your account, billing, or tool usage, send a message or email us directly.
+              <p className="premium-label">Contact</p>
+              <h1 className="text-4xl font-semibold tracking-tight md:text-5xl">Support, simplified</h1>
+              <p className="text-base text-muted-foreground md:text-lg">
+                Need help? Send a message or email us directly.
               </p>
-              <div className="surface-card p-5">
+
+              <Card className="border-border bg-card">
+                <CardContent className="space-y-2 p-5">
                 <p className="text-sm text-muted-foreground">Support email</p>
-                <a className="mt-2 block text-lg font-medium text-foreground transition-colors hover:text-accent" href={`mailto:${SUPPORT_EMAIL}`}>
+                <a className="text-lg font-medium text-foreground" href={`mailto:${SUPPORT_EMAIL}`}>
                   {SUPPORT_EMAIL}
                 </a>
-                <p className="mt-3 text-sm text-muted-foreground">Typical response time: within 24 business hours.</p>
-              </div>
+                <p className="text-sm text-muted-foreground">Response expectation: within 24 business hours.</p>
+                </CardContent>
+              </Card>
             </div>
 
-            <Card className="border-white/10">
+            <Card className="border-border bg-card">
               <CardHeader>
                 <CardTitle>Send a message</CardTitle>
               </CardHeader>
@@ -61,8 +64,13 @@ export default async function ContactPage() {
                     <Input type="email" placeholder="Email address" required />
                   </div>
                   <Input placeholder="Subject" required />
-                  <Textarea placeholder="How can we help you?" rows={6} required />
-                  <Button type="submit" className="w-full">Send message</Button>
+                  <Textarea placeholder="How can we help?" rows={6} required />
+                  <Button type="button" className="w-full" disabled>
+                    Email support instead
+                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    Direct form sending is temporarily unavailable. Please email {SUPPORT_EMAIL} and we’ll reply within 24 business hours.
+                  </p>
                 </form>
               </CardContent>
             </Card>
@@ -70,7 +78,7 @@ export default async function ContactPage() {
 
           <div className="grid gap-4 md:grid-cols-3">
             {faqs.map((faq) => (
-              <Card key={faq.question} className="border-white/10">
+              <Card key={faq.question} className="border-border bg-card">
                 <CardHeader>
                   <CardTitle className="text-lg">{faq.question}</CardTitle>
                 </CardHeader>

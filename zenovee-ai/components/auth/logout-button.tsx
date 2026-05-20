@@ -12,23 +12,36 @@ type LogoutButtonProps = {
 export function LogoutButton({ className }: LogoutButtonProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleLogout = async () => {
+    if (isSubmitting) return;
+    setError(null);
     setIsSubmitting(true);
-    const supabase = createSupabaseBrowserClient();
-    const { error } = await supabase.auth.signOut();
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const { error: signOutError } = await supabase.auth.signOut();
 
-    if (!error) {
+      if (signOutError) {
+        setError("Unable to log out right now. Please try again.");
+        return;
+      }
+
       router.push("/login");
       router.refresh();
+    } catch {
+      setError("Unable to log out right now. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
-
-    setIsSubmitting(false);
   };
 
   return (
-    <Button type="button" variant="outline" size="sm" className={className} onClick={handleLogout} disabled={isSubmitting}>
-      {isSubmitting ? "Logging out..." : "Logout"}
-    </Button>
+    <div className="space-y-2">
+      <Button type="button" variant="outline" size="sm" className={className} onClick={handleLogout} disabled={isSubmitting}>
+        {isSubmitting ? "Logging out..." : "Logout"}
+      </Button>
+      {error ? <p className="text-xs text-rose-300">{error}</p> : null}
+    </div>
   );
 }

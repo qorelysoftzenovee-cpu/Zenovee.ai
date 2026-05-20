@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import Script from "next/script";
 
@@ -41,10 +42,12 @@ declare global {
 }
 
 export function PricingActions({ planId, planName }: { planId: string; planName: string }) {
+  const router = useRouter();
   const [status, setStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const handleCheckout = async () => {
+    if (loading) return;
     setLoading(true);
     setStatus(null);
 
@@ -77,7 +80,8 @@ export function PricingActions({ planId, planName }: { planId: string; planName:
           });
           if (verify.ok) {
             setStatus("Payment successful. Subscription activated.");
-            window.location.href = "/dashboard";
+            router.push("/dashboard");
+            router.refresh();
             return;
           }
           setStatus("Payment captured but billing verification failed. Please contact support.");
@@ -102,11 +106,11 @@ export function PricingActions({ planId, planName }: { planId: string; planName:
         const razorpay = new window.Razorpay(options);
         razorpay.open();
       } else {
-        setStatus("Payments are not configured yet.");
+        setStatus("Payments are temporarily unavailable.");
         setLoading(false);
       }
     } catch {
-      setStatus("Checkout failed. Please try again.");
+      setStatus("Unable to start checkout right now. Please try again.");
       setLoading(false);
     }
   };
@@ -117,17 +121,19 @@ export function PricingActions({ planId, planName }: { planId: string; planName:
       <Button className="w-full min-h-11" onClick={handleCheckout} disabled={loading} aria-label={`Checkout ${planName} plan`}>
         {loading ? "Preparing..." : `Choose ${planName}`}
       </Button>
-      <p className="text-xs text-muted-foreground">International cards are supported. Charges are processed securely in INR.</p>
+      <p className="text-xs text-muted-foreground">Charges are processed securely in INR.</p>
       {status ? <p className="text-xs text-muted-foreground">{status}</p> : null}
     </div>
   );
 }
 
 export function TopupActions({ topupId, label }: { topupId: string; label: string }) {
+  const router = useRouter();
   const [status, setStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const handleTopupCheckout = async () => {
+    if (loading) return;
     setLoading(true);
     setStatus(null);
     try {
@@ -157,10 +163,11 @@ export function TopupActions({ topupId, label }: { topupId: string; label: strin
           });
           if (verify.ok) {
             setStatus("Topup successful. Credits added.");
-            window.location.href = "/dashboard/tools";
+            router.push("/dashboard/tools");
+            router.refresh();
             return;
           }
-          setStatus("Payment captured but topup verification failed.");
+          setStatus("Payment captured but credit verification failed. Please contact support.");
           setLoading(false);
         },
         prefill: { name: "", email: "" },
@@ -177,11 +184,11 @@ export function TopupActions({ topupId, label }: { topupId: string; label: strin
         const razorpay = new window.Razorpay(options as unknown as RazorpayOptions);
         razorpay.open();
       } else {
-        setStatus("Payments are not configured yet.");
+        setStatus("Payments are temporarily unavailable.");
         setLoading(false);
       }
     } catch {
-      setStatus("Topup checkout failed. Please try again.");
+      setStatus("Unable to start checkout right now. Please try again.");
       setLoading(false);
     }
   };
@@ -192,7 +199,7 @@ export function TopupActions({ topupId, label }: { topupId: string; label: strin
       <Button className="w-full min-h-11" onClick={handleTopupCheckout} disabled={loading} aria-label={`Buy ${label} topup`}>
         {loading ? "Preparing..." : `Buy ${label}`}
       </Button>
-      <p className="text-xs text-muted-foreground">Secure payments via Razorpay over SSL. Charged in INR.</p>
+      <p className="text-xs text-muted-foreground">Secure payments via Razorpay. Charged in INR.</p>
       {status ? <p className="text-xs text-muted-foreground">{status}</p> : null}
     </div>
   );

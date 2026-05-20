@@ -10,7 +10,6 @@ import {
   Clock3,
   Copy,
   Download,
-  ExternalLink,
   History,
   Loader2,
   RefreshCcw,
@@ -618,7 +617,6 @@ export function ToolsWorkspace() {
   const [activeTab, setActiveTab] = useState<"result" | "history" | "saved">("result");
   const [exportFormat, setExportFormat] = useState<ExportFormat>("json");
   const [isExporting, setIsExporting] = useState(false);
-  const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [generationMode, setGenerationMode] = useState<GenerationMode>("generate");
   const [generationStepIndex, setGenerationStepIndex] = useState(0);
@@ -722,7 +720,6 @@ export function ToolsWorkspace() {
     setGenerationErrorDetails(null);
     setResult(null);
     setResultExecutionId(null);
-    setPublishedUrl(null);
     setError(null);
     setSuccessMessage(null);
     setActiveTab("result");
@@ -834,7 +831,7 @@ export function ToolsWorkspace() {
             ? "Shortened variation generated successfully."
             : mode === "expand"
               ? "Expanded variation generated successfully."
-          : "Output generated successfully. You can copy, save, publish, or export it now."
+          : "Output generated successfully. You can copy, save, or export it now."
     );
 
     await refreshHistory(activeTool.id);
@@ -922,31 +919,6 @@ export function ToolsWorkspace() {
     await refreshHistory();
   };
 
-  const publishCurrentResult = async () => {
-    if (!resultExecutionId || !activeTool) return;
-
-    setError(null);
-    const res = await fetch("/api/outputs/publish", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        toolUsageId: resultExecutionId,
-        title: currentResultName,
-        description: `Public output generated with ${activeTool.metadata.name}.`,
-      }),
-    });
-
-    const json = await res.json();
-    if (!res.ok) {
-      setError(json.error ?? "Failed to publish output.");
-      return;
-    }
-
-    setPublishedUrl(json.data.url);
-    await navigator.clipboard.writeText(json.data.url);
-    setSuccessMessage("Published URL copied to clipboard.");
-  };
-
   const toggleFavoriteTool = (toolId: string) => {
     setFavoriteToolIds((prev) => (prev.includes(toolId) ? prev.filter((item) => item !== toolId) : [toolId, ...prev]));
   };
@@ -1011,13 +983,13 @@ export function ToolsWorkspace() {
   }
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
+    <div className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)] animate-enter">
       <div className="space-y-6 xl:sticky xl:top-24 xl:self-start">
-        <Card className="overflow-hidden border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))]">
+          <Card className="overflow-hidden border-border bg-card">
           <CardHeader>
-            <div className="premium-label">Workspace control</div>
-            <CardTitle className="mt-3">Premium AI tools</CardTitle>
-            <p className="text-sm text-muted-foreground">Browse tools, favorite what you use most, and keep recent outputs export-ready.</p>
+              <div className="premium-label">Tools</div>
+              <CardTitle className="mt-3">Choose your workflow</CardTitle>
+              <p className="text-sm text-muted-foreground">Pick a tool, fill the input brief, and generate a structured marketing output.</p>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
@@ -1054,7 +1026,7 @@ export function ToolsWorkspace() {
                   key={tool.id}
                   type="button"
                   onClick={() => selectTool(tool)}
-                  className="flex w-full items-center justify-between rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3 text-left transition hover:border-white/15 hover:bg-white/[0.05]"
+                  className="surface-muted interactive-lift flex w-full items-center justify-between px-4 py-3 text-left"
                 >
                   <span>
                     <span className="mr-2 text-lg">{tool.metadata.icon}</span>
@@ -1069,8 +1041,8 @@ export function ToolsWorkspace() {
 
         <Card className="max-h-[70vh] overflow-hidden">
           <CardHeader>
-            <CardTitle className="text-base">Tool catalog</CardTitle>
-            <p className="text-xs text-muted-foreground">Featured, searchable, and optimized for fast switching.</p>
+            <CardTitle className="text-base">Tool list</CardTitle>
+            <p className="text-xs text-muted-foreground">Focused launch tools for SEO, ads, personas, and landing pages.</p>
           </CardHeader>
           <CardContent className="subtle-scrollbar space-y-3 overflow-auto">
             {filteredTools.map((tool) => {
@@ -1080,7 +1052,7 @@ export function ToolsWorkspace() {
                 <div
                   key={tool.id}
                   className={`rounded-[24px] border p-4 transition-all ${
-                    isActive ? "border-primary/40 bg-primary/10 shadow-[0_18px_55px_-35px_rgba(99,102,241,0.85)]" : "border-white/8 bg-white/[0.03] hover:border-white/15 hover:bg-white/[0.05]"
+                    isActive ? "border-primary/40 bg-primary/10 shadow-[0_18px_42px_-34px_rgba(99,102,241,0.65)]" : "border-border/70 bg-card hover:border-border hover:bg-muted/45"
                   }`}
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -1094,7 +1066,7 @@ export function ToolsWorkspace() {
                       </div>
                       <p className="mt-3 text-xs leading-5 text-muted-foreground">{tool.metadata.tagline ?? tool.metadata.description}</p>
                     </button>
-                    <button type="button" onClick={() => toggleFavoriteTool(tool.id)} className="rounded-full border border-white/10 p-2 text-muted-foreground transition hover:text-foreground">
+                    <button type="button" onClick={() => toggleFavoriteTool(tool.id)} className="rounded-full border border-border/80 p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground">
                       <Star size={14} className={isFavorite ? "fill-amber-300 text-amber-300" : ""} />
                     </button>
                   </div>
@@ -1111,7 +1083,7 @@ export function ToolsWorkspace() {
             <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
               <div className="space-y-3">
                 <div className="flex items-center gap-3">
-                  <div className="flex size-14 items-center justify-center rounded-[20px] border border-white/10 bg-white/[0.04] text-3xl">
+                  <div className="surface-muted flex size-14 items-center justify-center rounded-[20px] text-3xl">
                     {activeTool?.metadata.icon ?? "✨"}
                   </div>
                   <div>
@@ -1144,7 +1116,7 @@ export function ToolsWorkspace() {
             {activeTool?.metadata.tags?.length ? (
               <div className="flex flex-wrap gap-2">
                 {activeTool.metadata.tags.map((tag) => (
-                  <span key={tag} className="rounded-full border border-white/10 px-3 py-1 text-xs text-muted-foreground">
+                  <span key={tag} className="rounded-full border border-border/80 px-3 py-1 text-xs text-muted-foreground">
                     {tag}
                   </span>
                 ))}
@@ -1157,8 +1129,8 @@ export function ToolsWorkspace() {
           <div className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Input workspace</CardTitle>
-                <p className="text-sm text-muted-foreground">Use presets, follow the field guidance, and structure your brief for better quality output.</p>
+                <CardTitle>Input panel</CardTitle>
+                <p className="text-sm text-muted-foreground">Add your brief clearly. Better inputs produce stronger publish-ready outputs.</p>
               </CardHeader>
               <CardContent className="space-y-5">
                 {activeTool?.presets?.length ? (
@@ -1201,7 +1173,7 @@ export function ToolsWorkspace() {
                           />
                         ) : field.type === "select" ? (
                           <select
-                            className="flex h-11 w-full rounded-2xl border border-border/80 bg-background/85 px-3.5 py-2.5 text-sm shadow-sm outline-none transition-all focus-visible:border-accent/50 focus-visible:ring-2 focus-visible:ring-accent/35"
+                            className="flex h-11 w-full rounded-2xl border border-border/80 bg-background/90 px-3.5 py-2.5 text-sm shadow-[0_8px_18px_-18px_rgba(15,23,42,0.35)] outline-none transition-all duration-200 focus-visible:border-accent/50 focus-visible:ring-2 focus-visible:ring-accent/35"
                             value={formData[field.name] ?? ""}
                             onChange={(e) => onChange(field.name, e.target.value)}
                           >
@@ -1234,7 +1206,7 @@ export function ToolsWorkspace() {
                 </div>
 
                 {activeTool?.generationControls ? (
-                  <div className="rounded-[28px] border border-white/10 p-5">
+                  <div className="surface-card p-5">
                     <div className="flex items-center justify-between gap-3">
                       <div>
                         <p className="text-sm font-medium">Generation controls</p>
@@ -1249,7 +1221,7 @@ export function ToolsWorkspace() {
                       <div>
                         <Label>Tone</Label>
                         <select
-                          className="mt-2 flex h-11 w-full rounded-2xl border border-border/80 bg-background/85 px-3.5 py-2.5 text-sm"
+                          className="mt-2 flex h-11 w-full rounded-2xl border border-border/80 bg-background/90 px-3.5 py-2.5 text-sm shadow-[0_8px_18px_-18px_rgba(15,23,42,0.35)]"
                           value={generationControls.tone}
                           onChange={(e) => onGenerationControlChange("tone", e.target.value)}
                         >
@@ -1262,7 +1234,7 @@ export function ToolsWorkspace() {
                       <div>
                         <Label>Writing style</Label>
                         <select
-                          className="mt-2 flex h-11 w-full rounded-2xl border border-border/80 bg-background/85 px-3.5 py-2.5 text-sm"
+                          className="mt-2 flex h-11 w-full rounded-2xl border border-border/80 bg-background/90 px-3.5 py-2.5 text-sm shadow-[0_8px_18px_-18px_rgba(15,23,42,0.35)]"
                           value={generationControls.writingStyle}
                           onChange={(e) => onGenerationControlChange("writingStyle", e.target.value)}
                         >
@@ -1275,7 +1247,7 @@ export function ToolsWorkspace() {
                       <div>
                         <Label>Output length</Label>
                         <select
-                          className="mt-2 flex h-11 w-full rounded-2xl border border-border/80 bg-background/85 px-3.5 py-2.5 text-sm"
+                          className="mt-2 flex h-11 w-full rounded-2xl border border-border/80 bg-background/90 px-3.5 py-2.5 text-sm shadow-[0_8px_18px_-18px_rgba(15,23,42,0.35)]"
                           value={generationControls.outputLength}
                           onChange={(e) => onGenerationControlChange("outputLength", e.target.value as OutputLength)}
                         >
@@ -1288,7 +1260,7 @@ export function ToolsWorkspace() {
                       <div>
                         <Label>Language</Label>
                         <select
-                          className="mt-2 flex h-11 w-full rounded-2xl border border-border/80 bg-background/85 px-3.5 py-2.5 text-sm"
+                          className="mt-2 flex h-11 w-full rounded-2xl border border-border/80 bg-background/90 px-3.5 py-2.5 text-sm shadow-[0_8px_18px_-18px_rgba(15,23,42,0.35)]"
                           value={generationControls.language}
                           onChange={(e) => onGenerationControlChange("language", e.target.value)}
                         >
@@ -1313,7 +1285,7 @@ export function ToolsWorkspace() {
 
                     <div className="mt-4 flex flex-wrap gap-2">
                       {activeTool.generationControls.supportedModes.map((mode) => (
-                        <span key={mode} className="rounded-full border border-white/10 px-3 py-1 text-[11px] text-muted-foreground">
+                        <span key={mode} className="rounded-full border border-border/80 px-3 py-1 text-[11px] text-muted-foreground">
                           {mode}
                         </span>
                       ))}
@@ -1322,7 +1294,7 @@ export function ToolsWorkspace() {
                 ) : null}
 
                 {activeTool?.examples?.length ? (
-                  <div className="rounded-[28px] border border-white/10 p-5">
+                  <div className="surface-card p-5">
                     <p className="text-sm font-medium">Examples</p>
                     <div className="mt-4 grid gap-3">
                       {activeTool.examples.map((example) => (
@@ -1360,8 +1332,8 @@ export function ToolsWorkspace() {
                 ) : null}
 
                 <div className="flex flex-col gap-3 sm:flex-row">
-                  <Button onClick={() => void runTool("generate")} disabled={isLoading || activeTool?.metadata.availability === "coming_soon"} className="flex-1">
-                    {isLoading ? <><Loader2 size={16} className="animate-spin" /> {generationMode === "improve" ? "Improving..." : generationMode === "regenerate" ? "Regenerating..." : "Generating..."}</> : <><Sparkles size={16} /> Generate premium output</>}
+                    <Button onClick={() => void runTool("generate")} disabled={isLoading || activeTool?.metadata.availability === "coming_soon"} className="flex-1">
+                    {isLoading ? <><Loader2 size={16} className="animate-spin" /> {generationMode === "improve" ? "Improving..." : generationMode === "regenerate" ? "Regenerating..." : "Generating..."}</> : <><Sparkles size={16} /> Generate output</>}
                   </Button>
                   <Button variant="outline" onClick={() => setFormData({})} disabled={isLoading}>Reset</Button>
                 </div>
@@ -1378,14 +1350,14 @@ export function ToolsWorkspace() {
           <div className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>AI generation panel</CardTitle>
-                <p className="text-sm text-muted-foreground">Premium loading states, live feedback, and a clearer sense of progress while the model works.</p>
+                <CardTitle>Generation status</CardTitle>
+                <p className="text-sm text-muted-foreground">Track progress while Zenovee builds a structured output from your brief.</p>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] p-5">
+                <div className="surface-card p-5">
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-sm font-medium text-foreground">{isLoading ? "AI is thinking" : "Workspace ready"}</p>
+                      <p className="text-sm font-medium text-foreground">{isLoading ? "Generating output" : "Ready to generate"}</p>
                       <p className="mt-1 text-sm text-muted-foreground">
                         {isLoading
                           ? generationSteps[generationStepIndex]
@@ -1394,7 +1366,7 @@ export function ToolsWorkspace() {
                             : "Select a tool to begin."}
                       </p>
                     </div>
-                    <div className="flex size-11 items-center justify-center rounded-full border border-white/10 bg-white/[0.04]">
+                    <div className="surface-muted flex size-11 items-center justify-center rounded-full">
                       {isLoading ? <Loader2 size={18} className="animate-spin text-accent" /> : <Wand2 size={18} className="text-accent" />}
                     </div>
                   </div>
@@ -1423,7 +1395,7 @@ export function ToolsWorkspace() {
                               ? "border-success/20 bg-success/10 text-foreground"
                               : status === "active"
                                 ? "border-primary/25 bg-primary/10 text-foreground"
-                                : "border-white/8 bg-white/[0.03] text-muted-foreground"
+                            : "border-border/70 bg-muted/45 text-muted-foreground"
                           }`}
                         >
                           <p className="text-[11px] uppercase tracking-[0.18em]">Step {index + 1}</p>
@@ -1440,8 +1412,8 @@ export function ToolsWorkspace() {
               <CardHeader>
                 <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
                   <div>
-                    <CardTitle>Output workspace</CardTitle>
-                    <p className="mt-1 text-sm text-muted-foreground">Review structured results, reopen history, save favorites, and export polished deliverables.</p>
+                    <CardTitle>Output panel</CardTitle>
+                    <p className="mt-1 text-sm text-muted-foreground">Review, copy, save, export, or regenerate your result.</p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <Button variant={activeTab === "result" ? "default" : "outline"} size="sm" onClick={() => setActiveTab("result")}>Result</Button>
@@ -1461,26 +1433,22 @@ export function ToolsWorkspace() {
                           </Button>
                         ) : null}
                         <Button variant="outline" size="sm" onClick={copyResult}><Copy size={14} /> Copy</Button>
-                        <Button variant="outline" size="sm" onClick={() => void publishCurrentResult()} disabled={!resultExecutionId}><ExternalLink size={14} /> Publish</Button>
-                        <Button variant="outline" size="sm" onClick={() => void quickDownload(currentHistoryItem, primaryDownloadFormat)} disabled={!resultExecutionId || isExporting}><Download size={14} /> Quick download</Button>
+                        <Button variant="outline" size="sm" onClick={() => void quickDownload(currentHistoryItem, primaryDownloadFormat)} disabled={!resultExecutionId || isExporting}><Download size={14} /> Export</Button>
                         <Button variant="outline" size="sm" onClick={() => void runTool("regenerate")} disabled={isLoading}><RefreshCcw size={14} /> Regenerate</Button>
-                        <Button variant="outline" size="sm" onClick={() => void runTool("improve")} disabled={isLoading}><Wand2 size={14} /> Improve</Button>
-                        <Button variant="outline" size="sm" onClick={() => void runTool("shorten")} disabled={isLoading}><Wand2 size={14} /> Shorten</Button>
-                        <Button variant="outline" size="sm" onClick={() => void runTool("expand")} disabled={isLoading}><Wand2 size={14} /> Expand</Button>
                         {resultExecutionId ? (
                           <Button variant="outline" size="sm" onClick={() => toggleSavedOutput(resultExecutionId)}>
                             {savedOutputIds.includes(resultExecutionId) ? <BookmarkCheck size={14} /> : <Bookmark size={14} />}
-                            {savedOutputIds.includes(resultExecutionId) ? "Saved" : "Save result"}
+                            {savedOutputIds.includes(resultExecutionId) ? "Saved" : "Save"}
                           </Button>
                         ) : null}
                         <select
-                          className="h-9 rounded-xl border border-border/80 bg-background/85 px-3 text-sm"
+                          className="h-9 rounded-xl border border-border/80 bg-background/90 px-3 text-sm shadow-[0_8px_18px_-18px_rgba(15,23,42,0.35)]"
                           value={resolvedExportFormat}
                           onChange={(e) => setExportFormat(e.target.value as ExportFormat)}
                           disabled={!resultExecutionId || isExporting}
                         >
                           {availableFormats.map((format) => (
-                            <option key={format} value={format}>Export {format.toUpperCase()}</option>
+                            <option key={format} value={format}>{format.toUpperCase()}</option>
                           ))}
                         </select>
                         <Button variant="outline" size="sm" onClick={() => void exportCurrentResult(resolvedExportFormat)} disabled={!resultExecutionId || isExporting}>
@@ -1488,13 +1456,7 @@ export function ToolsWorkspace() {
                         </Button>
                       </div>
 
-                      {publishedUrl ? (
-                        <div className="status-success rounded-2xl px-4 py-3 text-sm">
-                          Published URL copied: <a href={publishedUrl} target="_blank" rel="noreferrer" className="text-accent underline">{publishedUrl}</a>
-                        </div>
-                      ) : null}
-
-                      <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))] p-5">
+                      <div className="surface-card p-5">
                         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                           <div>
                             <p className="premium-label">Output identity</p>
@@ -1553,7 +1515,7 @@ export function ToolsWorkspace() {
                       <OutputWorkspace result={result} outputType={activeTool?.metadata.outputType} previewText={previewText} />
 
                       {currentHistoryItem?.exports?.length ? (
-                        <div className="rounded-3xl border border-white/10 p-5">
+                        <div className="surface-card p-5">
                           <p className="text-sm font-medium">Existing exports</p>
                           <div className="mt-4 flex flex-wrap gap-2">
                             {currentHistoryItem.exports.map((file) => (
@@ -1568,14 +1530,14 @@ export function ToolsWorkspace() {
                   ) : (
                     <div className="surface-muted px-6 py-10 text-center">
                       <p className="text-lg font-semibold">No output yet</p>
-                      <p className="mt-2 text-sm text-muted-foreground">Pick a tool, structure the input, and generate a premium result preview here.</p>
+                      <p className="mt-2 text-sm text-muted-foreground">Start by choosing a tool and generating your first marketing output.</p>
                     </div>
                   )
                 ) : activeTab === "history" ? (
                   history.length ? (
                     <div className="space-y-4">
                       {history.map((item) => (
-                        <div key={item.id} className="rounded-[28px] border border-white/10 p-5">
+                        <div key={item.id} className="surface-card p-5">
                           <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                             <div>
                               <p className="text-sm font-medium text-foreground">{outputNames[item.id] ?? item.tool_name}</p>
@@ -1607,13 +1569,13 @@ export function ToolsWorkspace() {
                   ) : (
                     <div className="surface-muted px-6 py-10 text-center">
                       <p className="text-lg font-semibold">No generations yet</p>
-                      <p className="mt-2 text-sm text-muted-foreground">Your recent generations will appear here with duplicate, save, reopen, and export actions.</p>
+                      <p className="mt-2 text-sm text-muted-foreground">Generate your first result to build your history and iterate faster.</p>
                     </div>
                   )
                 ) : savedHistoryItems.length ? (
                   <div className="space-y-4">
                     {savedHistoryItems.map((item) => (
-                      <div key={item.id} className="rounded-[28px] border border-white/10 p-5">
+                      <div key={item.id} className="surface-card p-5">
                         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                           <div>
                             <p className="text-sm font-medium text-foreground">{outputNames[item.id] ?? item.tool_name}</p>
@@ -1632,7 +1594,7 @@ export function ToolsWorkspace() {
                 ) : (
                   <div className="surface-muted px-6 py-10 text-center">
                     <p className="text-lg font-semibold">No saved outputs yet</p>
-                    <p className="mt-2 text-sm text-muted-foreground">Save important results to build your own curated workspace shelf.</p>
+                    <p className="mt-2 text-sm text-muted-foreground">Save strong outputs here so you can reuse and export them later.</p>
                   </div>
                 )}
               </CardContent>

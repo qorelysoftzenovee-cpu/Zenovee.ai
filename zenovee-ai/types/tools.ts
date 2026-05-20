@@ -38,6 +38,7 @@ export interface ToolDefinition<TInput = any, TOutput = Record<string, unknown>>
     featured?: boolean;
     trending?: boolean;
     availability?: "active" | "coming_soon";
+    visibility?: "public" | "internal";
     disabledReason?: string;
   };
   fields: ToolField[];

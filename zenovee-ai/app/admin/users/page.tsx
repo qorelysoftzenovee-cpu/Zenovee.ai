@@ -52,7 +52,7 @@ export default async function AdminUsersPage() {
 
   return (
     <PageShell title="User management" description="Review roles, subscription health, credit balances, and recent activity for every user." variant="admin" className="bg-transparent">
-      <Card className="border-white/10 bg-white/[0.04] text-white">
+      <Card className="admin-surface">
         <CardHeader><CardTitle>Users</CardTitle></CardHeader>
         <CardContent className="space-y-3">
           {(usersRes.data ?? []).map((u) => {
@@ -61,20 +61,20 @@ export default async function AdminUsersPage() {
             const userPayments = payments.filter((p) => p.user_id === u.id).slice(0, 3);
             const userUsage = usage.filter((x) => x.user_id === u.id).slice(0, 3);
             return (
-              <div key={u.id} className="surface-muted p-4 text-sm">
+              <div key={u.id} className="admin-row text-sm">
                 <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                   <div>
                     <p className="font-semibold text-white">{u.name ?? u.email}</p>
                     <p className="text-xs text-slate-400 break-all">{u.email}</p>
                   </div>
-                  <div className="flex gap-2 text-xs">
+                  <div className="flex flex-wrap gap-2 text-xs">
                     <span className="rounded-full border border-white/10 px-2 py-1">{u.role}</span>
                     <span className="rounded-full border border-white/10 px-2 py-1">{u.status}</span>
                     <span className="rounded-full border border-white/10 px-2 py-1">Available: {credit?.available_credits ?? 0}</span>
                     <span className="rounded-full border border-white/10 px-2 py-1">{sub?.plan_name ?? "No Plan"}</span>
                   </div>
                 </div>
-                <div className="mt-3 grid gap-4 md:grid-cols-[1fr_1fr_auto]">
+                <div className="mt-3 grid gap-4 lg:grid-cols-[1fr_1fr_auto]">
                   <div>
                     <p className="mb-1 text-xs font-medium text-slate-400">Recent payments</p>
                     {userPayments.length === 0 ? <p className="text-xs text-slate-400">None</p> : userPayments.map((p) => <p key={p.id} className="text-xs">{p.status} • ₹{Number(p.payment_amount).toFixed(2)}</p>)}

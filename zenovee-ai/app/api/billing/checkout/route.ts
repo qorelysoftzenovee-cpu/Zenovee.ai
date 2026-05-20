@@ -2,13 +2,13 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { getPlanById } from "@/app/subscription-plans";
 import { getCreditTopupById } from "@/app/credit-topups";
-import { env, validateProductionEnv } from "@/lib/env";
+import { env, validateBillingEnv } from "@/lib/env";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getRazorpayClient } from "@/services/razorpay";
 import { getOrCreateRazorpayPlanId } from "@/services/billing";
 
 export async function POST(request: Request) {
-  validateProductionEnv();
+  validateBillingEnv();
 
   const hasSupabaseConfig = Boolean(env.NEXT_PUBLIC_SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY);
 

@@ -1,24 +1,34 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 
 export function BillingActions() {
+  const router = useRouter();
   const [loading, setLoading] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
   const updateSubscription = async (action: "cancel" | "upgrade", planId?: string) => {
+    if (loading) return;
     setLoading(action + (planId ?? ""));
     setMessage(null);
-    const response = await fetch("/api/billing/subscription", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action, planId }),
-    });
-    const data = await response.json();
-    setLoading(null);
-    setMessage(response.ok ? data.message ?? "Subscription updated." : data.error ?? "Update failed.");
-    if (response.ok) window.location.reload();
+    try {
+      const response = await fetch("/api/billing/subscription", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, planId }),
+      });
+      const data = await response.json();
+      setMessage(response.ok ? data.message ?? "Subscription updated." : data.error ?? "Unable to update your subscription right now.");
+      if (response.ok) {
+        router.refresh();
+      }
+    } catch {
+      setMessage("Unable to update your subscription right now. Please try again.");
+    } finally {
+      setLoading(null);
+    }
   };
 
   return (
@@ -34,7 +44,7 @@ export function BillingActions() {
           Cancel Subscription
         </Button>
       </div>
-      <p className="text-xs text-muted-foreground">Secure payments via Razorpay. International cards are supported. Charges are processed in INR.</p>
+      <p className="text-xs text-muted-foreground">Secure payments via Razorpay. Charges are processed in INR.</p>
       {message ? <p className="text-xs text-muted-foreground">{message}</p> : null}
     </div>
   );

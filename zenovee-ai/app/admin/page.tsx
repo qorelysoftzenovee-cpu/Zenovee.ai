@@ -47,7 +47,7 @@ export default async function AdminPage() {
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {metrics.map((metric) => (
-          <Card key={metric.label} className="border-white/10 bg-white/[0.04] text-white">
+          <Card key={metric.label} className="admin-surface">
             <CardHeader>
               <CardTitle className="text-sm text-slate-400">{metric.label}</CardTitle>
             </CardHeader>
@@ -63,7 +63,7 @@ export default async function AdminPage() {
           const maxValue = Math.max(...chart.items.map((item) => item.value), 1);
 
           return (
-            <Card key={chart.title} className="border-white/10 bg-white/[0.04] text-white">
+            <Card key={chart.title} className="admin-surface">
               <CardHeader>
                 <CardTitle>{chart.title}</CardTitle>
               </CardHeader>
@@ -86,16 +86,16 @@ export default async function AdminPage() {
       </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-2">
-        <Card className="border-white/10 bg-white/[0.04] text-white">
+        <Card className="admin-surface">
           <CardHeader>
             <CardTitle>Most Used Tools</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {data.mostUsedTools.length === 0 ? (
-              <div className="surface-muted px-4 py-4 text-sm text-slate-400">No tool usage yet.</div>
+              <div className="admin-row text-sm text-slate-400">No tool usage yet.</div>
             ) : (
               data.mostUsedTools.map((tool) => (
-                <div key={tool.tool} className="surface-muted space-y-3 px-4 py-4 text-sm">
+                <div key={tool.tool} className="admin-row space-y-3 text-sm">
                   <div className="flex items-center justify-between gap-4">
                     <span className="font-medium text-white">{tool.tool}</span>
                     <span>{tool.usageCount} runs</span>
@@ -112,16 +112,16 @@ export default async function AdminPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-white/10 bg-white/[0.04] text-white">
+        <Card className="admin-surface">
           <CardHeader>
             <CardTitle>Top users</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {data.topUsers.length === 0 ? (
-              <div className="surface-muted px-4 py-4 text-sm text-slate-400">No user usage data yet.</div>
+              <div className="admin-row text-sm text-slate-400">No user usage data yet.</div>
             ) : (
               data.topUsers.map((user) => (
-                <div key={user.userId} className="surface-muted flex items-center justify-between gap-4 px-4 py-4 text-sm">
+                <div key={user.userId} className="admin-row flex items-center justify-between gap-4 text-sm">
                   <div className="min-w-0">
                     <p className="truncate font-medium text-white">{user.name ?? user.email}</p>
                     <p className="truncate text-xs text-slate-400">{user.email}</p>
@@ -137,16 +137,16 @@ export default async function AdminPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-white/10 bg-white/[0.04] text-white xl:col-span-2">
+        <Card className="admin-surface xl:col-span-2">
           <CardHeader>
             <CardTitle>Recent payments</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {data.recentPayments.length === 0 ? (
-              <div className="surface-muted px-4 py-4 text-sm text-slate-400">No recent payments.</div>
+              <div className="admin-row text-sm text-slate-400">No recent payments.</div>
             ) : (
               data.recentPayments.map((payment) => (
-                <div key={payment.id} className="surface-muted flex flex-col gap-3 px-4 py-4 text-sm md:flex-row md:items-center md:justify-between">
+                <div key={payment.id} className="admin-row flex flex-col gap-3 text-sm md:flex-row md:items-center md:justify-between">
                   <div>
                     <p className="font-medium text-white">{payment.user?.name ?? payment.user?.email ?? payment.user_id}</p>
                     <p className="text-xs text-slate-400">{payment.plan} • {payment.status} • {new Date(payment.created_at).toLocaleString()}</p>
