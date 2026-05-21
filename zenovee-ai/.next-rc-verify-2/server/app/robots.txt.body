@@ -1,0 +1,15 @@
+User-Agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /api
+Disallow: /login
+Disallow: /register
+Disallow: /admin
+Disallow: /categories
+Disallow: /use-cases
+Disallow: /industries
+Disallow: /compare
+Disallow: /blog
+
+Host: https://zenovee.in/
+Sitemap: https://zenovee.in/sitemap.xml
