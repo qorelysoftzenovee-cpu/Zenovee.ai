@@ -63,17 +63,28 @@ export default function RegisterPage() {
   };
 
   return (
-    <main className="min-h-screen bg-background px-4 py-10 md:px-6 md:py-16">
+    <main className="min-h-screen bg-slate-100 px-4 py-10 md:px-6 md:py-16">
       <div className="mx-auto grid w-full max-w-6xl gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:gap-10">
-        <section className="surface-card content-rhythm p-7 md:p-10">
-          <p className="premium-label">Create account</p>
-          <h1 className="text-3xl font-semibold tracking-tight md:text-[2.45rem]">Start your AI workspace</h1>
-          <p className="max-w-xl text-[0.95rem] text-muted-foreground">Set up your account to operate every growth system from one premium workspace.</p>
+        <section className="rounded-3xl border border-slate-800/80 bg-slate-950 p-7 text-slate-100 md:p-10">
+          <p className="premium-label border-white/20 bg-white/10 text-slate-200">Create account</p>
+          <h1 className="text-3xl font-semibold tracking-tight text-white md:text-[2.45rem]">Start your AI workspace</h1>
+          <p className="max-w-xl text-[0.95rem] text-slate-300">Set up your account to operate every growth system from one premium workspace.</p>
+          <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-2xl border border-white/15 bg-white/5 p-4">
+              <p className="text-xs uppercase tracking-[0.15em] text-slate-300">Fast onboarding</p>
+              <p className="mt-2 text-sm text-slate-100">Create your account and enter your workflow environment in minutes.</p>
+            </div>
+            <div className="rounded-2xl border border-white/15 bg-white/5 p-4">
+              <p className="text-xs uppercase tracking-[0.15em] text-slate-300">Unified workspace</p>
+              <p className="mt-2 text-sm text-slate-100">Run SEO, LinkedIn, sales outreach, and copy systems from one account.</p>
+            </div>
+          </div>
         </section>
         <div className="mx-auto w-full max-w-md">
-        <Card>
+        <Card className="border-border/80 bg-card shadow-[0_20px_44px_-28px_rgba(15,23,42,0.35)]">
           <CardHeader>
             <CardTitle>Create account</CardTitle>
+            <p className="text-sm text-muted-foreground">Create your account details to get started.</p>
           </CardHeader>
           <CardContent>
             <form className="space-y-4" onSubmit={handleSubmit}>

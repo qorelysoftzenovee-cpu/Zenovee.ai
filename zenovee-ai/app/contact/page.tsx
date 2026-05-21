@@ -69,7 +69,7 @@ export default async function ContactPage() {
                 <div className="flex flex-col gap-3 sm:flex-row">
                   <Button className="w-full sm:w-auto" type="button">Open support request</Button>
                   <Button asChild variant="secondary" className="w-full sm:w-auto">
-                    <Link href={user ? "/billing" : "/pricing"}>{user ? "Billing help" : "View pricing"}</Link>
+                    <Link href="/billing">Billing help</Link>
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">We usually reply within 24 business hours.</p>
