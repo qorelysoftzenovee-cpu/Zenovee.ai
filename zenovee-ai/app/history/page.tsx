@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { PageShell } from "@/components/layout/page-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { requireStandardUser } from "@/lib/auth";
@@ -8,15 +7,12 @@ export default async function HistoryPage() {
   await requireStandardUser();
 
   return (
-    <PageShell
-      title="History"
-      description="Your recent generations, saved outputs, and exports live in the tools workspace so everything stays in one reliable flow."
-      actions={
-        <Button asChild variant="secondary" size="sm">
-          <Link href="/dashboard/tools">Open tools workspace</Link>
-        </Button>
-      }
-    >
+    <div className="space-y-6">
+      <section className="surface-card p-5 md:p-6">
+        <p className="premium-label">History</p>
+        <h1 className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">Workspace Activity</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Your generations, saved outputs, and exports live in the tools workspace for one continuous flow.</p>
+      </section>
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
@@ -42,6 +38,6 @@ export default async function HistoryPage() {
           </CardContent>
         </Card>
       </div>
-    </PageShell>
+    </div>
   );
 }

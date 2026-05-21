@@ -46,7 +46,7 @@ export default function Navigation({ isAuthenticated, isAdmin = false }: { isAut
           </div>
           <div className="space-y-0.5 leading-none">
             <span className="block text-base font-semibold tracking-tight text-foreground">Zenovee</span>
-            <span className="block text-[11px] uppercase tracking-[0.2em] text-muted-foreground">AI Workspace</span>
+            <span className="block text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Growth Workspace</span>
           </div>
         </Link>
 
@@ -78,9 +78,9 @@ export default function Navigation({ isAuthenticated, isAdmin = false }: { isAut
               </Link>
             )
           ) : (
-            <Link href="/pricing">
-              <Button variant="default" className="px-5 font-semibold">
-                Get started
+            <Link href="/login">
+                <Button variant="default" className="px-5 font-semibold">
+                  Create account
               </Button>
             </Link>
           )}
@@ -118,8 +118,8 @@ export default function Navigation({ isAuthenticated, isAdmin = false }: { isAut
               </Link>
             )
           ) : (
-            <Link href="/pricing" className="block" onClick={() => setIsOpen(false)}>
-              <Button className="w-full">Get started</Button>
+            <Link href="/login" className="block" onClick={() => setIsOpen(false)}>
+                <Button className="w-full">Create account</Button>
             </Link>
           )}
         </div>

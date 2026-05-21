@@ -7,6 +7,7 @@ import { getCreditTopupById } from "@/app/credit-topups";
 import { addTopupCredits, assignPlanCredits, computeNextRenewalDate } from "@/services/billing";
 import { verifyCheckoutSignature } from "@/services/razorpay";
 import { serverLog } from "@/lib/logger";
+import { checkRateLimit, resolveClientIp } from "@/lib/rate-limit";
 
 const verifyPayloadSchema = z
   .object({
@@ -34,10 +35,35 @@ async function wasPaymentAlreadyProcessed(
   return Boolean(data?.id);
 }
 
+async function markPendingPaymentAsProcessed(
+  supabaseAdmin: ReturnType<typeof getSupabaseAdmin>,
+  paymentId: string,
+  updates: Record<string, unknown>
+) {
+  const { error } = await supabaseAdmin
+    .from("payments")
+    .update(updates as never)
+    .eq("id", paymentId)
+    .eq("status", "PENDING");
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const ipAddress = resolveClientIp(request);
+    const rateLimit = checkRateLimit(`billing:verify:${user.id}:${ipAddress}`, 12, 60_000);
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: `Too many verification attempts. Retry in ${rateLimit.retryAfterSeconds}s.` },
+        { status: 429, headers: { "Retry-After": String(rateLimit.retryAfterSeconds) } }
+      );
+    }
 
     const body = verifyPayloadSchema.parse(await request.json());
 
@@ -86,11 +112,11 @@ export async function POST(request: Request) {
       const nowIso = new Date().toISOString();
       const nextBalance = await addTopupCredits(user.id, topup.id, topup.credits, `topup:${body.razorpay_payment_id}`);
 
-      await supabaseAdmin
-        .from("payments")
-        .update({ status: "CREDIT_TOPUP", razorpay_transaction_id: body.razorpay_payment_id, updated_at: nowIso } as never)
-        .eq("id", pendingTopup.id)
-        .eq("status", "PENDING");
+      await markPendingPaymentAsProcessed(supabaseAdmin, pendingTopup.id, {
+        status: "CREDIT_TOPUP",
+        razorpay_transaction_id: body.razorpay_payment_id,
+        updated_at: nowIso,
+      });
 
       return NextResponse.json({ success: true, mode: "topup", creditsAdded: topup.credits, creditsAfter: nextBalance });
     }
@@ -114,6 +140,17 @@ export async function POST(request: Request) {
     const nowIso = new Date().toISOString();
     const nextRenewal = computeNextRenewalDate();
 
+    const [{ data: pendingSubscriptionPayment }] = await Promise.all([
+      supabaseAdmin
+        .from("payments")
+        .select("id,status")
+        .eq("user_id", user.id)
+        .eq("subscription_id", subscriptionId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle<{ id: string; status: string }>(),
+    ]);
+
     await Promise.all([
       supabaseAdmin
         .from("subscriptions")
@@ -127,19 +164,25 @@ export async function POST(request: Request) {
           updated_at: nowIso,
         } as never)
         .eq("user_id", user.id),
-      supabaseAdmin.from("payments").upsert(
-        {
-          user_id: user.id,
-          payment_amount: Number((plan.amountInPaise / 100).toFixed(2)),
-          plan: plan.id,
-          currency: plan.currency,
-          status: "SUCCESS",
-          razorpay_transaction_id: body.razorpay_payment_id,
-          subscription_id: subscriptionId,
-          updated_at: nowIso,
-        } as never,
-        { onConflict: "razorpay_transaction_id" }
-      ),
+      pendingSubscriptionPayment?.id
+        ? markPendingPaymentAsProcessed(supabaseAdmin, pendingSubscriptionPayment.id, {
+            status: "SUCCESS",
+            razorpay_transaction_id: body.razorpay_payment_id,
+            updated_at: nowIso,
+          })
+        : supabaseAdmin.from("payments").upsert(
+            {
+              user_id: user.id,
+              payment_amount: Number((plan.amountInPaise / 100).toFixed(2)),
+              plan: plan.id,
+              currency: plan.currency,
+              status: "SUCCESS",
+              razorpay_transaction_id: body.razorpay_payment_id,
+              subscription_id: subscriptionId,
+              updated_at: nowIso,
+            } as never,
+            { onConflict: "razorpay_transaction_id" }
+          ),
       assignPlanCredits(user.id, plan.id, `subscription:${body.razorpay_payment_id}`),
     ]);
 

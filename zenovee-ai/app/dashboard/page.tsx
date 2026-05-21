@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
-import { PageShell } from "@/components/layout/page-shell";
+import { ArrowRight, Sparkles } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LogoutButton } from "@/components/auth/logout-button";
@@ -82,18 +82,21 @@ export default async function DashboardPage() {
     .slice(0, 4);
 
   return (
-    <PageShell
-      title="Dashboard"
-      description={`Welcome back${profile?.name ? `, ${profile.name}` : ""}. Review your credits, recent work, billing status, and fastest path back into the workspace.`}
-      actions={
-        <div className="flex items-center gap-2">
-          <LogoutButton />
-          <Button asChild variant="secondary" size="sm">
-            <Link href="/billing">Billing</Link>
-          </Button>
+    <div className="space-y-6">
+      <section className="surface-card p-5 md:p-6 border-border/60 bg-gradient-to-br from-card to-card/95 premium-surface">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="space-y-2">
+            <p className="premium-label">Workspace overview</p>
+            <h1 className="text-3xl font-bold tracking-tight md:text-4xl bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text">Welcome back{profile?.name ? `, ${profile.name}` : ""}</h1>
+            <p className="text-sm text-muted-foreground/80 max-w-2xl">Review your credits, recent generations, billing status, and quick access to all tools in one focused workspace.</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <LogoutButton />
+            <Button asChild variant="secondary" size="sm"><Link href="/billing">Billing</Link></Button>
+          </div>
         </div>
-      }
-    >
+      </section>
+
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_360px] animate-enter">
         <div className="space-y-6">
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -127,17 +130,33 @@ export default async function DashboardPage() {
               {usage.length ? (
                 <div className="space-y-3">
                   {usage.map((item) => (
-                    <div key={item.id} className="surface-muted interactive-lift flex flex-col gap-2 px-4 py-4 md:flex-row md:items-center md:justify-between">
-                      <div>
-                        <p className="font-medium">{item.tool_name}</p>
-                        <p className="text-sm text-muted-foreground">{formatDateTime(item.created_at)}</p>
+                    <div key={item.id} className="group surface-muted interactive-lift flex flex-col gap-3 px-4 py-4 md:flex-row md:items-center md:justify-between">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate group-hover:text-primary transition-colors duration-200">{item.tool_name}</p>
+                        <p className="text-xs text-muted-foreground/70 mt-1">{formatDateTime(item.created_at)}</p>
                       </div>
-                      <div className="text-sm text-muted-foreground">{item.credits_charged} credits • {item.status}</div>
+                      <div className={cn("text-xs font-medium px-2.5 py-1 rounded-lg whitespace-nowrap", 
+                        item.status === "completed" ? "bg-success/10 text-success" : "bg-warning/10 text-warning"
+                      )}>
+                        {item.status === "completed" ? "✓ Complete" : item.status}
+                      </div>
+                      <p className="text-xs text-muted-foreground/60">{item.credits_charged} credits</p>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="surface-muted px-5 py-6 text-sm text-muted-foreground">No generations yet. Start with one launch tool to create your first AI asset.</div>
+                <div className="empty-state py-6">
+                  <div className="empty-state-icon">
+                    <Sparkles size={20} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <h4 className="empty-state-title">No generations yet</h4>
+                    <p className="empty-state-description">Create your first AI asset from the tools workspace to get started.</p>
+                  </div>
+                  <Button asChild variant="default" size="sm" className="mt-4">
+                    <Link href="/dashboard/tools">Launch tools</Link>
+                  </Button>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -146,12 +165,12 @@ export default async function DashboardPage() {
             <CardHeader><CardTitle>Quick access tools</CardTitle></CardHeader>
             <CardContent className="grid gap-3 sm:grid-cols-2">
               {quickAccessTools.map((tool) => (
-                <Link key={tool.id} href="/dashboard/tools" className="surface-muted interactive-lift flex items-center justify-between gap-3 px-4 py-4 transition-colors hover:bg-muted">
-                  <span>
-                    <span className="block font-medium text-foreground">{tool.metadata.name}</span>
-                    <span className="block text-sm text-muted-foreground">{tool.creditCost} credits</span>
-                  </span>
-                  <ArrowRight size={16} className="text-muted-foreground" />
+                <Link key={tool.id} href="/dashboard/tools" className="surface-muted interactive-lift flex items-center justify-between gap-3 px-4 py-4 transition-all duration-200 hover:bg-primary/5 group">
+                  <div className="min-w-0 flex-1">
+                    <span className="block font-medium text-foreground group-hover:text-primary transition-colors duration-200">{tool.metadata.name}</span>
+                    <span className="block text-xs text-muted-foreground/70 mt-1">{tool.creditCost} credits</span>
+                  </div>
+                  <ArrowRight size={16} className="text-muted-foreground/50 group-hover:text-primary group-hover:translate-x-1 transition-all duration-200 shrink-0" />
                 </Link>
               ))}
             </CardContent>
@@ -166,7 +185,7 @@ export default async function DashboardPage() {
                 <p className="text-muted-foreground">Current subscription</p>
                 <p className="mt-1 text-base font-semibold">{latestSubscription ? `${latestSubscription.plan_name} • ${latestSubscription.status}` : "No active plan"}</p>
                 <p className="mt-2 text-muted-foreground">Renewal: {latestSubscription?.next_renewal_at ? new Date(latestSubscription.next_renewal_at).toLocaleDateString() : "Not scheduled"}</p>
-                <p className="mt-2 text-muted-foreground">Secure payments via Razorpay. Your subscription updates automatically after payment.</p>
+                <p className="mt-2 text-muted-foreground">Secure payments via Razorpay. Subscription status typically updates within a few moments after payment.</p>
               </div>
               <BillingActions />
             </CardContent>
@@ -177,21 +196,24 @@ export default async function DashboardPage() {
             <CardContent className="space-y-3">
               {payments.length ? (
                 payments.map((item) => (
-                  <div key={item.id} className="surface-muted interactive-lift flex items-center justify-between gap-4 px-4 py-4 text-sm">
+                  <div key={item.id} className="group surface-muted interactive-lift flex items-center justify-between gap-4 px-4 py-4 text-sm">
                     <div>
-                      <p className="font-medium">{item.status}</p>
-                      <p className="text-muted-foreground">{formatDateTime(item.created_at)}</p>
+                      <p className={cn("font-medium", item.status === "completed" ? "text-success" : "text-warning")}>{item.status === "completed" ? "✓ Paid" : item.status}</p>
+                      <p className="text-xs text-muted-foreground/70 mt-1">{formatDateTime(item.created_at)}</p>
                     </div>
-                    <p className="font-semibold">{formatInr(Number(item.payment_amount))}</p>
+                    <p className="font-semibold text-foreground">{formatInr(Number(item.payment_amount))}</p>
                   </div>
                 ))
               ) : (
-                <div className="surface-muted px-5 py-6 text-sm text-muted-foreground">No payment history yet. When billing activity starts, it will appear here for quick review.</div>
+                <div className="surface-muted px-5 py-8 text-center space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider">No payments yet</p>
+                  <p className="text-xs text-muted-foreground/50">Payment history will appear here when your subscription begins.</p>
+                </div>
               )}
             </CardContent>
           </Card>
         </div>
       </div>
-    </PageShell>
+    </div>
   );
 }

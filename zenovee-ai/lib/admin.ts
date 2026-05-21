@@ -1,4 +1,5 @@
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { serverLog } from "@/lib/logger";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -141,6 +142,37 @@ export async function getAdminOverviewData() {
   const creditTransactions = (creditTxRes.data ?? []) as CreditTransactionRow[];
   const billingEvents = (billingEventsRes.data ?? []) as BillingEventRow[];
   const usageLogs = (usageLogsRes.data ?? []) as ToolUsageLogRow[];
+
+  const health = {
+    users: !usersRes.error,
+    subscriptions: !subscriptionsRes.error,
+    payments: !paymentsRes.error,
+    credits: !creditsRes.error,
+    executions: !executionsRes.error,
+    apiUsage: !apiUsageRes.error,
+    creditTransactions: !creditTxRes.error,
+    billingEvents: !billingEventsRes.error,
+    usageLogs: !usageLogsRes.error,
+  };
+
+  if (Object.values(health).some((ok) => !ok)) {
+    serverLog({
+      level: "error",
+      route: "lib/admin:getAdminOverviewData",
+      message: "Admin analytics loaded with partial query failures.",
+      metadata: {
+        users: usersRes.error?.message ?? null,
+        subscriptions: subscriptionsRes.error?.message ?? null,
+        payments: paymentsRes.error?.message ?? null,
+        credits: creditsRes.error?.message ?? null,
+        executions: executionsRes.error?.message ?? null,
+        apiUsage: apiUsageRes.error?.message ?? null,
+        creditTransactions: creditTxRes.error?.message ?? null,
+        billingEvents: billingEventsRes.error?.message ?? null,
+        usageLogs: usageLogsRes.error?.message ?? null,
+      },
+    });
+  }
 
   const userMap = new Map(users.map((user) => [user.id, user]));
 
@@ -293,6 +325,7 @@ export async function getAdminOverviewData() {
     .sort((a, b) => b.runs - a.runs);
 
   return {
+    health,
     totals: {
       totalUsers: usersRes.count ?? users.length,
       adminUsers,

@@ -20,17 +20,11 @@ const launchToolSlugs = new Set([
 ]);
 
 export const metadata: Metadata = createMetadata({
-  title: "Premium AI Tools for Marketing & Content",
-  description: "Generate SEO articles, ad copy, landing pages, and customer personas faster with AI.",
+  title: "Zenovee — AI Workspace Operating System",
+  description: "Run LinkedIn, SEO, sales outreach, conversion copy, and brand workflows in one premium AI workspace.",
   path: "/",
   keywords: ["AI tools", "AI marketing", "AI content", "premium SaaS"],
 });
-
-const faqs = [
-  { question: "Who is Zenovee for?", answer: "Zenovee is for marketers, founders, and content teams." },
-  { question: "How does pricing work?", answer: "Every plan includes monthly credits." },
-  { question: "Can I upgrade later?", answer: "Yes. You can change plans anytime from billing." },
-];
 
 const steps = [
   { title: "Choose a plan", text: "Pick the credit plan that fits your workflow." },
@@ -52,12 +46,12 @@ export default async function LandingPage() {
           <div className="section-shell py-16 md:py-20 lg:py-24">
             <div className="grid items-center gap-10 lg:grid-cols-[1fr_1.08fr] lg:gap-12">
               <div className="space-y-6">
-                <p className="premium-label border-white/15 bg-white/5 text-slate-200">Premium AI Workspace</p>
-                <h1 className="text-balance text-4xl font-semibold tracking-tight text-white md:text-5xl lg:text-6xl">Premium AI Tools for Marketing & Content</h1>
-                <p className="max-w-2xl text-base text-slate-300 md:text-lg">Generate SEO articles, ad copy, landing pages, and customer personas faster with AI.</p>
+                <p className="premium-label border-white/15 bg-white/5 text-slate-200">AI Workspace</p>
+                <h1 className="text-balance text-4xl font-semibold tracking-tight text-white md:text-5xl lg:text-6xl">Plan, generate, and ship growth content from one focused workspace</h1>
+                <p className="max-w-2xl text-base text-slate-300 md:text-lg">Zenovee brings LinkedIn, SEO, outreach, conversion copy, and brand workflows into one secure product with clear billing and export-ready outputs.</p>
                 <div className="flex flex-wrap gap-3">
-                  <Button asChild size="lg" className="bg-white text-slate-900 hover:bg-slate-100"><Link href="/pricing">View Pricing</Link></Button>
-                  <Button asChild size="lg" variant="secondary" className="border-white/20 bg-white/10 text-white hover:bg-white/20"><Link href="/tools">Explore Tools</Link></Button>
+                  <Button asChild size="lg" className="bg-white text-slate-900 hover:bg-slate-100"><Link href={user ? "/dashboard" : "/register"}>{user ? "Open dashboard" : "Create account"}</Link></Button>
+                  <Button asChild size="lg" variant="secondary" className="border-white/20 bg-white/10 text-white hover:bg-white/20"><Link href="/pricing">View Pricing</Link></Button>
                 </div>
               </div>
               <HeroSlider />
@@ -67,9 +61,9 @@ export default async function LandingPage() {
 
         <section className="section-shell py-16 md:py-20">
           <div className="mb-7 space-y-2">
-            <p className="premium-label">Tool preview</p>
-            <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">Four focused tools, no clutter</h2>
-            <p className="text-sm text-muted-foreground">Everything in the launch MVP is built for SEO, ads, personas, and landing page copy.</p>
+            <p className="premium-label">Workspace Systems</p>
+            <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">Purpose-built operating systems for growth teams</h2>
+            <p className="text-sm text-muted-foreground">Each workspace is designed as a complete business system, not a standalone generator.</p>
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             {topTools.map((tool) => (
@@ -79,8 +73,8 @@ export default async function LandingPage() {
                   <CardDescription>{tool.heroDescription}</CardDescription>
                 </CardHeader>
                 <CardContent className="flex items-center justify-between gap-3">
-                  <span className="text-sm text-muted-foreground">Structured output</span>
-                  <Button asChild><Link href={`/tools/${tool.slug}`}>Open Tool</Link></Button>
+                  <span className="text-sm text-muted-foreground">Workspace workflow</span>
+                  <Button asChild><Link href={user ? "/dashboard/tools" : "/login"}>Open Workspace</Link></Button>
                 </CardContent>
               </Card>
             ))}
@@ -107,7 +101,7 @@ export default async function LandingPage() {
         <section className="section-shell py-16 md:py-20">
           <div className="mb-7 space-y-2">
             <p className="premium-label">Pricing preview</p>
-            <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">Three paid plans</h2>
+            <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">Simple monthly plans</h2>
           </div>
           <div className="grid gap-4 md:grid-cols-3">
             {subscriptionPlans.map((plan) => (
@@ -125,32 +119,17 @@ export default async function LandingPage() {
           <div className="mt-6"><Button asChild variant="secondary"><Link href="/pricing">View Pricing</Link></Button></div>
         </section>
 
-        <section className="landing-light border-y border-border/70">
-          <div className="section-shell py-16 md:py-20">
-            <div className="mb-7 space-y-2">
-              <p className="premium-label">FAQ</p>
-              <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">Common questions</h2>
-            </div>
-            <div className="grid gap-4 md:grid-cols-3">
-              {faqs.map((faq) => (
-                <Card key={faq.question} className="border-border bg-white">
-                  <CardHeader><CardTitle className="text-lg">{faq.question}</CardTitle></CardHeader>
-                  <CardContent><p className="text-sm text-muted-foreground">{faq.answer}</p></CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        </section>
+        
 
         <section className="section-shell py-16 md:py-20">
           <Card className="border-border bg-card">
             <CardContent className="flex flex-col gap-5 p-8 md:flex-row md:items-center md:justify-between">
               <div className="space-y-2">
-                <h2 className="text-2xl font-semibold tracking-tight">Start with one focused AI workspace</h2>
-                <p className="text-sm text-muted-foreground">Understand the product, choose a plan, and create your first asset in minutes.</p>
+                <h2 className="text-2xl font-semibold tracking-tight">Ready to start your workspace?</h2>
+                <p className="text-sm text-muted-foreground">Create your account, choose a plan, and publish your first output with confidence.</p>
               </div>
               <div className="flex flex-col gap-3 sm:flex-row">
-                <Button asChild><Link href={user ? "/dashboard" : "/register"}>Get Started <ArrowRight size={16} /></Link></Button>
+                <Button asChild><Link href={user ? "/dashboard" : "/register"}>{user ? "Open dashboard" : "Create account"} <ArrowRight size={16} /></Link></Button>
                 <Button asChild variant="secondary"><Link href="/pricing">View Pricing</Link></Button>
               </div>
             </CardContent>

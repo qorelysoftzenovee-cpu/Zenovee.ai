@@ -6,6 +6,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/supabase/types";
 import type { ToolDefinition } from "@/types/tools";
 import { listWorkspaceConfigs } from "@/services/workspaces/registry";
+import { serverLog } from "@/lib/logger";
 
 type SupabaseRpcClient = {
   rpc: (
@@ -32,6 +33,23 @@ type WorkspaceConfigRow = {
   tone_presets: unknown;
   template_presets: unknown;
 };
+
+const TOOL_EXECUTION_TIMEOUT_MS = 90_000;
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(message)), timeoutMs);
+    promise
+      .then((value) => {
+        clearTimeout(timer);
+        resolve(value);
+      })
+      .catch((error) => {
+        clearTimeout(timer);
+        reject(error);
+      });
+  });
+}
 
 export class ToolExecutionService {
   static async getCredits(userId: string) {
@@ -228,7 +246,13 @@ export class ToolExecutionService {
       } as never)
       .select("id")
       .single<{ id: string }>();
-    if (executionError || !execution) throw new Error(executionError?.message ?? "Failed to initialize execution.");
+    if (executionError || !execution) {
+      const executionErrorMessage = executionError?.message ?? "Failed to initialize execution.";
+      if (executionErrorMessage.toLowerCase().includes("duplicate") || executionErrorMessage.includes("23505")) {
+        throw new Error("Duplicate execution in progress. Please retry shortly.");
+      }
+      throw new Error(executionErrorMessage);
+    }
 
     const supabaseRpc = supabase as unknown as SupabaseRpcClient;
     const { data: debitRaw, error: debitError } = await supabaseRpc.rpc("debit_user_credits", {
@@ -250,12 +274,16 @@ export class ToolExecutionService {
 
     const startedAt = Date.now();
     try {
-      const generation = await generateToolOutput({
-        tool: tool as ToolDefinition<Record<string, unknown>, Record<string, unknown>>,
-        input: validatedInput,
-        options: executionOptions,
-        adminOverrides: price?.metadata,
-      });
+      const generation = await withTimeout(
+        generateToolOutput({
+          tool: tool as ToolDefinition<Record<string, unknown>, Record<string, unknown>>,
+          input: validatedInput,
+          options: executionOptions,
+          adminOverrides: price?.metadata,
+        }),
+        TOOL_EXECUTION_TIMEOUT_MS,
+        "Tool execution timed out. Please retry."
+      );
       const { aiResponse, output, meta } = generation;
 
       const executionMs = Date.now() - startedAt;
@@ -334,13 +362,27 @@ export class ToolExecutionService {
       const message = error instanceof Error ? error.message : "Tool execution failed.";
 
       if (debitTxId) {
-        await supabaseRpc.rpc("refund_user_credits", {
+        const { error: refundError } = await supabaseRpc.rpc("refund_user_credits", {
           p_user_id: args.userId,
           p_original_tx: debitTxId,
           p_reference: `tool_refund:${tool.id}`,
           p_execution_id: execution.id,
           p_metadata: { reason: message },
         });
+
+        if (refundError) {
+          serverLog({
+            level: "error",
+            route: "services/tool-execution-service.execute",
+            message: "Credit refund failed after execution error.",
+            error: refundError,
+            metadata: {
+              executionId: execution.id,
+              userId: args.userId,
+              toolId: tool.id,
+            },
+          });
+        }
       }
 
       await Promise.all([

@@ -53,6 +53,34 @@ async function wasPaymentAlreadyProcessed(
   return Boolean(data?.id);
 }
 
+async function updatePendingPayment(
+  supabaseAdmin: ReturnType<typeof getSupabaseAdmin>,
+  userId: string,
+  subscriptionId: string | null,
+  updates: Record<string, unknown>
+) {
+  if (!subscriptionId) return false;
+
+  const { data: pending } = await supabaseAdmin
+    .from("payments")
+    .select("id,status")
+    .eq("user_id", userId)
+    .eq("subscription_id", subscriptionId)
+    .eq("status", "PENDING")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle<{ id: string; status: string }>();
+
+  if (!pending?.id) {
+    return false;
+  }
+
+  const { error } = await supabaseAdmin.from("payments").update(updates as never).eq("id", pending.id).eq("status", "PENDING");
+
+  if (error) throw new Error(error.message);
+  return true;
+}
+
 export async function POST(request: Request) {
   try {
     const rawBody = await request.text();
@@ -120,6 +148,10 @@ export async function POST(request: Request) {
 
     if (supportedEvents.has(eventType) && userId && planName) {
       if (eventType === "payment.captured" || eventType === "subscription.charged") {
+        if (!razorpayPaymentId) {
+          throw new Error("Missing razorpay payment id for captured/charged event.");
+        }
+
         const alreadyProcessed = await wasPaymentAlreadyProcessed(supabaseAdmin, razorpayPaymentId);
 
         if (alreadyProcessed) {
@@ -128,24 +160,38 @@ export async function POST(request: Request) {
         const nextRenewal =
           toIsoFromUnixSeconds((subscriptionEntity.current_end as number | undefined) ?? undefined) ?? computeNextRenewalDate();
 
-        const { data: paymentRow, error: paymentErr } = await supabaseAdmin
-          .from("payments")
-          .upsert(
-            {
-              user_id: userId,
-              payment_amount: Number(paymentEntity.amount ? Number(paymentEntity.amount) / 100 : 0),
-              plan: planName,
-              currency: (paymentEntity.currency as string | undefined) ?? "INR",
-              status: "SUCCESS",
-              razorpay_transaction_id: razorpayPaymentId,
-              subscription_id: razorpaySubscriptionId,
-              invoice_id: (paymentEntity.invoice_id as string | undefined) ?? null,
-              updated_at: nowIso,
-            } as never,
-            { onConflict: "razorpay_transaction_id" }
-          )
-          .select("id")
-          .maybeSingle<{ id: string }>();
+        const pendingUpdated = await updatePendingPayment(supabaseAdmin, userId, razorpaySubscriptionId, {
+          status: "SUCCESS",
+          razorpay_transaction_id: razorpayPaymentId,
+          updated_at: nowIso,
+          invoice_id: (paymentEntity.invoice_id as string | undefined) ?? null,
+        });
+
+        const { data: paymentRow, error: paymentErr } = pendingUpdated
+          ? await supabaseAdmin
+              .from("payments")
+              .select("id")
+              .eq("user_id", userId)
+              .eq("razorpay_transaction_id", razorpayPaymentId)
+              .maybeSingle<{ id: string }>()
+          : await supabaseAdmin
+              .from("payments")
+              .upsert(
+                {
+                  user_id: userId,
+                  payment_amount: Number(paymentEntity.amount ? Number(paymentEntity.amount) / 100 : 0),
+                  plan: planName,
+                  currency: (paymentEntity.currency as string | undefined) ?? "INR",
+                  status: "SUCCESS",
+                  razorpay_transaction_id: razorpayPaymentId,
+                  subscription_id: razorpaySubscriptionId,
+                  invoice_id: (paymentEntity.invoice_id as string | undefined) ?? null,
+                  updated_at: nowIso,
+                } as never,
+                { onConflict: "razorpay_transaction_id" }
+              )
+              .select("id")
+              .maybeSingle<{ id: string }>();
 
         if (paymentErr) throw new Error(`Payment upsert failed: ${paymentErr.message}`);
 

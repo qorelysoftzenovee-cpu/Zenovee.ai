@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { Eye, EyeOff } from "lucide-react";
-import { PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -64,19 +63,17 @@ export default function RegisterPage() {
   };
 
   return (
-    <PageShell
-      title="Create your account"
-      description="Register to initialize your workspace and billing profile."
-      actions={
-        <Button asChild variant="ghost" size="sm">
-          <Link href="/login">Already have an account?</Link>
-        </Button>
-      }
-    >
-      <div className="mx-auto max-w-md">
+    <main className="min-h-screen bg-background px-4 py-10 md:px-6 md:py-16">
+      <div className="mx-auto grid w-full max-w-6xl gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:gap-10">
+        <section className="surface-card content-rhythm p-7 md:p-10">
+          <p className="premium-label">Create account</p>
+          <h1 className="text-3xl font-semibold tracking-tight md:text-[2.45rem]">Start your AI workspace</h1>
+          <p className="max-w-xl text-[0.95rem] text-muted-foreground">Set up your account to operate every growth system from one premium workspace.</p>
+        </section>
+        <div className="mx-auto w-full max-w-md">
         <Card>
           <CardHeader>
-            <CardTitle>Register</CardTitle>
+            <CardTitle>Create account</CardTitle>
           </CardHeader>
           <CardContent>
             <form className="space-y-4" onSubmit={handleSubmit}>
@@ -118,10 +115,12 @@ export default function RegisterPage() {
               <Button type="submit" className="w-full" disabled={isSubmitting}>
                 {isSubmitting ? "Creating account..." : "Create account"}
               </Button>
+              <p className="text-center text-sm text-muted-foreground">Already have an account? <Link href="/login" className="text-foreground underline-offset-4 hover:underline">Sign in</Link></p>
             </form>
           </CardContent>
         </Card>
+        </div>
       </div>
-    </PageShell>
+    </main>
   );
 }

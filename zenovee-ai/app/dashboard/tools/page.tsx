@@ -1,23 +1,17 @@
-import Link from "next/link";
 import { requireStandardUser } from "@/lib/auth";
-import { PageShell } from "@/components/layout/page-shell";
-import { Button } from "@/components/ui/button";
 import { ToolsWorkspace } from "./tools-workspace";
 
 export default async function ToolsWorkspacePage() {
   await requireStandardUser();
 
   return (
-    <PageShell
-      title="Tools Workspace"
-      description="Use focused launch tools to generate structured SEO, ad, persona, and landing page outputs."
-      actions={
-        <Button asChild variant="secondary" size="sm">
-          <Link href="/dashboard">Back to dashboard</Link>
-        </Button>
-      }
-    >
+    <div className="space-y-5">
+      <section className="surface-card p-5 md:p-6">
+        <p className="premium-label">Workspaces</p>
+        <h1 className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">AI Workspace Console</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Operate LinkedIn, SEO, sales outreach, conversion copy, and brand studio workflows from one focused environment.</p>
+      </section>
       <ToolsWorkspace />
-    </PageShell>
+    </div>
   );
 }

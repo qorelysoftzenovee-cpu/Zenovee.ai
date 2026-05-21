@@ -2,6 +2,7 @@ import { PageShell } from "@/components/layout/page-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireAdmin } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { serverLog } from "@/lib/logger";
 
 type SubscriptionRow = {
   user_id: string;
@@ -50,16 +51,52 @@ export default async function AdminUsersPage() {
   const credits = (creditsRes.data ?? []) as CreditRow[];
   const usage = (usageRes.data ?? []) as UsageRow[];
 
+  if (usersRes.error || subscriptionsRes.error || paymentsRes.error || creditsRes.error || usageRes.error) {
+    serverLog({
+      level: "error",
+      route: "app/admin/users",
+      message: "Failed to fetch complete admin users dataset.",
+      metadata: {
+        usersError: usersRes.error?.message ?? null,
+        subscriptionsError: subscriptionsRes.error?.message ?? null,
+        paymentsError: paymentsRes.error?.message ?? null,
+        creditsError: creditsRes.error?.message ?? null,
+        usageError: usageRes.error?.message ?? null,
+      },
+    });
+  }
+
+  const subscriptionByUser = new Map(subscriptions.map((item) => [item.user_id, item]));
+  const creditsByUser = new Map(credits.map((item) => [item.user_id, item]));
+  const recentPaymentsByUser = new Map<string, PaymentRow[]>();
+  const recentUsageByUser = new Map<string, UsageRow[]>();
+
+  for (const payment of payments) {
+    const bucket = recentPaymentsByUser.get(payment.user_id) ?? [];
+    if (bucket.length < 3) {
+      bucket.push(payment);
+      recentPaymentsByUser.set(payment.user_id, bucket);
+    }
+  }
+
+  for (const run of usage) {
+    const bucket = recentUsageByUser.get(run.user_id) ?? [];
+    if (bucket.length < 3) {
+      bucket.push(run);
+      recentUsageByUser.set(run.user_id, bucket);
+    }
+  }
+
   return (
     <PageShell title="User management" description="Review roles, subscription health, credit balances, and recent activity for every user." variant="admin" className="bg-transparent">
       <Card className="admin-surface">
         <CardHeader><CardTitle>Users</CardTitle></CardHeader>
         <CardContent className="space-y-3">
           {(usersRes.data ?? []).length ? (usersRes.data ?? []).map((u) => {
-            const sub = subscriptions.find((s) => s.user_id === u.id);
-            const credit = credits.find((item) => item.user_id === u.id);
-            const userPayments = payments.filter((p) => p.user_id === u.id).slice(0, 3);
-            const userUsage = usage.filter((x) => x.user_id === u.id).slice(0, 3);
+            const sub = subscriptionByUser.get(u.id);
+            const credit = creditsByUser.get(u.id);
+            const userPayments = recentPaymentsByUser.get(u.id) ?? [];
+            const userUsage = recentUsageByUser.get(u.id) ?? [];
             return (
               <div key={u.id} className="admin-row text-sm">
                 <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">

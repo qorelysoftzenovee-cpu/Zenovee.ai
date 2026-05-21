@@ -10,12 +10,17 @@ import {
   Clock3,
   Copy,
   Download,
+  FolderKanban,
   History,
   Loader2,
+  Palette,
+  Pin,
   RefreshCcw,
   Search,
   Sparkles,
   Star,
+  Target,
+  CalendarDays,
   Wand2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -157,6 +162,14 @@ const FAVORITE_TOOLS_STORAGE_KEY = "zenovee_workspace_favorite_tools";
 const SAVED_OUTPUTS_STORAGE_KEY = "zenovee_workspace_saved_outputs";
 const OUTPUT_NAMES_STORAGE_KEY = "zenovee_workspace_output_names";
 const MODULE_DRAFTS_STORAGE_KEY = "zenovee_workspace_module_drafts";
+const WORKSPACE_PROJECTS_STORAGE_KEY = "zenovee_workspace_projects";
+const WORKSPACE_FOLDERS_STORAGE_KEY = "zenovee_workspace_folders";
+const WORKSPACE_FAVORITES_STORAGE_KEY = "zenovee_workspace_favorites";
+const WORKSPACE_RECENT_STORAGE_KEY = "zenovee_workspace_recent";
+
+type WorkspaceProject = { id: string; workspaceId: string; name: string; updatedAt: string };
+type WorkspaceFolder = { id: string; workspaceId: string; name: string; updatedAt: string };
+type EditableSection = { id: string; title: string; content: string; pinned?: boolean };
 
 function formatGlobalDateTime(dateValue: string) {
   return new Date(dateValue).toLocaleString("en-US", {
@@ -273,6 +286,20 @@ function asFaqArray(value: unknown) {
 
 function buildExportRequestKey(toolUsageId: string, format: ExportFormat) {
   return `${toolUsageId}:${format}`;
+}
+
+function buildEditableSections(result: Record<string, unknown> | null, previewText: string): EditableSection[] {
+  if (!result) return [];
+  const sections: EditableSection[] = Object.entries(result)
+    .map(([key, value], index) => ({
+      id: `${key}-${index}`,
+      title: key.replace(/([a-z])([A-Z])/g, "$1 $2"),
+      content: toReadableValue(value),
+      pinned: index === 0,
+    }))
+    .filter((item) => item.content.trim().length > 0)
+    .slice(0, 10);
+  return sections.length ? sections : [{ id: "full", title: "Full Output", content: previewText, pinned: true }];
 }
 
 function OutputWorkspace({
@@ -656,6 +683,12 @@ export function ToolsWorkspace() {
   const [generationStepIndex, setGenerationStepIndex] = useState(0);
   const [workspaceDataCounts, setWorkspaceDataCounts] = useState<Record<string, number>>({});
   const [workspaceOverview, setWorkspaceOverview] = useState<Record<string, unknown>>({});
+  const [workspaceProjects, setWorkspaceProjects] = useState<WorkspaceProject[]>([]);
+  const [workspaceFolders, setWorkspaceFolders] = useState<WorkspaceFolder[]>([]);
+  const [workspaceFavorites, setWorkspaceFavorites] = useState<string[]>([]);
+  const [workspaceRecents, setWorkspaceRecents] = useState<string[]>([]);
+  const [editableSections, setEditableSections] = useState<EditableSection[]>([]);
+  const [activeOutputView, setActiveOutputView] = useState<"rendered" | "editor" | "insights">("rendered");
 
   const activeWorkspace = useMemo(() => workspaces.find((workspace) => workspace.id === activeWorkspaceId) ?? null, [workspaces, activeWorkspaceId]);
   const activeModules = useMemo(() => activeWorkspace?.modules ?? [], [activeWorkspace]);
@@ -699,9 +732,35 @@ export function ToolsWorkspace() {
         readRecordFromStorage(OUTPUT_NAMES_STORAGE_KEY),
       ];
       const persistedDrafts = readRecordFromStorage(MODULE_DRAFTS_STORAGE_KEY);
+      const persistedProjects = readRecordFromStorage(WORKSPACE_PROJECTS_STORAGE_KEY);
+      const persistedFolders = readRecordFromStorage(WORKSPACE_FOLDERS_STORAGE_KEY);
       setFavoriteToolIds(favoriteIds);
       setSavedOutputIds(savedIds);
       setOutputNames(persistedOutputNames);
+      setWorkspaceFavorites(readArrayFromStorage(WORKSPACE_FAVORITES_STORAGE_KEY));
+      setWorkspaceRecents(readArrayFromStorage(WORKSPACE_RECENT_STORAGE_KEY));
+      setWorkspaceProjects(
+        Object.values(persistedProjects)
+          .map((raw) => {
+            try {
+              return JSON.parse(raw) as WorkspaceProject;
+            } catch {
+              return null;
+            }
+          })
+          .filter((item): item is WorkspaceProject => Boolean(item))
+      );
+      setWorkspaceFolders(
+        Object.values(persistedFolders)
+          .map((raw) => {
+            try {
+              return JSON.parse(raw) as WorkspaceFolder;
+            } catch {
+              return null;
+            }
+          })
+          .filter((item): item is WorkspaceFolder => Boolean(item))
+      );
       setModuleDrafts(Object.entries(persistedDrafts).reduce<Record<string, Record<string, string>>>((acc, [key, value]) => {
         try {
           const parsed = JSON.parse(value);
@@ -811,6 +870,24 @@ export function ToolsWorkspace() {
   }, [moduleDrafts]);
 
   useEffect(() => {
+    writeArrayToStorage(WORKSPACE_FAVORITES_STORAGE_KEY, workspaceFavorites);
+  }, [workspaceFavorites]);
+
+  useEffect(() => {
+    writeArrayToStorage(WORKSPACE_RECENT_STORAGE_KEY, workspaceRecents);
+  }, [workspaceRecents]);
+
+  useEffect(() => {
+    const next = Object.fromEntries(workspaceProjects.map((item) => [item.id, JSON.stringify(item)]));
+    writeRecordToStorage(WORKSPACE_PROJECTS_STORAGE_KEY, next);
+  }, [workspaceProjects]);
+
+  useEffect(() => {
+    const next = Object.fromEntries(workspaceFolders.map((item) => [item.id, JSON.stringify(item)]));
+    writeRecordToStorage(WORKSPACE_FOLDERS_STORAGE_KEY, next);
+  }, [workspaceFolders]);
+
+  useEffect(() => {
     if (!isLoading) return;
 
     const timer = window.setInterval(() => {
@@ -827,6 +904,7 @@ export function ToolsWorkspace() {
     setGenerationMeta(null);
     setGenerationErrorDetails(null);
     setResult(null);
+    setEditableSections([]);
     setResultExecutionId(null);
     setError(null);
     setSuccessMessage(null);
@@ -845,13 +923,14 @@ export function ToolsWorkspace() {
       const draftKey = `${workspaceId}:${firstModule?.id}`;
       setFormData(moduleDrafts[draftKey] ?? {});
     }
+    setWorkspaceRecents((prev) => [workspaceId, ...prev.filter((item) => item !== workspaceId)].slice(0, 8));
   };
 
   const selectModule = (moduleId: string) => {
     if (!activeWorkspace) return;
     setActiveModuleId(moduleId);
-    const module = activeWorkspace.modules.find((item) => item.id === moduleId);
-    if (module?.tool) selectTool(module.tool);
+    const selectedModule = activeWorkspace.modules.find((item) => item.id === moduleId);
+    if (selectedModule?.tool) selectTool(selectedModule.tool);
     const draftKey = `${activeWorkspace.id}:${moduleId}`;
     setFormData(moduleDrafts[draftKey] ?? {});
   };
@@ -1130,6 +1209,7 @@ export function ToolsWorkspace() {
       }
       if (resultExecutionId === generationId) {
         setResult(null);
+        setEditableSections([]);
         setResultExecutionId(null);
         setGenerationMeta(null);
       }
@@ -1162,12 +1242,53 @@ export function ToolsWorkspace() {
 
   const reopenHistoryItem = (item: UsageHistoryItem) => {
     setResult(item.output);
+    setEditableSections(buildEditableSections(item.output, toReadableValue(item.output)));
     setResultExecutionId(item.id);
     setGenerationMeta(null);
     setGenerationErrorDetails(null);
     setFormData(Object.fromEntries(Object.entries(item.input).map(([key, value]) => [key, String(value ?? "")])));
     setActiveTab("result");
     setSuccessMessage("Previous output reopened in the workspace.");
+  };
+
+  const createWorkspaceProject = () => {
+    if (!activeWorkspaceId) return;
+    const nextName = window.prompt("Project name", `${activeWorkspace?.name ?? "Workspace"} Project`);
+    if (!nextName?.trim()) return;
+    const project: WorkspaceProject = { id: crypto.randomUUID(), workspaceId: activeWorkspaceId, name: nextName.trim(), updatedAt: new Date().toISOString() };
+    setWorkspaceProjects((prev) => [project, ...prev]);
+    setSuccessMessage("Project created and saved in workspace context.");
+  };
+
+  const createWorkspaceFolder = () => {
+    if (!activeWorkspaceId) return;
+    const nextName = window.prompt("Folder name", "Campaign Assets");
+    if (!nextName?.trim()) return;
+    const folder: WorkspaceFolder = { id: crypto.randomUUID(), workspaceId: activeWorkspaceId, name: nextName.trim(), updatedAt: new Date().toISOString() };
+    setWorkspaceFolders((prev) => [folder, ...prev]);
+    setSuccessMessage("Folder created for reusable assets.");
+  };
+
+  const toggleWorkspaceFavorite = (workspaceId: string) => {
+    setWorkspaceFavorites((prev) => (prev.includes(workspaceId) ? prev.filter((item) => item !== workspaceId) : [workspaceId, ...prev]));
+  };
+
+  const updateSectionContent = (id: string, content: string) => {
+    setEditableSections((prev) => prev.map((section) => (section.id === id ? { ...section, content } : section)));
+  };
+
+  const duplicateSection = (id: string) => {
+    setEditableSections((prev) => {
+      const target = prev.find((item) => item.id === id);
+      if (!target) return prev;
+      const clone: EditableSection = { ...target, id: crypto.randomUUID(), title: `${target.title} (Variant)` };
+      return [clone, ...prev];
+    });
+    setSuccessMessage("Section duplicated for alternate drafting.");
+  };
+
+  const togglePinSection = (id: string) => {
+    setEditableSections((prev) => prev.map((section) => (section.id === id ? { ...section, pinned: !section.pinned } : section)));
   };
 
   const applyPreset = (preset: ToolPreset) => {
@@ -1178,6 +1299,8 @@ export function ToolsWorkspace() {
   const favoriteTools = useMemo(() => tools.filter((tool) => favoriteToolIds.includes(tool.id)), [favoriteToolIds, tools]);
   const primaryDownloadFormat = (availableFormats[0] ?? "json") as ExportFormat;
   const generationProgress = Math.round(((generationStepIndex + 1) / generationSteps.length) * 100);
+  const activeWorkspaceProjects = workspaceProjects.filter((item) => item.workspaceId === activeWorkspaceId);
+  const activeWorkspaceFolders = workspaceFolders.filter((item) => item.workspaceId === activeWorkspaceId);
 
   if (isBootLoading) {
     return (
@@ -1227,6 +1350,10 @@ export function ToolsWorkspace() {
                 <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Workspace records</p>
                 <p className="mt-3 text-2xl font-semibold tracking-tight">{workspaceDataCounts[activeWorkspaceId] ?? 0}</p>
               </div>
+              <div className="dashboard-metric">
+                <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Projects</p>
+                <p className="mt-3 text-2xl font-semibold tracking-tight">{activeWorkspaceProjects.length}</p>
+              </div>
             </div>
 
             <div className="relative">
@@ -1249,6 +1376,18 @@ export function ToolsWorkspace() {
                 className="pl-10"
               />
             </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <Button size="sm" variant="outline" onClick={createWorkspaceProject}><FolderKanban size={14} /> New project</Button>
+              <Button size="sm" variant="outline" onClick={createWorkspaceFolder}>New folder</Button>
+            </div>
+
+            {activeWorkspace ? (
+              <Button size="sm" variant="outline" onClick={() => toggleWorkspaceFavorite(activeWorkspace.id)}>
+                <Star size={14} className={workspaceFavorites.includes(activeWorkspace.id) ? "fill-amber-300 text-amber-300" : ""} />
+                {workspaceFavorites.includes(activeWorkspace.id) ? "Favorited workspace" : "Favorite workspace"}
+              </Button>
+            ) : null}
           </CardContent>
         </Card>
 
@@ -1337,6 +1476,27 @@ export function ToolsWorkspace() {
             })}
           </CardContent>
         </Card>
+
+        {(activeWorkspaceProjects.length || activeWorkspaceFolders.length) ? (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Organization</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              {activeWorkspaceProjects.slice(0, 4).map((project) => (
+                <div key={project.id} className="rounded-2xl border border-border/70 bg-muted/35 px-3 py-2">
+                  <p className="font-medium">{project.name}</p>
+                  <p className="text-xs text-muted-foreground">Updated {formatGlobalDateTime(project.updatedAt)}</p>
+                </div>
+              ))}
+              {activeWorkspaceFolders.slice(0, 4).map((folder) => (
+                <div key={folder.id} className="rounded-2xl border border-border/70 bg-muted/35 px-3 py-2">
+                  <p className="font-medium">📁 {folder.name}</p>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        ) : null}
       </div>
 
       <div className="space-y-6">
@@ -1417,6 +1577,26 @@ export function ToolsWorkspace() {
                       <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Templates</p>
                       <p className="mt-2 text-xs text-foreground">{activeWorkspace.templatePresets.join(" • ")}</p>
                     </div>
+                  </div>
+                ) : null}
+                {activeWorkspace?.id === "linkedin-authority-os" ? (
+                  <div className="mt-3 rounded-2xl border border-indigo-400/20 bg-indigo-500/5 p-3 text-xs text-indigo-100">
+                    <div className="flex items-center gap-2"><CalendarDays size={14} /> Content calendar, tone presets, and swipe-file continuity enabled.</div>
+                  </div>
+                ) : null}
+                {activeWorkspace?.id === "sales-outreach-os" ? (
+                  <div className="mt-3 rounded-2xl border border-emerald-400/20 bg-emerald-500/5 p-3 text-xs text-emerald-100">
+                    <div className="flex items-center gap-2"><Target size={14} /> Sequence builder workflow and objection handling context active.</div>
+                  </div>
+                ) : null}
+                {activeWorkspace?.id === "seo-growth-os" ? (
+                  <div className="mt-3 rounded-2xl border border-cyan-400/20 bg-cyan-500/5 p-3 text-xs text-cyan-100">
+                    <div className="flex items-center gap-2"><Pin size={14} /> Keyword clustering, SERP planning, and linking map structure active.</div>
+                  </div>
+                ) : null}
+                {activeWorkspace?.id === "ai-brand-studio" ? (
+                  <div className="mt-3 rounded-2xl border border-fuchsia-400/20 bg-fuchsia-500/5 p-3 text-xs text-fuchsia-100">
+                    <div className="flex items-center gap-2"><Palette size={14} /> Style preset studio mode with gallery-ready generation context.</div>
                   </div>
                 ) : null}
               </CardHeader>
@@ -1734,6 +1914,84 @@ export function ToolsWorkspace() {
                       </div>
                     </div>
                   ) : null}
+
+                  {activeWorkspace.id === "linkedin-authority-os" ? (
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <div className="rounded-2xl border border-indigo-400/25 bg-indigo-500/5 p-4">
+                        <p className="text-xs uppercase tracking-[0.16em] text-indigo-300">Content calendar</p>
+                        <div className="mt-3 space-y-2 text-sm">
+                          {["Mon • Authority post", "Wed • Carousel", "Fri • Newsletter snippet"].map((slot) => (
+                            <div key={slot} className="rounded-xl border border-indigo-300/20 px-3 py-2">{slot}</div>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="rounded-2xl border border-indigo-400/25 bg-indigo-500/5 p-4">
+                        <p className="text-xs uppercase tracking-[0.16em] text-indigo-300">Swipe file</p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {[
+                            "Contrarian hook",
+                            "Founder story framework",
+                            "Authority CTA",
+                          ].map((item) => (
+                            <span key={item} className="rounded-full border border-indigo-300/25 px-3 py-1 text-xs">{item}</span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {activeWorkspace.id === "sales-outreach-os" ? (
+                    <div className="rounded-2xl border border-emerald-400/25 bg-emerald-500/5 p-4">
+                      <p className="text-xs uppercase tracking-[0.16em] text-emerald-300">Outreach sequence builder</p>
+                      <div className="mt-3 grid gap-2 md:grid-cols-4 text-xs">
+                        {["Step 1: Icebreaker", "Step 2: Value pitch", "Step 3: Objection reply", "Step 4: Follow-up CTA"].map((step) => (
+                          <div key={step} className="rounded-xl border border-emerald-300/25 px-3 py-2">{step}</div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {activeWorkspace.id === "seo-growth-os" ? (
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <div className="rounded-2xl border border-cyan-400/25 bg-cyan-500/5 p-4">
+                        <p className="text-xs uppercase tracking-[0.16em] text-cyan-300">SERP preview planner</p>
+                        <div className="mt-3 rounded-xl border border-cyan-300/20 p-3 text-xs">
+                          <p className="text-cyan-200">zenovee.ai › seo-growth</p>
+                          <p className="mt-1 font-medium">How to Build Topical Authority in 90 Days</p>
+                          <p className="mt-1 text-cyan-100/80">Plan clusters, map internal links, and generate publish-ready briefs.</p>
+                        </div>
+                      </div>
+                      <div className="rounded-2xl border border-cyan-400/25 bg-cyan-500/5 p-4">
+                        <p className="text-xs uppercase tracking-[0.16em] text-cyan-300">Internal linking map</p>
+                        <div className="mt-3 space-y-2 text-xs">
+                          {["Pillar Page → Cluster A", "Cluster A → FAQ Hub", "Cluster B → Case Study"].map((link) => (
+                            <div key={link} className="rounded-xl border border-cyan-300/20 px-3 py-2">{link}</div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {activeWorkspace.id === "ai-brand-studio" ? (
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <div className="rounded-2xl border border-fuchsia-400/25 bg-fuchsia-500/5 p-4">
+                        <p className="text-xs uppercase tracking-[0.16em] text-fuchsia-300">Style presets</p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {["Luxury editorial", "Modern neon", "Minimal monochrome", "Bold ecommerce"].map((style) => (
+                            <span key={style} className="rounded-full border border-fuchsia-300/25 px-3 py-1 text-xs">{style}</span>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="rounded-2xl border border-fuchsia-400/25 bg-fuchsia-500/5 p-4">
+                        <p className="text-xs uppercase tracking-[0.16em] text-fuchsia-300">Generation gallery</p>
+                        <div className="mt-3 grid grid-cols-3 gap-2">
+                          {[1, 2, 3, 4, 5, 6].map((tile) => (
+                            <div key={tile} className="aspect-square rounded-lg border border-fuchsia-300/20 bg-gradient-to-br from-fuchsia-500/15 to-indigo-500/15" />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
                 </CardContent>
               </Card>
             ) : null}
@@ -1757,6 +2015,9 @@ export function ToolsWorkspace() {
                   result ? (
                     <>
                       <div className="flex flex-wrap items-center gap-2">
+                        <Button variant={activeOutputView === "rendered" ? "default" : "outline"} size="sm" onClick={() => setActiveOutputView("rendered")}>Rendered</Button>
+                        <Button variant={activeOutputView === "editor" ? "default" : "outline"} size="sm" onClick={() => setActiveOutputView("editor")}>Editor</Button>
+                        <Button variant={activeOutputView === "insights" ? "default" : "outline"} size="sm" onClick={() => setActiveOutputView("insights")}>Insights</Button>
                         {resultExecutionId ? (
                           <Button variant="outline" size="sm" onClick={() => renameOutput(resultExecutionId, `${activeTool?.metadata.name ?? "Generated"} Output`)}>
                             Rename
@@ -1841,7 +2102,48 @@ export function ToolsWorkspace() {
                         ) : null}
                       </div>
 
-                      <OutputWorkspace result={result} outputType={activeTool?.metadata.outputType} previewText={previewText} />
+                      {activeOutputView === "rendered" ? (
+                        <OutputWorkspace result={result} outputType={activeTool?.metadata.outputType} previewText={previewText} />
+                      ) : null}
+
+                      {activeOutputView === "editor" ? (
+                        <div className="space-y-4">
+                          {editableSections.map((section) => (
+                            <div key={section.id} className="rounded-3xl border border-white/10 bg-white/[0.02] p-4">
+                              <div className="mb-3 flex items-center justify-between gap-2">
+                                <p className="text-sm font-medium">{section.title}</p>
+                                <div className="flex gap-2">
+                                  <Button size="sm" variant="outline" onClick={() => togglePinSection(section.id)}><Pin size={13} /> {section.pinned ? "Pinned" : "Pin"}</Button>
+                                  <Button size="sm" variant="outline" onClick={() => duplicateSection(section.id)}>Duplicate</Button>
+                                  <Button size="sm" variant="outline" onClick={() => void runTool("improve")} disabled={isLoading}>Rewrite</Button>
+                                </div>
+                              </div>
+                              <Textarea value={section.content} onChange={(e) => updateSectionContent(section.id, e.target.value)} className="min-h-28 rounded-2xl" />
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+
+                      {activeOutputView === "insights" ? (
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <div className="rounded-3xl border border-white/10 p-4">
+                            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Workflow continuity</p>
+                            <p className="mt-2 text-sm">Drafts are persisted per workspace module with reusable context and favorite tools.</p>
+                          </div>
+                          <div className="rounded-3xl border border-white/10 p-4">
+                            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Output quality layer</p>
+                            <p className="mt-2 text-sm">Structured rendering + editable sections + revisions improve publish-readiness.</p>
+                          </div>
+                          <div className="rounded-3xl border border-white/10 p-4">
+                            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Recent workspaces</p>
+                            <p className="mt-2 text-sm">{workspaceRecents.length ? workspaceRecents.join(" • ") : "No recent workspace activity yet."}</p>
+                          </div>
+                          <div className="rounded-3xl border border-white/10 p-4">
+                            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Premium confidence signals</p>
+                            <p className="mt-2 text-sm">Stage-by-stage generation, quality metadata, and one-click regeneration are active.</p>
+                          </div>
+                        </div>
+                      ) : null}
 
                       {currentHistoryItem?.exports?.length ? (
                         <div className="surface-card p-5">

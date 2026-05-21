@@ -8,6 +8,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getRazorpayClient } from "@/services/razorpay";
 import { getOrCreateRazorpayPlanId } from "@/services/billing";
 import { serverLog } from "@/lib/logger";
+import { checkRateLimit, resolveClientIp } from "@/lib/rate-limit";
 
 const checkoutRequestSchema = z
   .object({
@@ -17,6 +18,8 @@ const checkoutRequestSchema = z
   .refine((value) => Number(Boolean(value.planId)) + Number(Boolean(value.topupId)) === 1, {
     message: "Provide exactly one checkout target.",
   });
+
+const IDEMPOTENCY_HEADER = "x-idempotency-key";
 
 export async function POST(request: Request) {
   try {
@@ -34,7 +37,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const ipAddress = resolveClientIp(request);
+    const rateLimit = checkRateLimit(`billing:checkout:${user.id}:${ipAddress}`, 8, 60_000);
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: `Too many checkout attempts. Retry in ${rateLimit.retryAfterSeconds}s.` },
+        { status: 429, headers: { "Retry-After": String(rateLimit.retryAfterSeconds) } }
+      );
+    }
+
     const { planId, topupId } = checkoutRequestSchema.parse(await request.json());
+    const requestKey = request.headers.get(IDEMPOTENCY_HEADER)?.trim() || null;
 
     if (topupId) {
       const topup = getCreditTopupById(topupId);
@@ -44,6 +57,31 @@ export async function POST(request: Request) {
 
       const razorpay = getRazorpayClient();
       const supabaseAdmin = getSupabaseAdmin();
+
+      if (requestKey) {
+        const { data: existingPayment } = await supabaseAdmin
+          .from("payments")
+          .select("order_id,status")
+          .eq("user_id", user.id)
+          .eq("plan", `topup:${topup.id}`)
+          .eq("invoice_id", `idemp:${requestKey}`)
+          .maybeSingle<{ order_id: string | null; status: string }>();
+
+        if (existingPayment?.order_id) {
+          return NextResponse.json({
+            success: true,
+            duplicate: true,
+            mode: "topup",
+            order: {
+              id: existingPayment.order_id,
+              amount: topup.amountInPaise,
+              currency: "INR",
+            },
+            razorpayKey: env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+            topup,
+          });
+        }
+      }
 
       const order = await razorpay.orders.create({
         amount: topup.amountInPaise,
@@ -64,6 +102,7 @@ export async function POST(request: Request) {
         currency: "INR",
         status: "PENDING",
         order_id: order.id,
+        invoice_id: requestKey ? `idemp:${requestKey}` : null,
       });
 
       if (paymentError) {
@@ -96,6 +135,29 @@ export async function POST(request: Request) {
     const razorpay = getRazorpayClient();
     const supabaseAdmin = getSupabaseAdmin();
 
+    if (requestKey) {
+      const { data: existingSubscriptionPayment } = await supabaseAdmin
+        .from("payments")
+        .select("subscription_id,status")
+        .eq("user_id", user.id)
+        .eq("plan", plan.id)
+        .eq("invoice_id", `idemp:${requestKey}`)
+        .maybeSingle<{ subscription_id: string | null; status: string }>();
+
+      if (existingSubscriptionPayment?.subscription_id) {
+        return NextResponse.json({
+          success: true,
+          duplicate: true,
+          subscription: {
+            id: existingSubscriptionPayment.subscription_id,
+            status: existingSubscriptionPayment.status,
+          },
+          razorpayKey: env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+          plan: { id: plan.id, name: plan.name, amountInPaise: plan.amountInPaise, currency: plan.currency },
+        });
+      }
+    }
+
     const razorpayPlanId = await getOrCreateRazorpayPlanId(plan.id);
 
     const subscription = await razorpay.subscriptions.create({
@@ -117,6 +179,7 @@ export async function POST(request: Request) {
       currency: plan.currency,
       status: "PENDING",
       subscription_id: subscription.id,
+      invoice_id: requestKey ? `idemp:${requestKey}` : null,
     });
 
     if (paymentError) {

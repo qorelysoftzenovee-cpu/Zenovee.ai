@@ -6,6 +6,16 @@ import { AIGenerationError, toClientErrorDetails } from "@/services/ai/prompt-or
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { jsonApiError, safeErrorMessage, withApiErrorHandling } from "@/lib/runtime";
 import { serverLog } from "@/lib/logger";
+import { z } from "zod";
+import { checkRateLimit, resolveClientIp } from "@/lib/rate-limit";
+
+const executeToolSchema = z.object({
+  toolId: z.string().min(1, "Tool id is required"),
+  input: z.unknown(),
+  options: z.unknown().optional(),
+  workspaceId: z.string().min(1).optional().nullable(),
+  moduleId: z.string().min(1).optional().nullable(),
+});
 
 function getErrorMessage(error: unknown) {
   if (error instanceof Error) {
@@ -23,10 +33,17 @@ export async function POST(req: Request) {
         return jsonApiError("Unauthorized", 401);
       }
 
-      const { toolId, input, options, workspaceId, moduleId } = await req.json();
+      const payload = executeToolSchema.parse(await req.json());
+      const { toolId, input, options, workspaceId, moduleId } = payload;
       const creditsBefore = await ToolExecutionService.getCredits(user.id);
-      const forwardedFor = req.headers.get("x-forwarded-for") ?? "";
-      const ipAddress = forwardedFor.split(",")[0]?.trim() || "0.0.0.0";
+      const ipAddress = resolveClientIp(req);
+      const rateLimit = checkRateLimit(`tools:${user.id}:${ipAddress}`, 20, 60_000);
+      if (!rateLimit.allowed) {
+        return NextResponse.json(
+          { success: false, error: `Too many requests. Retry in ${rateLimit.retryAfterSeconds}s.` },
+          { status: 429, headers: { "Retry-After": String(rateLimit.retryAfterSeconds) } }
+        );
+      }
       const idempotencyKey = req.headers.get("x-idempotency-key");
 
       const result = await ToolExecutionService.execute({
@@ -59,6 +76,12 @@ export async function POST(req: Request) {
       if (error instanceof AIGenerationError) {
         serverLog({ level: "warn", route: "/api/tools:POST", message: error.message, metadata: error.details });
         return NextResponse.json({ success: false, error: error.message, code: error.code, details: toClientErrorDetails(error) }, { status: error.status });
+      }
+      if (error instanceof z.ZodError) {
+        return NextResponse.json(
+          { success: false, error: error.issues[0]?.message ?? "Invalid tool execution request." },
+          { status: 400 }
+        );
       }
       return jsonApiError(safeErrorMessage(error, "Tool execution failed."), 400);
     }

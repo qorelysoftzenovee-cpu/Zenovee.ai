@@ -1,4 +1,3 @@
-import { PageShell } from "@/components/layout/page-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PricingActions } from "@/components/pricing/pricing-actions";
 import { subscriptionPlans } from "@/app/subscription-plans";
@@ -12,11 +11,11 @@ export default async function PricingPage() {
   return (
     <div className="min-h-screen bg-background">
       <Navigation isAuthenticated={Boolean(user)} isAdmin={user?.role === "admin"} />
-      <PageShell title="Pricing" description="Simple paid plans. No distractions.">
-        <div className="mb-6 max-w-2xl space-y-2">
-          <p className="text-sm text-muted-foreground">Choose a plan, open your workspace, and start generating your first AI asset.</p>
-          <p className="text-sm text-muted-foreground">Secure payments via Razorpay.</p>
-          <p className="text-sm text-muted-foreground">Your subscription updates automatically after payment.</p>
+      <main className="section-shell py-12 md:py-16">
+        <div className="mb-8 surface-card content-rhythm p-6 md:p-8">
+          <p className="premium-label">Pricing</p>
+          <h1 className="text-3xl font-semibold tracking-tight md:text-[2.5rem]">Simple plans with clear monthly credits</h1>
+          <p className="max-w-2xl text-[0.95rem] text-muted-foreground">All plans are billed monthly in INR. Payments are processed securely by Razorpay, and your subscription status updates automatically after successful payment.</p>
         </div>
         <div className="grid gap-5 md:grid-cols-3">
           {subscriptionPlans.map((plan) => (
@@ -44,9 +43,9 @@ export default async function PricingPage() {
           ))}
         </div>
         <p className="mt-5 text-sm text-muted-foreground">
-          Charges are processed in INR. For billing questions, email {SUPPORT_EMAIL}.
+          Charges are processed in INR. Need help with billing? Email {SUPPORT_EMAIL}.
         </p>
-      </PageShell>
+      </main>
       <Footer />
     </div>
   );

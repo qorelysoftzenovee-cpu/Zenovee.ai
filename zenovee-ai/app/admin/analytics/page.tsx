@@ -10,9 +10,15 @@ function formatInr(amount: number) {
 export default async function AdminAnalyticsPage() {
   await requireAdmin();
   const data = await getAdminOverviewData();
+  const hasPartialFailure = Object.values(data.health ?? {}).some((ok) => !ok);
 
   return (
     <PageShell title="Analytics" description="API economics, request trends, tool performance, and operational telemetry." variant="admin" className="bg-transparent">
+      {hasPartialFailure ? (
+        <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+          Some analytics sources are temporarily unavailable. Metrics shown below may be partially delayed.
+        </div>
+      ) : null}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         <Card className="admin-surface"><CardHeader><CardTitle>Total Requests</CardTitle></CardHeader><CardContent><p className="text-2xl font-semibold">{data.totals.totalApiRequests}</p></CardContent></Card>
         <Card className="admin-surface"><CardHeader><CardTitle>Total Tokens</CardTitle></CardHeader><CardContent><p className="text-2xl font-semibold">{data.totals.totalTokens.toLocaleString()}</p></CardContent></Card>
