@@ -2,11 +2,13 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { requireStandardUser } from "@/lib/auth";
+import { WorkspaceShell } from "@/components/layout/workspace-shell";
 
 export default async function HistoryPage() {
   await requireStandardUser();
 
   return (
+    <WorkspaceShell title="History" subtitle="Track outputs, activity, and exports">
     <div className="space-y-6">
       <section className="surface-card p-5 md:p-6">
         <p className="premium-label">History</p>
@@ -39,5 +41,6 @@ export default async function HistoryPage() {
         </Card>
       </div>
     </div>
+    </WorkspaceShell>
   );
 }

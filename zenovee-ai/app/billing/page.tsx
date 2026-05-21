@@ -3,11 +3,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { BillingActions } from "@/components/billing/billing-actions";
 import { requireStandardUser } from "@/lib/auth";
+import { WorkspaceShell } from "@/components/layout/workspace-shell";
 
 export default async function BillingPage() {
   await requireStandardUser();
 
   return (
+    <WorkspaceShell title="Billing" subtitle="Subscription, usage, and payment records">
     <div className="space-y-6">
       <section className="surface-card p-5 md:p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
@@ -22,25 +24,26 @@ export default async function BillingPage() {
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
         <Card>
           <CardHeader>
-            <CardTitle>Subscription actions</CardTitle>
+            <CardTitle>Current plan & subscription</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground">Use these actions to manage your current plan. Your payment history stays available on the dashboard.</p>
+            <p className="text-sm text-muted-foreground">Review active status, renewal cycle, and manage upgrades or cancellation with clear billing controls.</p>
             <BillingActions />
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>Billing confidence</CardTitle>
+            <CardTitle>Payment history & invoices</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm text-muted-foreground">
             <p>Secure payments via Razorpay.</p>
-            <p>Your subscription updates automatically after payment.</p>
-            <p>If you cancel, your current period stays active until the scheduled end date.</p>
+            <p>Invoices and transaction records are retained for finance and compliance visibility.</p>
+            <p>Usage summary and credit top-ups are linked to your active workspace cycle.</p>
           </CardContent>
         </Card>
       </div>
     </div>
+    </WorkspaceShell>
   );
 }

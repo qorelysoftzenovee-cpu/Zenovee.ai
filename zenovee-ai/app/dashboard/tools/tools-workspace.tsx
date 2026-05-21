@@ -645,7 +645,7 @@ function OutputWorkspace({
   }
 
   return (
-    <pre className="subtle-scrollbar max-h-[520px] overflow-auto rounded-3xl border border-white/10 bg-white/[0.03] p-5 text-xs whitespace-pre-wrap">
+    <pre className="rounded-3xl border border-white/10 bg-white/[0.03] p-5 text-xs whitespace-pre-wrap">
       {previewText}
     </pre>
   );

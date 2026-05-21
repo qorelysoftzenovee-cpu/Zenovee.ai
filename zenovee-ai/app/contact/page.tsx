@@ -38,15 +38,15 @@ export default async function ContactPage() {
               <p className="premium-label">Contact</p>
               <h1 className="text-4xl font-semibold tracking-tight md:text-5xl">Support, simplified</h1>
               <p className="text-base text-muted-foreground md:text-lg">
-                Need help? Send a message or email us directly.
+                Need help? Use the integrated support flow and we will respond quickly.
               </p>
 
               <Card className="border-border bg-card">
                 <CardContent className="space-y-2 p-5">
                 <p className="text-sm text-muted-foreground">Support email</p>
-                <a className="text-lg font-medium text-foreground" href={`mailto:${SUPPORT_EMAIL}`}>
+                <span className="text-lg font-medium text-foreground">
                   {SUPPORT_EMAIL}
-                </a>
+                </span>
                 <p className="text-sm text-muted-foreground">Response expectation: within 24 business hours.</p>
                 </CardContent>
               </Card>
@@ -57,7 +57,7 @@ export default async function ContactPage() {
                 <CardTitle>Contact support</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <p className="text-sm text-muted-foreground">For the fastest help, email support directly instead of using a temporary contact form.</p>
+                <p className="text-sm text-muted-foreground">Use this support center as your primary help path for account, billing, and workflow issues.</p>
                 <div className="surface-muted rounded-2xl p-4 text-sm text-muted-foreground">
                   <p className="font-medium text-foreground">Include these details</p>
                   <ul className="mt-2 space-y-1">
@@ -67,9 +67,7 @@ export default async function ContactPage() {
                   </ul>
                 </div>
                 <div className="flex flex-col gap-3 sm:flex-row">
-                  <Button asChild className="w-full sm:w-auto">
-                    <a href={`mailto:${SUPPORT_EMAIL}`}>Email support</a>
-                  </Button>
+                  <Button className="w-full sm:w-auto" type="button">Open support request</Button>
                   <Button asChild variant="secondary" className="w-full sm:w-auto">
                     <Link href={user ? "/billing" : "/pricing"}>{user ? "Billing help" : "View pricing"}</Link>
                   </Button>

@@ -3,12 +3,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { requireStandardUser } from "@/lib/auth";
-import { SUPPORT_EMAIL } from "@/lib/seo/site";
+import { WorkspaceShell } from "@/components/layout/workspace-shell";
 
 export default async function SettingsPage() {
   const user = await requireStandardUser();
 
   return (
+    <WorkspaceShell title="Settings" subtitle="Account, preferences, and support shortcuts">
     <div className="space-y-6">
       <section className="surface-card p-5 md:p-6">
         <p className="premium-label">Settings</p>
@@ -40,12 +41,13 @@ export default async function SettingsPage() {
                 <Link href="/billing">Open billing</Link>
               </Button>
               <Button asChild variant="secondary">
-                <a href={`mailto:${SUPPORT_EMAIL}`}>Email support</a>
+                <Link href="/contact">Contact support</Link>
               </Button>
             </div>
           </CardContent>
         </Card>
       </div>
     </div>
+    </WorkspaceShell>
   );
 }
