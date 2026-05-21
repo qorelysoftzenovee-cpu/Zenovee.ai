@@ -81,17 +81,17 @@ export default async function LandingPage() {
           </div>
         </section>
 
-        <section className="landing-light border-y border-border/70">
+        <section className="landing-dark border-y border-white/10 text-white">
           <div className="section-shell py-16 md:py-20">
             <div className="mb-7 space-y-2">
-              <p className="premium-label">How it works</p>
-              <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">Simple workflow, fast output</h2>
+              <p className="premium-label border-white/15 bg-white/5 text-slate-200">How it works</p>
+              <h2 className="text-2xl font-semibold tracking-tight text-white md:text-3xl">Simple workflow, fast output</h2>
             </div>
             <div className="grid gap-4 md:grid-cols-3">
               {steps.map((step, index) => (
-                <Card key={step.title} className="border-border bg-white">
-                  <CardHeader><CardTitle className="text-lg">{index + 1}. {step.title}</CardTitle></CardHeader>
-                  <CardContent><p className="text-sm text-muted-foreground">{step.text}</p></CardContent>
+                <Card key={step.title} className="border-white/10 bg-white/5 text-white">
+                  <CardHeader><CardTitle className="text-lg text-white">{index + 1}. {step.title}</CardTitle></CardHeader>
+                  <CardContent><p className="text-sm text-slate-200">{step.text}</p></CardContent>
                 </Card>
               ))}
             </div>
