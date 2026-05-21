@@ -1,6 +1,20 @@
 import { NextResponse } from "next/server";
 import { serverLog } from "@/lib/logger";
 
+const INTERNAL_ERROR_PATTERNS = [
+  /schema cache/i,
+  /duplicate key value/i,
+  /violates/i,
+  /relation .* does not exist/i,
+  /column .* does not exist/i,
+  /permission denied/i,
+  /syntax error/i,
+  /supabase/i,
+  /postgres/i,
+  /service_role/i,
+  /jwt/i,
+];
+
 export function missingConfigMessage(service: string) {
   return `${service} is not configured. Please contact the site administrator.`;
 }
@@ -40,7 +54,10 @@ export function isRazorpayConfigured() {
 
 export function safeErrorMessage(error: unknown, fallback = "Something went wrong.") {
   if (error instanceof Error && error.message) {
-    return error.message;
+    const message = error.message.trim();
+    if (message && !INTERNAL_ERROR_PATTERNS.some((pattern) => pattern.test(message))) {
+      return message;
+    }
   }
 
   return fallback;

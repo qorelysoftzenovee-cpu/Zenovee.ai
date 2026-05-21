@@ -30,7 +30,7 @@ export async function POST(request: Request) {
     });
 
     if (authError || !createdAuth.user) {
-      return NextResponse.json({ error: authError?.message ?? "Unable to create auth account." }, { status: 400 });
+      return NextResponse.json({ error: "Unable to create your account right now." }, { status: 400 });
     }
 
     const userId = createdAuth.user.id;
@@ -71,7 +71,7 @@ export async function POST(request: Request) {
           { status: 500 }
         );
       }
-      return NextResponse.json({ error: profileError.message }, { status: 400 });
+      return NextResponse.json({ error: "Unable to prepare your account profile right now." }, { status: 400 });
     }
 
     const creditsPayload: Record<string, unknown> = {
@@ -103,7 +103,7 @@ export async function POST(request: Request) {
 
     if (creditError) {
       await supabaseAdmin.auth.admin.deleteUser(userId);
-      return NextResponse.json({ error: creditError.message }, { status: 400 });
+      return NextResponse.json({ error: "Unable to prepare your account credits right now." }, { status: 400 });
     }
 
     await supabaseAdmin.from("admin_logs").insert({

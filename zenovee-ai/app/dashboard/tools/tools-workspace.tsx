@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   AlertCircle,
@@ -110,6 +110,29 @@ type ToolItem = {
   generationControls?: PromptControlCatalog | null;
 };
 
+type WorkspaceModuleItem = {
+  id: string;
+  name: string;
+  description: string;
+  toolId?: string;
+  availability?: "active" | "coming_soon";
+  workflowStage?: "planning" | "generation" | "optimization" | "distribution";
+  outputLabel?: string;
+  tool?: ToolItem | null;
+};
+
+type WorkspaceItem = {
+  id: string;
+  name: string;
+  tagline: string;
+  description: string;
+  icon: string;
+  audiencePresets: string[];
+  tonePresets: string[];
+  templatePresets: string[];
+  modules: WorkspaceModuleItem[];
+};
+
 type ExportRecord = {
   id: string;
   tool_usage_id: string | null;
@@ -133,6 +156,7 @@ type UsageHistoryItem = {
 const FAVORITE_TOOLS_STORAGE_KEY = "zenovee_workspace_favorite_tools";
 const SAVED_OUTPUTS_STORAGE_KEY = "zenovee_workspace_saved_outputs";
 const OUTPUT_NAMES_STORAGE_KEY = "zenovee_workspace_output_names";
+const MODULE_DRAFTS_STORAGE_KEY = "zenovee_workspace_module_drafts";
 
 function formatGlobalDateTime(dateValue: string) {
   return new Date(dateValue).toLocaleString("en-US", {
@@ -245,6 +269,10 @@ function asFaqArray(value: unknown) {
         })
         .filter((item): item is { question: string; answer: string } => Boolean(item))
     : [];
+}
+
+function buildExportRequestKey(toolUsageId: string, format: ExportFormat) {
+  return `${toolUsageId}:${format}`;
 }
 
 function OutputWorkspace({
@@ -597,7 +625,12 @@ function OutputWorkspace({
 }
 
 export function ToolsWorkspace() {
+  const pendingToolRequestRef = useRef<string | null>(null);
+  const pendingExportRequestsRef = useRef<Set<string>>(new Set());
   const [tools, setTools] = useState<ToolItem[]>([]);
+  const [workspaces, setWorkspaces] = useState<WorkspaceItem[]>([]);
+  const [activeWorkspaceId, setActiveWorkspaceId] = useState<string>("");
+  const [activeModuleId, setActiveModuleId] = useState<string>("");
   const [credits, setCredits] = useState(0);
   const [activeToolId, setActiveToolId] = useState<string>("");
   const [toolSearch, setToolSearch] = useState("");
@@ -611,6 +644,7 @@ export function ToolsWorkspace() {
   const [favoriteToolIds, setFavoriteToolIds] = useState<string[]>([]);
   const [savedOutputIds, setSavedOutputIds] = useState<string[]>([]);
   const [outputNames, setOutputNames] = useState<Record<string, string>>({});
+  const [moduleDrafts, setModuleDrafts] = useState<Record<string, Record<string, string>>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [isBootLoading, setIsBootLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -620,8 +654,20 @@ export function ToolsWorkspace() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [generationMode, setGenerationMode] = useState<GenerationMode>("generate");
   const [generationStepIndex, setGenerationStepIndex] = useState(0);
+  const [workspaceDataCounts, setWorkspaceDataCounts] = useState<Record<string, number>>({});
+  const [workspaceOverview, setWorkspaceOverview] = useState<Record<string, unknown>>({});
 
-  const activeTool = useMemo(() => tools.find((tool) => tool.id === activeToolId) ?? null, [tools, activeToolId]);
+  const activeWorkspace = useMemo(() => workspaces.find((workspace) => workspace.id === activeWorkspaceId) ?? null, [workspaces, activeWorkspaceId]);
+  const activeModules = useMemo(() => activeWorkspace?.modules ?? [], [activeWorkspace]);
+  const activeModule = useMemo(() => activeModules.find((module) => module.id === activeModuleId) ?? null, [activeModules, activeModuleId]);
+  const workspaceTools = useMemo(() => {
+    if (!activeWorkspace) return tools;
+    const fromWorkspace = activeWorkspace.modules
+      .map((module) => module.tool)
+      .filter((tool): tool is ToolItem => Boolean(tool));
+    return fromWorkspace.length ? fromWorkspace : tools;
+  }, [activeWorkspace, tools]);
+  const activeTool = useMemo(() => workspaceTools.find((tool) => tool.id === activeToolId) ?? null, [workspaceTools, activeToolId]);
   const previewText = useMemo(() => (result ? toReadableValue(result) : ""), [result]);
   const availableFormats = activeTool?.exportFormats?.length ? activeTool.exportFormats : (["json"] as ExportFormat[]);
   const resolvedExportFormat = availableFormats.includes(exportFormat) ? exportFormat : availableFormats[0] ?? "json";
@@ -635,14 +681,14 @@ export function ToolsWorkspace() {
 
   const filteredTools = useMemo(() => {
     const q = toolSearch.trim().toLowerCase();
-    if (!q) return tools;
-    return tools.filter((tool) => {
+    if (!q) return workspaceTools;
+    return workspaceTools.filter((tool) => {
       const searchPool = [tool.metadata.name, tool.metadata.description, tool.metadata.category, tool.metadata.tagline ?? "", ...(tool.metadata.tags ?? [])]
         .join(" ")
         .toLowerCase();
       return searchPool.includes(q);
     });
-  }, [toolSearch, tools]);
+  }, [toolSearch, workspaceTools]);
 
   useEffect(() => {
     const init = async () => {
@@ -652,9 +698,19 @@ export function ToolsWorkspace() {
         readArrayFromStorage(SAVED_OUTPUTS_STORAGE_KEY),
         readRecordFromStorage(OUTPUT_NAMES_STORAGE_KEY),
       ];
+      const persistedDrafts = readRecordFromStorage(MODULE_DRAFTS_STORAGE_KEY);
       setFavoriteToolIds(favoriteIds);
       setSavedOutputIds(savedIds);
       setOutputNames(persistedOutputNames);
+      setModuleDrafts(Object.entries(persistedDrafts).reduce<Record<string, Record<string, string>>>((acc, [key, value]) => {
+        try {
+          const parsed = JSON.parse(value);
+          if (parsed && typeof parsed === "object") acc[key] = parsed as Record<string, string>;
+        } catch {
+          // noop
+        }
+        return acc;
+      }, {}));
 
       const res = await fetch("/api/tools", { method: "GET" });
       const json = await res.json();
@@ -665,9 +721,23 @@ export function ToolsWorkspace() {
       }
 
       const loadedTools: ToolItem[] = json.data.tools;
+      const loadedWorkspaces: WorkspaceItem[] = json.data.workspaces ?? [];
       setTools(loadedTools);
+      setWorkspaces(loadedWorkspaces);
       setCredits(json.data.credits ?? 0);
-      if (loadedTools.length > 0) {
+      if (loadedWorkspaces.length > 0) {
+        const firstWorkspace = loadedWorkspaces[0];
+        setActiveWorkspaceId(firstWorkspace.id);
+        const firstModule = firstWorkspace.modules[0];
+        setActiveModuleId(firstModule?.id ?? "");
+        const firstWorkspaceTool = firstWorkspace.modules.find((module) => module.tool)?.tool;
+        const resolvedTool = firstWorkspaceTool ?? loadedTools[0];
+        if (resolvedTool) {
+          setActiveToolId((current) => current || resolvedTool.id);
+          setExportFormat((resolvedTool.exportFormats?.[0] as ExportFormat | undefined) ?? "json");
+          setGenerationControls(getDefaultGenerationControls(resolvedTool));
+        }
+      } else if (loadedTools.length > 0) {
         setActiveToolId((current) => current || loadedTools[0].id);
         setExportFormat((loadedTools[0].exportFormats?.[0] as ExportFormat | undefined) ?? "json");
         setGenerationControls(getDefaultGenerationControls(loadedTools[0]));
@@ -682,13 +752,43 @@ export function ToolsWorkspace() {
     if (!activeToolId) return;
 
     const loadHistory = async () => {
-      const res = await fetch(`/api/tools?mode=history&toolId=${encodeURIComponent(activeToolId)}&limit=12`);
+      const params = new URLSearchParams({ mode: "history", toolId: activeToolId, limit: "12" });
+      if (activeWorkspaceId) params.set("workspaceId", activeWorkspaceId);
+      if (activeModuleId) params.set("moduleId", activeModuleId);
+      const res = await fetch(`/api/tools?${params.toString()}`);
       const json = await res.json();
       if (res.ok) setHistory(json.data ?? []);
     };
 
     void loadHistory();
-  }, [activeToolId]);
+  }, [activeToolId, activeWorkspaceId, activeModuleId]);
+
+  useEffect(() => {
+    const run = async () => {
+      if (!activeWorkspaceId) return;
+      const endpointByWorkspace: Record<string, string> = {
+        "linkedin-authority-os": "/api/workspaces/linkedin-authority",
+        "sales-outreach-os": "/api/workspaces/sales-outreach?mode=overview",
+        "conversion-copy-os": "/api/workspaces/conversion-copy",
+        "seo-growth-os": "/api/workspaces/seo-growth?mode=overview",
+        "ai-brand-studio": "/api/workspaces/brand-studio?mode=overview",
+      };
+      const endpoint = endpointByWorkspace[activeWorkspaceId];
+      if (!endpoint) return;
+      try {
+        const res = await fetch(endpoint);
+        const json = await res.json();
+        if (!res.ok) return;
+        const data = (json?.data ?? {}) as Record<string, unknown>;
+        const total = Object.values(data).reduce<number>((sum, value) => sum + (Array.isArray(value) ? value.length : 0), 0);
+        setWorkspaceDataCounts((prev) => ({ ...prev, [activeWorkspaceId]: total }));
+        setWorkspaceOverview(data);
+      } catch {
+        // noop: non-blocking workspace data summary
+      }
+    };
+    void run();
+  }, [activeWorkspaceId]);
 
   useEffect(() => {
     writeArrayToStorage(FAVORITE_TOOLS_STORAGE_KEY, favoriteToolIds);
@@ -701,6 +801,14 @@ export function ToolsWorkspace() {
   useEffect(() => {
     writeRecordToStorage(OUTPUT_NAMES_STORAGE_KEY, outputNames);
   }, [outputNames]);
+
+  useEffect(() => {
+    const serialized: Record<string, string> = {};
+    Object.entries(moduleDrafts).forEach(([key, value]) => {
+      serialized[key] = JSON.stringify(value);
+    });
+    writeRecordToStorage(MODULE_DRAFTS_STORAGE_KEY, serialized);
+  }, [moduleDrafts]);
 
   useEffect(() => {
     if (!isLoading) return;
@@ -726,8 +834,37 @@ export function ToolsWorkspace() {
     setExportFormat((tool.exportFormats?.[0] as ExportFormat | undefined) ?? "json");
   };
 
+  const selectWorkspace = (workspaceId: string) => {
+    setActiveWorkspaceId(workspaceId);
+    const workspace = workspaces.find((item) => item.id === workspaceId);
+    const firstModule = workspace?.modules[0];
+    setActiveModuleId(firstModule?.id ?? "");
+    const moduleTool = firstModule?.tool;
+    if (moduleTool) {
+      selectTool(moduleTool);
+      const draftKey = `${workspaceId}:${firstModule?.id}`;
+      setFormData(moduleDrafts[draftKey] ?? {});
+    }
+  };
+
+  const selectModule = (moduleId: string) => {
+    if (!activeWorkspace) return;
+    setActiveModuleId(moduleId);
+    const module = activeWorkspace.modules.find((item) => item.id === moduleId);
+    if (module?.tool) selectTool(module.tool);
+    const draftKey = `${activeWorkspace.id}:${moduleId}`;
+    setFormData(moduleDrafts[draftKey] ?? {});
+  };
+
   const onChange = (name: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => {
+      const next = { ...prev, [name]: value };
+      if (activeWorkspaceId && activeModuleId) {
+        const draftKey = `${activeWorkspaceId}:${activeModuleId}`;
+        setModuleDrafts((drafts) => ({ ...drafts, [draftKey]: next }));
+      }
+      return next;
+    });
   };
 
   const onGenerationControlChange = <TKey extends keyof GenerationControls>(name: TKey, value: GenerationControls[TKey]) => {
@@ -754,12 +891,19 @@ export function ToolsWorkspace() {
 
   const refreshHistory = async (toolId = activeToolId) => {
     if (!toolId) return;
-    const res = await fetch(`/api/tools?mode=history&toolId=${encodeURIComponent(toolId)}&limit=12`);
+    const params = new URLSearchParams({ mode: "history", toolId, limit: "12" });
+    if (activeWorkspaceId) params.set("workspaceId", activeWorkspaceId);
+    if (activeModuleId) params.set("moduleId", activeModuleId);
+    const res = await fetch(`/api/tools?${params.toString()}`);
     const json = await res.json();
     if (res.ok) setHistory(json.data ?? []);
   };
 
   const runTool = async (mode: GenerationMode = "generate") => {
+    if (pendingToolRequestRef.current) {
+      return;
+    }
+
     setError(null);
     setGenerationErrorDetails(null);
     setSuccessMessage(null);
@@ -791,14 +935,24 @@ export function ToolsWorkspace() {
 
     setIsLoading(true);
     setActiveTab("result");
+    const requestId = crypto.randomUUID();
+    pendingToolRequestRef.current = requestId;
 
     try {
+      const controller = new AbortController();
+      const timeout = window.setTimeout(() => controller.abort(), 45000);
       const res = await fetch("/api/tools", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-idempotency-key": requestId,
+        },
+        signal: controller.signal,
         body: JSON.stringify({
           toolId: activeTool.id,
           input: { ...formData },
+          workspaceId: activeWorkspaceId || undefined,
+          moduleId: activeModuleId || undefined,
           options: {
             mode,
             controls: generationControls,
@@ -806,6 +960,7 @@ export function ToolsWorkspace() {
           },
         }),
       });
+      window.clearTimeout(timeout);
 
       const json = await res.json();
 
@@ -835,14 +990,23 @@ export function ToolsWorkspace() {
       );
 
       await refreshHistory(activeTool.id);
-    } catch {
+    } catch (error) {
       setGenerationErrorDetails({
-        title: "Temporary issue",
-        description: "Your credits were not deducted unless the generation completed successfully.",
+        title: error instanceof DOMException && error.name === "AbortError" ? "Request timeout" : "Temporary issue",
+        description: error instanceof DOMException && error.name === "AbortError"
+          ? "Generation took too long. Please retry. Your credits are safe unless generation succeeded."
+          : "Your credits were not deducted unless the generation completed successfully.",
         retryable: true,
       });
-      setError("We couldn't generate your output right now. Please check your connection and try again.");
+      setError(
+        error instanceof DOMException && error.name === "AbortError"
+          ? "Generation timed out. Please retry with a shorter or clearer brief."
+          : "We couldn't generate your output right now. Please check your connection and try again."
+      );
     } finally {
+      if (pendingToolRequestRef.current === requestId) {
+        pendingToolRequestRef.current = null;
+      }
       setIsLoading(false);
     }
   };
@@ -863,14 +1027,25 @@ export function ToolsWorkspace() {
 
   const exportCurrentResult = async (format: ExportFormat) => {
     if (!resultExecutionId) return;
+
+    const requestKey = buildExportRequestKey(resultExecutionId, format);
+    if (pendingExportRequestsRef.current.has(requestKey)) {
+      return;
+    }
+
     setError(null);
     setIsExporting(true);
+    pendingExportRequestsRef.current.add(requestKey);
     try {
+      const controller = new AbortController();
+      const timeout = window.setTimeout(() => controller.abort(), 30000);
       const res = await fetch("/api/exports", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({ toolUsageId: resultExecutionId, format }),
       });
+      window.clearTimeout(timeout);
       const json = await res.json();
       if (!res.ok) {
         setError(json.error ?? "Export failed.");
@@ -882,6 +1057,7 @@ export function ToolsWorkspace() {
     } catch {
       setError("We couldn't prepare your export right now. Please try again.");
     } finally {
+      pendingExportRequestsRef.current.delete(requestKey);
       setIsExporting(false);
     }
   };
@@ -909,6 +1085,14 @@ export function ToolsWorkspace() {
       await redownloadExport(existing.id);
       return;
     }
+
+    const requestKey = buildExportRequestKey(item.id, format);
+    if (pendingExportRequestsRef.current.has(requestKey)) {
+      return;
+    }
+
+    pendingExportRequestsRef.current.add(requestKey);
+    setIsExporting(true);
     try {
       const res = await fetch("/api/exports", {
         method: "POST",
@@ -925,6 +1109,9 @@ export function ToolsWorkspace() {
       openSignedUrl(json.data.signedUrl);
     } catch {
       setError("We couldn't prepare that export right now. Please try again.");
+    } finally {
+      pendingExportRequestsRef.current.delete(requestKey);
+      setIsExporting(false);
     }
   };
 
@@ -1036,9 +1223,24 @@ export function ToolsWorkspace() {
                 <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Saved outputs</p>
                 <p className="mt-3 text-2xl font-semibold tracking-tight">{savedHistoryItems.length}</p>
               </div>
+              <div className="dashboard-metric">
+                <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Workspace records</p>
+                <p className="mt-3 text-2xl font-semibold tracking-tight">{workspaceDataCounts[activeWorkspaceId] ?? 0}</p>
+              </div>
             </div>
 
             <div className="relative">
+              {workspaces.length ? (
+                <select
+                  className="mb-3 flex h-11 w-full rounded-2xl border border-border/80 bg-background/90 px-3.5 py-2.5 text-sm shadow-[0_8px_18px_-18px_rgba(15,23,42,0.35)]"
+                  value={activeWorkspaceId}
+                  onChange={(e) => selectWorkspace(e.target.value)}
+                >
+                  {workspaces.map((workspace) => (
+                    <option key={workspace.id} value={workspace.id}>{workspace.name}</option>
+                  ))}
+                </select>
+              ) : null}
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={toolSearch}
@@ -1076,11 +1278,36 @@ export function ToolsWorkspace() {
 
         <Card className="max-h-[70vh] overflow-hidden">
           <CardHeader>
-            <CardTitle className="text-base">Tool list</CardTitle>
-            <p className="text-xs text-muted-foreground">Focused launch tools for SEO, ads, personas, and landing pages.</p>
+            <CardTitle className="text-base">Workspace modules</CardTitle>
+            <p className="text-xs text-muted-foreground">Operate by workflow module, not disconnected tools.</p>
           </CardHeader>
           <CardContent className="subtle-scrollbar space-y-3 overflow-auto">
-            {filteredTools.map((tool) => {
+            {activeModules.length ? activeModules.map((module) => {
+              const isActive = module.id === activeModuleId;
+              const resolvedTool = module.tool;
+              const isFavorite = resolvedTool ? favoriteToolIds.includes(resolvedTool.id) : false;
+              return (
+                <div
+                  key={module.id}
+                  className={`rounded-[24px] border p-4 transition-all ${
+                    isActive ? "border-primary/40 bg-primary/10 shadow-[0_18px_42px_-34px_rgba(99,102,241,0.65)]" : "border-border/70 bg-card hover:border-border hover:bg-muted/45"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <button type="button" onClick={() => selectModule(module.id)} className="flex-1 text-left">
+                      <p className="text-sm font-medium text-foreground">{module.name}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{resolvedTool ? `${resolvedTool.creditCost} credits` : "Coming soon"}</p>
+                      <p className="mt-3 text-xs leading-5 text-muted-foreground">{module.description}</p>
+                    </button>
+                    {resolvedTool ? (
+                      <button type="button" onClick={() => toggleFavoriteTool(resolvedTool.id)} className="rounded-full border border-border/80 p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground">
+                        <Star size={14} className={isFavorite ? "fill-amber-300 text-amber-300" : ""} />
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              );
+            }) : filteredTools.map((tool) => {
               const isFavorite = favoriteToolIds.includes(tool.id);
               const isActive = tool.id === activeToolId;
               return (
@@ -1119,15 +1346,15 @@ export function ToolsWorkspace() {
               <div className="space-y-3">
                 <div className="flex items-center gap-3">
                   <div className="surface-muted flex size-14 items-center justify-center rounded-[20px] text-3xl">
-                    {activeTool?.metadata.icon ?? "✨"}
+                    {activeWorkspace?.icon ?? activeTool?.metadata.icon ?? "✨"}
                   </div>
                   <div>
-                    <p className="premium-label">{activeTool?.metadata.category ?? "Tool workspace"}</p>
-                    <h2 className="mt-3 text-3xl font-semibold tracking-tight">{activeTool?.metadata.name ?? "Select a tool"}</h2>
+                    <p className="premium-label">{activeWorkspace?.name ?? activeTool?.metadata.category ?? "Tool workspace"}</p>
+                    <h2 className="mt-3 text-3xl font-semibold tracking-tight">{activeModule?.name ?? activeTool?.metadata.name ?? "Select a tool"}</h2>
                   </div>
                 </div>
                 <p className="max-w-4xl text-sm leading-6 text-muted-foreground">
-                  {activeTool?.metadata.tagline ?? activeTool?.metadata.description ?? "Choose a tool to begin."}
+                  {activeModule?.description ?? activeWorkspace?.description ?? activeTool?.metadata.tagline ?? activeTool?.metadata.description ?? "Choose a tool to begin."}
                 </p>
               </div>
 
@@ -1150,6 +1377,16 @@ export function ToolsWorkspace() {
 
             {activeTool?.metadata.tags?.length ? (
               <div className="flex flex-wrap gap-2">
+                {activeModule?.workflowStage ? (
+                  <span className="rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-300">
+                    Stage: {activeModule.workflowStage}
+                  </span>
+                ) : null}
+                {activeModule?.outputLabel ? (
+                  <span className="rounded-full border border-cyan-400/30 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-300">
+                    Output: {activeModule.outputLabel}
+                  </span>
+                ) : null}
                 {activeTool.metadata.tags.map((tag) => (
                   <span key={tag} className="rounded-full border border-border/80 px-3 py-1 text-xs text-muted-foreground">
                     {tag}
@@ -1166,6 +1403,22 @@ export function ToolsWorkspace() {
               <CardHeader>
                 <CardTitle>Input panel</CardTitle>
                 <p className="text-sm text-muted-foreground">Add your brief clearly. Better inputs produce stronger publish-ready outputs.</p>
+                {activeWorkspace ? (
+                  <div className="mt-3 grid gap-2 md:grid-cols-3">
+                    <div className="rounded-2xl border border-border/70 bg-muted/30 p-3">
+                      <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Audience presets</p>
+                      <p className="mt-2 text-xs text-foreground">{activeWorkspace.audiencePresets.join(" • ")}</p>
+                    </div>
+                    <div className="rounded-2xl border border-border/70 bg-muted/30 p-3">
+                      <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Tone presets</p>
+                      <p className="mt-2 text-xs text-foreground">{activeWorkspace.tonePresets.join(" • ")}</p>
+                    </div>
+                    <div className="rounded-2xl border border-border/70 bg-muted/30 p-3">
+                      <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Templates</p>
+                      <p className="mt-2 text-xs text-foreground">{activeWorkspace.templatePresets.join(" • ")}</p>
+                    </div>
+                  </div>
+                ) : null}
               </CardHeader>
               <CardContent className="space-y-5">
                 {activeTool?.presets?.length ? (
@@ -1448,6 +1701,43 @@ export function ToolsWorkspace() {
               </CardContent>
             </Card>
 
+            {activeWorkspace ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Workspace data panel</CardTitle>
+                  <p className="text-sm text-muted-foreground">Project/campaign/plan/gallery summaries for this workspace.</p>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {Object.entries(workspaceOverview).length ? (
+                    Object.entries(workspaceOverview).map(([key, value]) => {
+                      const count = Array.isArray(value) ? value.length : 0;
+                      return (
+                        <div key={key} className="rounded-2xl border border-border/70 bg-muted/35 px-4 py-3">
+                          <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">{key.replace(/_/g, " ")}</p>
+                          <p className="mt-2 text-lg font-semibold text-foreground">{count}</p>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No workspace records yet.</p>
+                  )}
+
+                  {activeWorkspace.id === "seo-growth-os" && Array.isArray(workspaceOverview.keyword_clusters) ? (
+                    <div className="rounded-2xl border border-cyan-400/25 bg-cyan-500/5 p-4">
+                      <p className="text-xs uppercase tracking-[0.16em] text-cyan-300">Topical map view</p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {(workspaceOverview.keyword_clusters as Array<Record<string, unknown>>).slice(0, 12).map((cluster, i) => (
+                          <span key={`${String(cluster.id ?? i)}`} className="rounded-full border border-cyan-400/30 px-3 py-1 text-xs text-cyan-200">
+                            {String(cluster.topic ?? cluster.name ?? `Cluster ${i + 1}`)}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                </CardContent>
+              </Card>
+            ) : null}
+
             <Card>
               <CardHeader>
                 <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
@@ -1598,7 +1888,7 @@ export function ToolsWorkspace() {
                               <Button variant="outline" size="sm" onClick={() => toggleSavedOutput(item.id)}>
                                 {savedOutputIds.includes(item.id) ? "Unsave" : "Save"}
                               </Button>
-                              <Button variant="outline" size="sm" onClick={() => void quickDownload(item, primaryDownloadFormat)}>Download</Button>
+                        <Button variant="outline" size="sm" onClick={() => void quickDownload(item, primaryDownloadFormat)} disabled={isExporting}>Download</Button>
                               <Button variant="outline" size="sm" onClick={() => void deleteGeneration(item.id)}>Delete</Button>
                             </div>
                           </div>

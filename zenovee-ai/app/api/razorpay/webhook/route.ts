@@ -24,12 +24,14 @@ function getEventId(event: RazorpayEvent, paymentId: string | null, subscription
   const payload = jsonValue(event.payload);
   const payment = jsonValue(jsonValue(payload.payment).entity);
   const subscription = jsonValue(jsonValue(payload.subscription).entity);
-
-  return (
+  const entityId =
     (payment.id as string | undefined) ??
     (subscription.id as string | undefined) ??
-    `${event.event ?? "unknown"}:${paymentId ?? "na"}:${subscriptionId ?? "na"}:${event.created_at ?? Date.now()}`
-  );
+    paymentId ??
+    subscriptionId ??
+    "na";
+
+  return `${event.event ?? "unknown"}:${entityId}:${event.created_at ?? "na"}`;
 }
 
 async function wasPaymentAlreadyProcessed(

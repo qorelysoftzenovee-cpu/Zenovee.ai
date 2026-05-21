@@ -23,7 +23,7 @@ export async function POST(req: Request) {
         return jsonApiError("Unauthorized", 401);
       }
 
-      const { toolId, input, options } = await req.json();
+      const { toolId, input, options, workspaceId, moduleId } = await req.json();
       const creditsBefore = await ToolExecutionService.getCredits(user.id);
       const forwardedFor = req.headers.get("x-forwarded-for") ?? "";
       const ipAddress = forwardedFor.split(",")[0]?.trim() || "0.0.0.0";
@@ -34,6 +34,8 @@ export async function POST(req: Request) {
         toolId,
         rawInput: input,
         options,
+        workspaceId,
+        moduleId,
         ipAddress,
         idempotencyKey,
       });
@@ -76,6 +78,8 @@ export async function GET(req: Request) {
 
       if (mode === "history") {
         const toolId = searchParams.get("toolId");
+        const workspaceId = searchParams.get("workspaceId");
+        const moduleId = searchParams.get("moduleId");
         const limit = Math.min(Number(searchParams.get("limit") ?? 10), 50);
 
         let query = supabaseAdmin
@@ -87,6 +91,29 @@ export async function GET(req: Request) {
 
         if (toolId) {
           query = query.eq("tool_id", toolId);
+        }
+
+        if (workspaceId || moduleId) {
+          let logsQuery = supabaseAdmin
+            .from("tool_usage_logs")
+            .select("execution_id")
+            .eq("user_id", user.id)
+            .order("created_at", { ascending: false })
+            .limit(limit * 4);
+
+          if (workspaceId) logsQuery = logsQuery.eq("metadata->>workspaceId", workspaceId);
+          if (moduleId) logsQuery = logsQuery.eq("metadata->>moduleId", moduleId);
+
+          const { data: scopedLogs } = await logsQuery.returns<Array<{ execution_id: string | null }>>();
+          const scopedExecutionIds = (scopedLogs ?? [])
+            .map((row) => row.execution_id)
+            .filter((id): id is string => typeof id === "string" && id.length > 0);
+
+          if (scopedExecutionIds.length === 0) {
+            return NextResponse.json({ success: true, data: [] });
+          }
+
+          query = query.in("id", scopedExecutionIds);
         }
 
         const { data, error } = await query;
@@ -139,9 +166,10 @@ export async function GET(req: Request) {
       const tools = (await ToolExecutionService.listToolsWithPricing()).filter(
         (tool) => tool.metadata.availability === "active" && (tool.metadata.visibility ?? "public") === "public"
       );
+      const workspaces = await ToolExecutionService.listWorkspacesWithPricing();
       const credits = await ToolExecutionService.getCredits(user.id);
 
-      return NextResponse.json({ success: true, data: { tools, credits } });
+      return NextResponse.json({ success: true, data: { tools, workspaces, credits } });
     } catch (error) {
       return jsonApiError(getErrorMessage(error), 400);
     }

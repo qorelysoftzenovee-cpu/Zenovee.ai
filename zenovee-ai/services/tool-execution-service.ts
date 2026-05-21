@@ -5,6 +5,7 @@ import { generationExecutionOptionsSchema, getToolPromptControlCatalog } from "@
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/supabase/types";
 import type { ToolDefinition } from "@/types/tools";
+import { listWorkspaceConfigs } from "@/services/workspaces/registry";
 
 type SupabaseRpcClient = {
   rpc: (
@@ -20,6 +21,16 @@ type ExecuteArgs = {
   options?: unknown;
   ipAddress: string;
   idempotencyKey?: string | null;
+  workspaceId?: string | null;
+  moduleId?: string | null;
+};
+
+type WorkspaceConfigRow = {
+  workspace_id: string;
+  visibility: "public" | "private";
+  audience_presets: unknown;
+  tone_presets: unknown;
+  template_presets: unknown;
 };
 
 export class ToolExecutionService {
@@ -57,6 +68,54 @@ export class ToolExecutionService {
         generationControls,
       };
     });
+  }
+
+  static async listWorkspacesWithPricing() {
+    const supabase = getSupabaseAdmin();
+    const tools = await this.listToolsWithPricing();
+    const toolsById = new Map(tools.map((tool) => [tool.id, tool]));
+    const { data: configRows } = await supabase
+      .from("workspace_configs")
+      .select("workspace_id,visibility,audience_presets,tone_presets,template_presets")
+      .returns<WorkspaceConfigRow[]>();
+    const configMap = new Map((configRows ?? []).map((row) => [row.workspace_id, row]));
+
+    return listWorkspaceConfigs()
+      .map((workspace) => {
+        const override = configMap.get(workspace.id);
+        return {
+          ...workspace,
+          audiencePresets: Array.isArray(override?.audience_presets) ? override.audience_presets.map(String) : workspace.audiencePresets,
+          tonePresets: Array.isArray(override?.tone_presets) ? override.tone_presets.map(String) : workspace.tonePresets,
+          templatePresets: Array.isArray(override?.template_presets) ? override.template_presets.map(String) : workspace.templatePresets,
+          visibility: (override?.visibility as "public" | "private" | undefined) ?? "public",
+          modules: workspace.modules.map((module) => {
+        const resolvedTool = module.toolId ? toolsById.get(module.toolId) : null;
+        const effectiveAvailability = module.availability ?? (resolvedTool?.disabled ? "coming_soon" : "active");
+
+        return {
+          ...module,
+          availability: effectiveAvailability,
+          tool: resolvedTool
+            ? {
+                id: resolvedTool.id,
+                metadata: resolvedTool.metadata,
+                creditCost: resolvedTool.creditCost,
+                fields: resolvedTool.fields,
+                examples: resolvedTool.examples,
+                presets: resolvedTool.presets,
+                exportFormats: resolvedTool.exportFormats,
+                usageClass: resolvedTool.usageClass,
+                disabled: resolvedTool.disabled,
+                cooldownSeconds: resolvedTool.cooldownSeconds,
+                generationControls: resolvedTool.generationControls,
+              }
+            : null,
+        };
+          }),
+        };
+      })
+      .filter((workspace) => workspace.visibility !== "private");
   }
 
   static async execute(args: ExecuteArgs) {
@@ -222,6 +281,8 @@ export class ToolExecutionService {
           status: "success",
           metadata: {
             toolName: tool.metadata.name,
+            workspaceId: args.workspaceId ?? null,
+            moduleId: args.moduleId ?? null,
             promptVersion: meta.promptVersion,
             attempts: meta.attempts,
             qualityScore: meta.qualityScore,

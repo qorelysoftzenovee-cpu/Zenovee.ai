@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireAdminApi } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { listToolDefinitions } from "@/definitions";
+import { jsonApiError } from "@/lib/runtime";
 
 type ToolPricingRow = {
   tool_id: string;
@@ -32,54 +33,71 @@ const updateSchema = z.object({
 });
 
 export async function GET() {
-  const auth = await requireAdminApi();
-  if ("response" in auth) return auth.response;
-  const supabase = getSupabaseAdmin();
-  const definitions = listToolDefinitions();
-  const { data } = await supabase
-    .from("tool_pricing")
-    .select("tool_id,credits_cost,is_active,cooldown_seconds,metadata")
-    .order("tool_id", { ascending: true });
+  try {
+    const auth = await requireAdminApi();
+    if ("response" in auth) return auth.response;
+    const supabase = getSupabaseAdmin();
+    const definitions = listToolDefinitions();
+    const { data } = await supabase
+      .from("tool_pricing")
+      .select("tool_id,credits_cost,is_active,cooldown_seconds,metadata")
+      .order("tool_id", { ascending: true });
 
-  const pricingMap = new Map(((data ?? []) as ToolPricingRow[]).map((row) => [row.tool_id, row]));
+    const pricingMap = new Map(((data ?? []) as ToolPricingRow[]).map((row) => [row.tool_id, row]));
 
-  return NextResponse.json({
-    success: true,
-    data: definitions.map((tool) => {
-      const pricing = pricingMap.get(tool.id);
-      return {
-        toolId: tool.id,
-        toolName: tool.metadata.name,
-        category: tool.metadata.category,
-        creditsCost: Number(pricing?.credits_cost ?? tool.creditCost),
-        isActive: pricing?.is_active ?? tool.metadata.availability !== "coming_soon",
-        cooldownSeconds: Number(pricing?.cooldown_seconds ?? 0),
-        metadata: pricing?.metadata ?? null,
-      };
-    }),
-  });
+    return NextResponse.json({
+      success: true,
+      data: definitions.map((tool) => {
+        const pricing = pricingMap.get(tool.id);
+        return {
+          toolId: tool.id,
+          toolName: tool.metadata.name,
+          category: tool.metadata.category,
+          creditsCost: Number(pricing?.credits_cost ?? tool.creditCost),
+          isActive: pricing?.is_active ?? tool.metadata.availability !== "coming_soon",
+          cooldownSeconds: Number(pricing?.cooldown_seconds ?? 0),
+          metadata: pricing?.metadata ?? null,
+        };
+      }),
+    });
+  } catch {
+    return jsonApiError("Unable to load tool pricing right now.", 500);
+  }
 }
 
 export async function PATCH(request: Request) {
-  const auth = await requireAdminApi();
-  if ("response" in auth) return auth.response;
-  const body = updateSchema.parse(await request.json());
-  const supabase = getSupabaseAdmin();
+  try {
+    const auth = await requireAdminApi();
+    if ("response" in auth) return auth.response;
 
-  const { error } = await supabase.from("tool_pricing").upsert(
-    {
-      tool_id: body.toolId,
-      credits_cost: body.creditsCost,
-      is_active: body.isActive,
-      cooldown_seconds: body.cooldownSeconds,
-      metadata: body.metadata,
-    } as never,
-    { onConflict: "tool_id" }
-  );
+    let body: z.infer<typeof updateSchema>;
+    try {
+      body = updateSchema.parse(await request.json());
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return jsonApiError(error.issues[0]?.message ?? "Invalid tool pricing update.", 400);
+      }
+      throw error;
+    }
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
+    const supabase = getSupabaseAdmin();
+    const { error } = await supabase.from("tool_pricing").upsert(
+      {
+        tool_id: body.toolId,
+        credits_cost: body.creditsCost,
+        is_active: body.isActive,
+        cooldown_seconds: body.cooldownSeconds,
+        metadata: body.metadata,
+      } as never,
+      { onConflict: "tool_id" }
+    );
+
+    if (error) {
+      return jsonApiError("Unable to update tool pricing right now.", 400);
+    }
+
+    return NextResponse.json({ success: true });
+  } catch {
+    return jsonApiError("Unable to update tool pricing right now.", 500);
   }
-
-  return NextResponse.json({ success: true });
 }

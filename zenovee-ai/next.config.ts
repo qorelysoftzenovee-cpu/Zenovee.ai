@@ -15,6 +15,7 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   compress: true,
+  distDir: process.env.NEXT_DIST_DIR?.trim() || ".next",
   turbopack: {
     root: path.join(__dirname),
   },

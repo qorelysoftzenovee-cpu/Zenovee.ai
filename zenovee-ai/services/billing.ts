@@ -12,6 +12,19 @@ type SupabaseRpcClient = {
 
 const GRACE_DAYS = 3;
 
+async function hasLegacyCreditRecord(userId: string, reason: string) {
+  const supabaseAdmin = getSupabaseAdmin();
+  const { data } = await supabaseAdmin
+    .from("credits")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("reason", reason)
+    .limit(1)
+    .maybeSingle<{ id: string }>();
+
+  return Boolean(data?.id);
+}
+
 export async function getOrCreateRazorpayPlanId(appPlanId: string) {
   const supabaseAdmin = getSupabaseAdmin();
 
@@ -61,18 +74,24 @@ export async function assignPlanCredits(userId: string, appPlanId: string, refer
 
   const allocation = (Array.isArray(allocationData) ? allocationData[0] : allocationData) as { balance_after?: number } | null;
   const nextBalance = Number(allocation?.balance_after ?? plan.credits);
+  const legacyReason = reference;
+  const shouldWriteLegacyCreditRow = !(await hasLegacyCreditRecord(userId, legacyReason));
+
+  const legacyWritePromise = shouldWriteLegacyCreditRow
+    ? supabaseAdmin.from("credits").insert({
+        user_id: userId,
+        credits_added: plan.credits,
+        credits_consumed: 0,
+        remaining_balance: nextBalance,
+        reason: legacyReason,
+        reset_interval: "monthly",
+        reset_date: nextResetAt,
+        updated_at: nowIso,
+      } as never)
+    : Promise.resolve({ error: null });
 
   const [{ error: legacyErr }, { error: userErr }] = await Promise.all([
-    supabaseAdmin.from("credits").insert({
-      user_id: userId,
-      credits_added: plan.credits,
-      credits_consumed: 0,
-      remaining_balance: nextBalance,
-      reason: `plan_allocation:${appPlanId}`,
-      reset_interval: "monthly",
-      reset_date: nextResetAt,
-      updated_at: nowIso,
-    } as never),
+    legacyWritePromise,
     supabaseAdmin
       .from("users")
       .update({ credits_balance: nextBalance, plan: appPlanId, updated_at: nowIso } as never)
@@ -103,17 +122,23 @@ export async function addTopupCredits(userId: string, topupId: string, credits: 
 
   const row = (Array.isArray(data) ? data[0] : data) as { balance_after?: number } | null;
   const nextBalance = Number(row?.balance_after ?? credits);
+  const legacyReason = reference;
+  const shouldWriteLegacyCreditRow = !(await hasLegacyCreditRecord(userId, legacyReason));
+
+  const legacyWritePromise = shouldWriteLegacyCreditRow
+    ? supabaseAdmin.from("credits").insert({
+        user_id: userId,
+        credits_added: credits,
+        credits_consumed: 0,
+        remaining_balance: nextBalance,
+        reason: legacyReason,
+        reset_interval: "monthly",
+        updated_at: nowIso,
+      } as never)
+    : Promise.resolve({ error: null });
 
   await Promise.all([
-    supabaseAdmin.from("credits").insert({
-      user_id: userId,
-      credits_added: credits,
-      credits_consumed: 0,
-      remaining_balance: nextBalance,
-      reason: `credit_topup:${topupId}`,
-      reset_interval: "monthly",
-      updated_at: nowIso,
-    } as never),
+    legacyWritePromise,
     supabaseAdmin.from("users").update({ credits_balance: nextBalance, updated_at: nowIso } as never).eq("id", userId),
   ]);
 

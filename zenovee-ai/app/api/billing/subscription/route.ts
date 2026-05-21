@@ -47,7 +47,7 @@ export async function PATCH(request: Request) {
     await getRazorpayClient().subscriptions.cancel(sub.razorpay_subscription_id, true);
     await supabaseAdmin
       .from("subscriptions")
-      .update({ cancel_at_period_end: true, status: "CANCELLED" } as never)
+      .update({ cancel_at_period_end: true, updated_at: new Date().toISOString() } as never)
       .eq("user_id", user.id);
     return NextResponse.json({ success: true });
   }

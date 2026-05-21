@@ -17,6 +17,14 @@ type ToolUsageRow = {
 
 const EXPORT_BUCKET = "generated-exports";
 
+type ExistingExportRow = {
+  id: string;
+  storage_path: string | null;
+  file_type: string | null;
+  metadata: Json | null;
+  created_at: string;
+};
+
 function slugify(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80);
 }
@@ -182,7 +190,43 @@ async function uploadToStorage(args: { userId: string; fileName: string; content
   return path;
 }
 
+async function findExistingExport(args: { userId: string; toolUsageId: string; format: ExportFormat }) {
+  const { data, error } = await supabaseAdmin
+    .from("generation_history")
+    .select("id,storage_path,file_type,metadata,created_at")
+    .eq("user_id", args.userId)
+    .eq("tool_usage_id", args.toolUsageId)
+    .eq("file_type", args.format)
+    .not("storage_path", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle<ExistingExportRow>();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data ?? null;
+}
+
 export async function createExportForToolUsage(args: { userId: string; toolUsageId: string; format: ExportFormat }) {
+  const existingExport = await findExistingExport(args);
+  if (existingExport?.storage_path) {
+    const existingFileName =
+      typeof existingExport.metadata === "object" && existingExport.metadata && "fileName" in existingExport.metadata
+        ? String(existingExport.metadata.fileName)
+        : `export.${existingExport.file_type ?? "bin"}`;
+
+    return {
+      id: existingExport.id,
+      fileType: existingExport.file_type,
+      storagePath: existingExport.storage_path,
+      createdAt: existingExport.created_at,
+      signedUrl: await createSignedDownloadUrl({ path: existingExport.storage_path, downloadName: existingFileName }),
+      fileName: existingFileName,
+    };
+  }
+
   const { data: usage, error } = await supabaseAdmin
     .from("tool_usage")
     .select("id,user_id,tool_id,tool_name,output,created_at")

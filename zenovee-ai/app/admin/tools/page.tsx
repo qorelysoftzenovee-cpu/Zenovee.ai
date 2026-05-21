@@ -5,6 +5,8 @@ import { getAdminOverviewData } from "@/lib/admin";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { listToolDefinitions } from "@/definitions";
 import { ToolPricingManager } from "@/components/admin/tool-pricing-manager";
+import { WorkspaceGovernanceManager } from "@/components/admin/workspace-governance-manager";
+import { listWorkspaceConfigs } from "@/services/workspaces/registry";
 
 type ToolPricingRow = {
   tool_id: string;
@@ -25,6 +27,14 @@ export default async function AdminToolsPage() {
     .order("tool_id", { ascending: true });
 
   const pricingMap = new Map(((pricingRows ?? []) as ToolPricingRow[]).map((row) => [row.tool_id, row]));
+  const workspaceItems = listWorkspaceConfigs().map((workspace) => ({
+    workspaceId: workspace.id,
+    name: workspace.name,
+    visibility: "public" as const,
+    audiencePresets: workspace.audiencePresets,
+    tonePresets: workspace.tonePresets,
+    templatePresets: workspace.templatePresets,
+  }));
   const pricingItems = definitions.map((tool) => {
     const row = pricingMap.get(tool.id);
     return {
@@ -44,6 +54,13 @@ export default async function AdminToolsPage() {
         <CardHeader><CardTitle>Tool Pricing Management</CardTitle></CardHeader>
         <CardContent>
           <ToolPricingManager items={pricingItems} />
+        </CardContent>
+      </Card>
+
+      <Card className="mb-6 admin-surface">
+        <CardHeader><CardTitle>Workspace Governance</CardTitle></CardHeader>
+        <CardContent>
+          <WorkspaceGovernanceManager items={workspaceItems} />
         </CardContent>
       </Card>
 

@@ -80,6 +80,15 @@ type BillingEventRow = {
   created_at: string;
 };
 
+type ToolUsageLogRow = {
+  tool_id: string;
+  credits_consumed: number;
+  status: string;
+  metadata: {
+    workspaceId?: string | null;
+  } | null;
+};
+
 function num(value: number | string | null | undefined) {
   return Number(value ?? 0);
 }
@@ -111,7 +120,7 @@ export async function getAdminOverviewData() {
   const supabase = getSupabaseAdmin();
   const since30 = new Date(Date.now() - 30 * DAY_MS).toISOString();
 
-  const [usersRes, subscriptionsRes, paymentsRes, creditsRes, executionsRes, apiUsageRes, creditTxRes, billingEventsRes] = await Promise.all([
+  const [usersRes, subscriptionsRes, paymentsRes, creditsRes, executionsRes, apiUsageRes, creditTxRes, billingEventsRes, usageLogsRes] = await Promise.all([
     supabase.from("users").select("id,email,name,role,status,created_at,last_login_at", { count: "exact" }).order("created_at", { ascending: false }),
     supabase.from("subscriptions").select("id,user_id,plan_name,status,current_period_end,next_renewal_at,cancel_at_period_end,updated_at").order("updated_at", { ascending: false }),
     supabase.from("payments").select("id,user_id,payment_amount,status,created_at,plan,currency,failure_reason").order("created_at", { ascending: false }).limit(500),
@@ -120,6 +129,7 @@ export async function getAdminOverviewData() {
     supabase.from("api_usage_logs").select("id,user_id,provider,model,total_tokens,estimated_cost,status,latency_ms,created_at").order("created_at", { ascending: false }).limit(1000),
     supabase.from("credit_transactions").select("id,user_id,transaction_type,credits,created_at").order("created_at", { ascending: false }).limit(1000),
     supabase.from("billing_events").select("id,event_type,user_id,created_at").order("created_at", { ascending: false }).limit(250),
+    supabase.from("tool_usage_logs").select("tool_id,credits_consumed,status,metadata").order("created_at", { ascending: false }).limit(3000),
   ]);
 
   const users = (usersRes.data ?? []) as AdminUserRow[];
@@ -130,6 +140,7 @@ export async function getAdminOverviewData() {
   const apiUsage = (apiUsageRes.data ?? []) as ApiUsageRow[];
   const creditTransactions = (creditTxRes.data ?? []) as CreditTransactionRow[];
   const billingEvents = (billingEventsRes.data ?? []) as BillingEventRow[];
+  const usageLogs = (usageLogsRes.data ?? []) as ToolUsageLogRow[];
 
   const userMap = new Map(users.map((user) => [user.id, user]));
 
@@ -259,6 +270,28 @@ export async function getAdminOverviewData() {
     user: userMap.get(subscription.user_id) ?? null,
   }));
 
+  const workspaceMap = new Map<string, { runs: number; credits: number; failures: number }>();
+  for (const row of usageLogs) {
+    const workspaceId = String(row.metadata?.workspaceId ?? "unscoped");
+    if (!workspaceMap.has(workspaceId)) {
+      workspaceMap.set(workspaceId, { runs: 0, credits: 0, failures: 0 });
+    }
+    const current = workspaceMap.get(workspaceId)!;
+    current.runs += 1;
+    current.credits += num(row.credits_consumed);
+    if (row.status !== "success") current.failures += 1;
+  }
+
+  const workspaceAnalytics = [...workspaceMap.entries()]
+    .map(([workspaceId, stats]) => ({
+      workspaceId,
+      runs: stats.runs,
+      credits: stats.credits,
+      failures: stats.failures,
+      failureRate: stats.runs ? Number(((stats.failures / stats.runs) * 100).toFixed(2)) : 0,
+    }))
+    .sort((a, b) => b.runs - a.runs);
+
   return {
     totals: {
       totalUsers: usersRes.count ?? users.length,
@@ -288,6 +321,7 @@ export async function getAdminOverviewData() {
     },
     mostUsedTools: toolsAnalytics.slice(0, 8),
     toolsAnalytics,
+    workspaceAnalytics,
     topUsers,
     recentPayments,
     recentApiUsage,

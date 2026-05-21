@@ -60,6 +60,25 @@ export default async function AdminAnalyticsPage() {
             )) : <div className="admin-row text-sm text-slate-400">No tool performance data yet.</div>}
           </CardContent>
         </Card>
+
+        <Card className="admin-surface">
+          <CardHeader><CardTitle>Workspace Performance Snapshot</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            {data.workspaceAnalytics?.length ? data.workspaceAnalytics.slice(0, 10).map((workspace) => (
+              <div key={workspace.workspaceId} className="admin-row text-sm">
+                <div className="flex items-center justify-between gap-4">
+                  <p className="font-medium text-white">{workspace.workspaceId}</p>
+                  <p>{workspace.runs} runs</p>
+                </div>
+                <div className="mt-2 grid gap-2 text-xs text-slate-300 md:grid-cols-3">
+                  <span>Credits: {workspace.credits}</span>
+                  <span>Failures: {workspace.failures}</span>
+                  <span>Failure Rate: {workspace.failureRate}%</span>
+                </div>
+              </div>
+            )) : <div className="admin-row text-sm text-slate-400">No workspace telemetry yet.</div>}
+          </CardContent>
+        </Card>
       </div>
     </PageShell>
   );
