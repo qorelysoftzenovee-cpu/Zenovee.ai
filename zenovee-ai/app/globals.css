@@ -156,7 +156,7 @@
 
   /* === DASHBOARD METRICS === */
   .dashboard-metric {
-    @apply rounded-2xl border border-border/80 bg-card p-5 shadow-[0_10px_30px_-24px_rgba(15,23,42,0.45)] transition-all duration-200 ease-premium;
+    @apply rounded-2xl border border-border/80 bg-card p-5 shadow-[0_10px_30px_-24px_rgba(15,23,42,0.45)] transition-all duration-200 ease-out;
   }
 
   .dashboard-metric:hover {
@@ -173,7 +173,7 @@
   }
 
   .admin-row {
-    @apply rounded-xl border border-white/10 bg-white/[0.03] px-4 py-4 transition-all duration-200 ease-premium hover:bg-white/[0.06] hover:border-white/15;
+    @apply rounded-xl border border-white/10 bg-white/[0.03] px-4 py-4 transition-all duration-200 ease-out hover:bg-white/[0.06] hover:border-white/15;
   }
 
   /* === ANIMATION UTILITIES === */
@@ -207,11 +207,13 @@
 
   /* === GENERATION & LOADING STATES === */
   .loading-skeleton {
-    @apply animate-shimmer rounded bg-muted/50;
+    @apply rounded bg-muted/50;
+    animation: shimmer 2s infinite;
   }
 
   .generation-thinking {
-    @apply relative overflow-hidden rounded-lg border border-primary/20 bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 p-3 animate-pulse-gentle;
+    @apply relative overflow-hidden rounded-lg border border-primary/20 bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 p-3;
+    animation: pulseGentle 2s ease-in-out infinite;
   }
 
   .generation-progress {
@@ -231,7 +233,7 @@
   }
 
   .streaming-text {
-    @apply animate-enter;
+    animation: enter 220ms ease-out both;
   }
 
   /* === EMPTY STATE PATTERNS === */
