@@ -191,13 +191,18 @@ export function AlertDialog({
     success: "bg-success/10",
   };
 
+  const dialogVariant: DialogProps["variant"] =
+    variant === "danger" ? "destructive" :
+    variant === "success" ? "success" :
+    "default";
+
   return (
     <Dialog
       isOpen={isOpen}
       onClose={onClose}
       title={title}
       description={description}
-      variant={variant}
+      variant={dialogVariant}
       size="sm"
       footer={
         <Button
