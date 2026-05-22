@@ -11,17 +11,13 @@ import {
   Clock3,
   Copy,
   Download,
-  FolderKanban,
   History,
   Loader2,
-  Palette,
   Pin,
   RefreshCcw,
   Search,
   Sparkles,
   Star,
-  Target,
-  CalendarDays,
   Wand2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -168,6 +164,7 @@ const WORKSPACE_FOLDERS_STORAGE_KEY = "zenovee_workspace_folders";
 const WORKSPACE_FAVORITES_STORAGE_KEY = "zenovee_workspace_favorites";
 const WORKSPACE_RECENT_STORAGE_KEY = "zenovee_workspace_recent";
 const ACTIVE_WORKSPACE_STORAGE_KEY = "zenovee_workspace_active";
+const HISTORY_REOPEN_STORAGE_KEY = "zenovee_history_reopen_item";
 
 type WorkspaceProject = { id: string; workspaceId: string; name: string; updatedAt: string };
 type WorkspaceFolder = { id: string; workspaceId: string; name: string; updatedAt: string };
@@ -852,6 +849,46 @@ export function ToolsWorkspace() {
   }, [activeToolId, activeWorkspaceId, activeModuleId]);
 
   useEffect(() => {
+    if (typeof window === "undefined" || !tools.length) return;
+    const raw = window.localStorage.getItem(HISTORY_REOPEN_STORAGE_KEY);
+    if (!raw) return;
+
+    try {
+      const parsed = JSON.parse(raw) as {
+        id?: string;
+        tool_id?: string;
+        output?: Record<string, unknown>;
+      };
+
+      if (parsed.tool_id) {
+        const nextTool = tools.find((tool) => tool.id === parsed.tool_id);
+        if (nextTool) {
+          setActiveToolId(nextTool.id);
+          setGenerationControls(getDefaultGenerationControls(nextTool));
+          setExportFormat((nextTool.exportFormats?.[0] as ExportFormat | undefined) ?? "json");
+        }
+      }
+
+      if (parsed.output && typeof parsed.output === "object") {
+        setResult(parsed.output);
+        const preview = toReadableValue(parsed.output);
+        setEditableSections(buildEditableSections(parsed.output, preview));
+      }
+
+      if (parsed.id) {
+        setResultExecutionId(parsed.id);
+      }
+
+      setActiveTab("result");
+      setSuccessMessage("History output reopened in workspace.");
+    } catch {
+      // noop
+    } finally {
+      window.localStorage.removeItem(HISTORY_REOPEN_STORAGE_KEY);
+    }
+  }, [tools]);
+
+  useEffect(() => {
     const run = async () => {
       if (!activeWorkspaceId) return;
       const endpointByWorkspace: Record<string, string> = {
@@ -1400,16 +1437,7 @@ export function ToolsWorkspace() {
               />
             </div>
 
-            <div className="grid grid-cols-1 gap-2">
-              <Button size="sm" variant="outline" onClick={createWorkspaceProject}><FolderKanban size={14} /> New project</Button>
-            </div>
-
-            {activeWorkspace ? (
-              <Button size="sm" variant="outline" onClick={() => toggleWorkspaceFavorite(activeWorkspace.id)}>
-                <Star size={14} className={workspaceFavorites.includes(activeWorkspace.id) ? "fill-amber-300 text-amber-300" : ""} />
-                {workspaceFavorites.includes(activeWorkspace.id) ? "Favorited workspace" : "Favorite workspace"}
-              </Button>
-            ) : null}
+            {activeWorkspace ? <p className="text-xs text-muted-foreground">Focused workspace mode active.</p> : null}
           </CardContent>
         </Card>
 
@@ -1514,25 +1542,7 @@ export function ToolsWorkspace() {
               ) : null}
             </div>
 
-            {activeTool?.metadata.tags?.length ? (
-              <div className="flex flex-wrap gap-2">
-                {activeModule?.workflowStage ? (
-                  <span className="rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-300">
-                    Stage: {activeModule.workflowStage}
-                  </span>
-                ) : null}
-                {activeModule?.outputLabel ? (
-                  <span className="rounded-full border border-cyan-400/30 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-300">
-                    Output: {activeModule.outputLabel}
-                  </span>
-                ) : null}
-                {activeTool.metadata.tags.map((tag) => (
-                  <span key={tag} className="rounded-full border border-border/80 px-3 py-1 text-xs text-muted-foreground">
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            ) : null}
+            
           </CardHeader>
         </Card>
 
@@ -1542,34 +1552,7 @@ export function ToolsWorkspace() {
               <CardHeader>
                 <CardTitle>Input panel</CardTitle>
                 <p className="text-sm text-muted-foreground">Add your brief clearly. Better inputs produce stronger publish-ready outputs.</p>
-                {activeWorkspace ? (
-                  <div className="mt-3 rounded-2xl border border-border/70 bg-muted/30 p-3">
-                    <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Recommended setup</p>
-                    <p className="mt-2 text-xs text-foreground">
-                      {activeWorkspace.audiencePresets[0] ?? "Audience"} • {activeWorkspace.tonePresets[0] ?? "Tone"} • {activeWorkspace.templatePresets[0] ?? "Template"}
-                    </p>
-                  </div>
-                ) : null}
-                {activeWorkspace?.id === "linkedin-authority-os" ? (
-                  <div className="mt-3 rounded-2xl border border-indigo-400/20 bg-indigo-500/5 p-3 text-xs text-indigo-100">
-                    <div className="flex items-center gap-2"><CalendarDays size={14} /> Content calendar, tone presets, and swipe-file continuity enabled.</div>
-                  </div>
-                ) : null}
-                {activeWorkspace?.id === "sales-outreach-os" ? (
-                  <div className="mt-3 rounded-2xl border border-emerald-400/20 bg-emerald-500/5 p-3 text-xs text-emerald-100">
-                    <div className="flex items-center gap-2"><Target size={14} /> Sequence builder workflow and objection handling context active.</div>
-                  </div>
-                ) : null}
-                {activeWorkspace?.id === "seo-growth-os" ? (
-                  <div className="mt-3 rounded-2xl border border-cyan-400/20 bg-cyan-500/5 p-3 text-xs text-cyan-100">
-                    <div className="flex items-center gap-2"><Pin size={14} /> Keyword clustering, SERP planning, and linking map structure active.</div>
-                  </div>
-                ) : null}
-                {activeWorkspace?.id === "ai-brand-studio" ? (
-                  <div className="mt-3 rounded-2xl border border-fuchsia-400/20 bg-fuchsia-500/5 p-3 text-xs text-fuchsia-100">
-                    <div className="flex items-center gap-2"><Palette size={14} /> Style preset studio mode with gallery-ready generation context.</div>
-                  </div>
-                ) : null}
+                
               </CardHeader>
               <CardContent className="space-y-5">
                 {activeTool?.presets?.length ? (

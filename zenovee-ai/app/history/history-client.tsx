@@ -1,0 +1,161 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+
+type HistoryRow = {
+  id: string;
+  tool_id: string;
+  tool_name: string;
+  output: unknown;
+  credits_consumed: number;
+  created_at: string;
+};
+
+const FAVORITES_KEY = "zenovee_history_favorites";
+const REOPEN_KEY = "zenovee_history_reopen_item";
+
+function formatDate(value: string) {
+  return new Date(value).toLocaleString("en-IN", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+export function HistoryClient({ initialRows }: { initialRows: HistoryRow[] }) {
+  const router = useRouter();
+  const [rows, setRows] = useState(initialRows);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [favoriteIds, setFavoriteIds] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const parsed = JSON.parse(window.localStorage.getItem(FAVORITES_KEY) ?? "[]");
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const hasRows = rows.length > 0;
+
+  const previewById = useMemo(
+    () =>
+      Object.fromEntries(
+        rows.map((row) => [
+          row.id,
+          JSON.stringify(row.output)
+            .replaceAll("\n", " ")
+            .slice(0, 120),
+        ])
+      ),
+    [rows]
+  );
+
+  const persistFavorites = (next: string[]) => {
+    setFavoriteIds(next);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(FAVORITES_KEY, JSON.stringify(next));
+    }
+  };
+
+  const reopen = (row: HistoryRow) => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(REOPEN_KEY, JSON.stringify(row));
+    }
+    router.push("/dashboard/tools?fromHistory=1");
+  };
+
+  const exportRow = async (row: HistoryRow) => {
+    setBusyId(row.id);
+    try {
+      const res = await fetch("/api/exports", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ toolUsageId: row.id, format: "json" }),
+      });
+      const json = await res.json();
+      if (res.ok && json?.data?.signedUrl) {
+        window.open(json.data.signedUrl, "_blank", "noopener,noreferrer");
+      }
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const deleteRow = async (row: HistoryRow) => {
+    setBusyId(row.id);
+    try {
+      const res = await fetch("/api/exports", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: row.id, kind: "generation" }),
+      });
+      if (res.ok) {
+        setRows((prev) => prev.filter((item) => item.id !== row.id));
+      }
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  return !hasRows ? (
+    <div className="empty-state">
+      <div className="empty-state-icon">⏳</div>
+      <p className="empty-state-title">No generations yet</p>
+      <p className="empty-state-description">Once you run your first tool, your history will appear here with export and reopen actions.</p>
+      <Button asChild className="empty-state-action"><a href="/dashboard/tools">Open Workspace</a></Button>
+    </div>
+  ) : (
+    <Card>
+      <CardHeader><CardTitle>Recent generations</CardTitle></CardHeader>
+      <CardContent className="overflow-x-auto">
+        <table className="w-full min-w-[920px] text-sm">
+          <thead className="text-left text-xs text-muted-foreground">
+            <tr>
+              <th className="pb-3">Tool</th>
+              <th className="pb-3">Preview</th>
+              <th className="pb-3">Created</th>
+              <th className="pb-3">Credits</th>
+              <th className="pb-3">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((item) => (
+              <tr key={item.id} className="border-t border-border/60 align-top">
+                <td className="py-3 font-medium">{item.tool_name}</td>
+                <td className="py-3 max-w-[320px] text-muted-foreground line-clamp-2">{previewById[item.id]}...</td>
+                <td className="py-3 text-muted-foreground">{formatDate(item.created_at)}</td>
+                <td className="py-3">{item.credits_consumed}</td>
+                <td className="py-3">
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" variant="outline" onClick={() => void exportRow(item)} disabled={busyId === item.id}>Export</Button>
+                    <Button size="sm" variant="outline" onClick={() => reopen(item)}>Reopen</Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        persistFavorites(
+                          favoriteIds.includes(item.id)
+                            ? favoriteIds.filter((id) => id !== item.id)
+                            : [item.id, ...favoriteIds]
+                        )
+                      }
+                    >
+                      {favoriteIds.includes(item.id) ? "Favorited" : "Favorite"}
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => void deleteRow(item)} disabled={busyId === item.id}>Delete</Button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </CardContent>
+    </Card>
+  );
+}

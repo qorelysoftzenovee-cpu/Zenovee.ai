@@ -1,49 +1,159 @@
-import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { BillingActions } from "@/components/billing/billing-actions";
+import { PricingActions, TopupActions } from "@/components/pricing/pricing-actions";
 import { requireStandardUser } from "@/lib/auth";
 import { WorkspaceShell } from "@/components/layout/workspace-shell";
+import { subscriptionPlans } from "@/app/subscription-plans";
+import { creditTopups } from "@/app/credit-topups";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+
+function formatDate(value?: string | null) {
+  if (!value) return "—";
+  return new Date(value).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" });
+}
+
+function formatMoney(amount: number, currency = "INR") {
+  return new Intl.NumberFormat("en-IN", { style: "currency", currency }).format(amount);
+}
 
 export default async function BillingPage() {
-  await requireStandardUser();
+  const user = await requireStandardUser();
+  const supabase = await createSupabaseServerClient();
+
+  const [{ data: subscription }, { data: payments }, { data: latestUsage }] = await Promise.all([
+    supabase
+      .from("subscriptions")
+      .select("plan_name,status,current_period_end,next_renewal_at,cancel_at_period_end")
+      .eq("user_id", user.id)
+      .maybeSingle(),
+    supabase
+      .from("payments")
+      .select("id,payment_amount,currency,status,plan,created_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(10),
+    supabase
+      .from("credits")
+      .select("remaining_balance")
+      .eq("user_id", user.id)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+
+  const currentPlan = subscriptionPlans.find((plan) => plan.id === subscription?.plan_name) ?? subscriptionPlans[0];
+  const remainingCredits = Number(latestUsage?.remaining_balance ?? 0);
+  const usagePercent = Math.min(100, Math.max(0, Math.round(((currentPlan.credits - remainingCredits) / currentPlan.credits) * 100)));
 
   return (
     <WorkspaceShell title="Billing" subtitle="Subscription, usage, and payment records">
-    <div className="space-y-6">
-      <section className="surface-card p-5 md:p-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
+      <div className="space-y-6">
+        <section className="surface-card p-5 md:p-6">
           <div>
-            <p className="premium-label">Billing</p>
-            <h1 className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">Subscription & payments</h1>
-            <p className="mt-2 text-sm text-muted-foreground">Manage plan changes with clear billing terms and trusted Razorpay processing.</p>
+            <p className="premium-label">Billing Center</p>
+            <h1 className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">Plans, credits, and invoices</h1>
+            <p className="mt-2 text-sm text-muted-foreground">Manage subscription, buy credits, and review every transaction in one place.</p>
           </div>
-          <Button asChild variant="secondary" size="sm"><Link href="/dashboard">Back to dashboard</Link></Button>
-        </div>
-      </section>
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+        </section>
+
         <Card>
           <CardHeader>
-            <CardTitle>Current plan & subscription</CardTitle>
+            <CardTitle>Current Plan</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground">Review active status, renewal cycle, and manage upgrades or cancellation with clear billing controls.</p>
+            <div className="grid gap-4 md:grid-cols-4">
+              <div><p className="text-xs text-muted-foreground">Plan</p><p className="text-base font-semibold">{currentPlan.name}</p></div>
+              <div><p className="text-xs text-muted-foreground">Credits remaining</p><p className="text-base font-semibold">{remainingCredits}</p></div>
+              <div><p className="text-xs text-muted-foreground">Renewal date</p><p className="text-base font-semibold">{formatDate(subscription?.next_renewal_at ?? subscription?.current_period_end)}</p></div>
+              <div><p className="text-xs text-muted-foreground">Status</p><p className="text-base font-semibold uppercase">{subscription?.cancel_at_period_end ? "Cancels at period end" : subscription?.status ?? "Active"}</p></div>
+            </div>
+            <div>
+              <div className="mb-2 flex justify-between text-xs text-muted-foreground"><span>Usage this cycle</span><span>{usagePercent}%</span></div>
+              <div className="h-2 overflow-hidden rounded-full bg-muted"><div className="h-full bg-primary" style={{ width: `${usagePercent}%` }} /></div>
+            </div>
             <BillingActions />
           </CardContent>
         </Card>
 
+        <section className="grid gap-4 lg:grid-cols-3">
+          {subscriptionPlans.map((plan) => {
+            const recommended = plan.id === "growth";
+            return (
+              <Card key={plan.id} className={recommended ? "border-primary/50" : ""}>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle>{plan.name}</CardTitle>
+                    {recommended ? <span className="premium-label">Recommended</span> : null}
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="text-2xl font-semibold">₹{plan.price}<span className="text-sm text-muted-foreground">/month</span></p>
+                  <p className="text-sm text-muted-foreground">{plan.credits} credits included</p>
+                  <ul className="space-y-1 text-sm text-muted-foreground">
+                    {plan.features.map((feature) => <li key={feature}>• {feature}</li>)}
+                    <li>• {plan.id === "scale" ? "Priority support" : plan.id === "growth" ? "Business-hours support" : "Email support"}</li>
+                  </ul>
+                  <PricingActions planId={plan.id} planName={plan.name} />
+                </CardContent>
+              </Card>
+            );
+          })}
+        </section>
+
         <Card>
-          <CardHeader>
-            <CardTitle>Payment history & invoices</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm text-muted-foreground">
-            <p>Secure payments via Razorpay.</p>
-            <p>Invoices and transaction records are retained for finance and compliance visibility.</p>
-            <p>Usage summary and credit top-ups are linked to your active workspace cycle.</p>
+          <CardHeader><CardTitle>Credit Top-Ups</CardTitle></CardHeader>
+          <CardContent className="grid gap-4 md:grid-cols-3">
+            {creditTopups.map((topup) => (
+              <div key={topup.id} className="rounded-2xl border border-border/70 p-4">
+                <p className="text-base font-semibold">Buy {topup.credits} credits</p>
+                <p className="mt-1 text-sm text-muted-foreground">{formatMoney(topup.priceInr)}</p>
+                <div className="mt-4"><TopupActions topupId={topup.id} label={`${topup.credits} credits`} /></div>
+              </div>
+            ))}
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader><CardTitle>Payment History</CardTitle></CardHeader>
+          <CardContent className="overflow-x-auto">
+            <table className="w-full min-w-[700px] text-sm">
+              <thead className="text-left text-xs text-muted-foreground">
+                <tr><th className="pb-3">Date</th><th className="pb-3">Amount</th><th className="pb-3">Plan</th><th className="pb-3">Status</th><th className="pb-3">Invoice</th></tr>
+              </thead>
+              <tbody>
+                {(payments ?? []).map((payment) => (
+                  <tr key={payment.id} className="border-t border-border/60">
+                    <td className="py-3">{formatDate(payment.created_at)}</td>
+                    <td className="py-3">{formatMoney(Number(payment.payment_amount ?? 0), payment.currency ?? "INR")}</td>
+                    <td className="py-3">{payment.plan}</td>
+                    <td className="py-3 uppercase">{payment.status}</td>
+                    <td className="py-3 text-muted-foreground">Available in Razorpay records</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
+
+        <section className="grid gap-4 lg:grid-cols-2">
+          <Card>
+            <CardHeader><CardTitle>Billing FAQ</CardTitle></CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <details className="rounded-xl border border-border/70 p-3"><summary className="cursor-pointer font-medium">When are credits renewed?</summary><p className="mt-2 text-muted-foreground">Credits reset at each monthly renewal based on your active plan.</p></details>
+              <details className="rounded-xl border border-border/70 p-3"><summary className="cursor-pointer font-medium">Can I cancel anytime?</summary><p className="mt-2 text-muted-foreground">Yes, cancellation can be set for period end from current plan actions.</p></details>
+              <details className="rounded-xl border border-border/70 p-3"><summary className="cursor-pointer font-medium">How fast are top-ups applied?</summary><p className="mt-2 text-muted-foreground">Top-ups are added immediately after payment verification.</p></details>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader><CardTitle>Razorpay Trust</CardTitle></CardHeader>
+            <CardContent className="space-y-2 text-sm text-muted-foreground">
+              <p>• Secure billing via Razorpay.</p>
+              <p>• Encrypted payment processing.</p>
+              <p>• Cancel subscription anytime from billing settings.</p>
+            </CardContent>
+          </Card>
+        </section>
       </div>
-    </div>
     </WorkspaceShell>
   );
 }

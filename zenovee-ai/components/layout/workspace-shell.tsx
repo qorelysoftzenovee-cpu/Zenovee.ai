@@ -47,7 +47,7 @@ export function WorkspaceShell({ children, title, subtitle }: WorkspaceShellProp
   const breadcrumb = pathname.split("/").filter(Boolean);
 
   return (
-    <div className="min-h-screen bg-slate-100 text-foreground">
+    <div className="min-h-screen bg-[radial-gradient(1200px_500px_at_0%_-10%,rgba(88,121,255,0.14),transparent),radial-gradient(900px_420px_at_100%_0%,rgba(58,130,246,0.12),transparent)] bg-background text-foreground">
       <div className={cn("fixed inset-y-0 left-0 z-40 hidden border-r border-slate-800/80 bg-slate-950 text-slate-100 transition-all duration-300 lg:block", collapsed ? "w-[92px]" : "w-[284px]")}>
         <aside className="flex h-full flex-col p-4">
           <div className="mb-2 flex items-center justify-between gap-3 pb-4">
@@ -105,7 +105,7 @@ export function WorkspaceShell({ children, title, subtitle }: WorkspaceShellProp
       </div>
 
       <div className={cn("transition-all duration-300", collapsed ? "lg:pl-[92px]" : "lg:pl-[284px]")}>
-        <header className="sticky top-0 z-30 border-b border-border/70 bg-white/95 backdrop-blur-xl">
+        <header className="sticky top-0 z-30 border-b border-border/70 bg-background/90 backdrop-blur-xl">
           <div className="flex h-16 items-center justify-between gap-4 px-4 md:px-6 lg:px-8">
             <div className="flex items-center gap-3">
               <button onClick={() => setMobileOpen(true)} className="rounded-lg border border-border/60 bg-card p-2 hover:bg-muted/60 lg:hidden">
@@ -125,7 +125,7 @@ export function WorkspaceShell({ children, title, subtitle }: WorkspaceShellProp
           <div className="px-4 pb-3 text-xs text-muted-foreground md:px-6 lg:px-8">{breadcrumb.length ? breadcrumb.join(" / ") : "dashboard"}</div>
         </header>
 
-        <main className="p-4 md:p-6 lg:p-8">{children}</main>
+        <main className="p-4 md:p-6 lg:p-8 overflow-x-hidden">{children}</main>
       </div>
 
       {mobileOpen ? (
