@@ -21,10 +21,10 @@ export default async function AdminSubscriptionsPage() {
           {data.recentSubscriptions.map((subscription) => (
             <div key={subscription.id} className="admin-row flex flex-col gap-3 text-sm md:flex-row md:items-center md:justify-between">
               <div>
-                <p className="font-medium text-white">{subscription.user?.name ?? subscription.user?.email ?? subscription.user_id}</p>
-                <p className="text-xs text-slate-400">{subscription.plan_name} • {subscription.status}</p>
+                <p className="font-medium text-slate-900">{subscription.user?.name ?? subscription.user?.email ?? subscription.user_id}</p>
+                <p className="text-xs text-slate-600">{subscription.plan_name} • {subscription.status}</p>
               </div>
-              <div className="text-right text-xs text-slate-300">
+              <div className="text-right text-xs text-slate-600">
                 <p>Renewal: {subscription.next_renewal_at ? new Date(subscription.next_renewal_at).toLocaleDateString() : "N/A"}</p>
                 <p>{subscription.cancel_at_period_end ? "Cancels at period end" : "Auto-renews"}</p>
               </div>

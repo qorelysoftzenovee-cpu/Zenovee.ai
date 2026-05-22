@@ -133,6 +133,10 @@ export default async function AdminPage() {
         </Card>
 
       </div>
+
+      <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+        Detailed payment operations, refunds, failed transactions, subscription state transitions, and event logs now live in the dedicated Payments section.
+      </div>
     </PageShell>
   );
 }

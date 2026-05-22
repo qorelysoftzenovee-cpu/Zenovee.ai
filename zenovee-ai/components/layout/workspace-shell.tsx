@@ -21,14 +21,6 @@ const primaryNav = [
   { label: "Settings", href: "/settings", icon: Settings2 },
 ];
 
-const workspaceNav = [
-  "LinkedIn Authority OS",
-  "Sales Outreach OS",
-  "Conversion Copy OS",
-  "SEO Growth OS",
-  "AI Brand Studio",
-];
-
 const workspaceLabelById: Record<string, string> = {
   "linkedin-authority-os": "LinkedIn Authority OS",
   "sales-outreach-os": "Sales Outreach OS",
@@ -42,7 +34,7 @@ export function WorkspaceShell({ children, title, subtitle }: WorkspaceShellProp
   const searchParams = useSearchParams();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [activeWorkspaceLabel, setActiveWorkspaceLabel] = useState(workspaceNav[0]);
+  const [activeWorkspaceLabel] = useState("Workspace");
 
   const workspaceFromRoute = searchParams.get("workspace") ?? "";
   const resolvedWorkspaceLabel = workspaceLabelById[workspaceFromRoute] ?? activeWorkspaceLabel;
@@ -101,20 +93,9 @@ export function WorkspaceShell({ children, title, subtitle }: WorkspaceShellProp
 
           {!collapsed ? (
             <div className="mt-auto space-y-3 border-t border-white/15 pt-4">
-              <p className="px-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Workspaces</p>
-              <div className="space-y-1">
-                {workspaceNav.map((item) => (
-                  <button
-                    key={item}
-                    onClick={() => setActiveWorkspaceLabel(item)}
-                    className={cn(
-                      "w-full rounded-lg px-3 py-2 text-left text-xs font-medium transition",
-                      activeWorkspaceLabel === item ? "bg-white/15 text-white" : "text-slate-400 hover:bg-white/10 hover:text-slate-200"
-                    )}
-                  >
-                    {item}
-                  </button>
-                ))}
+              <p className="px-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Active workspace</p>
+              <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-200">
+                {resolvedWorkspaceLabel || activeWorkspaceLabel}
               </div>
             </div>
           ) : null}

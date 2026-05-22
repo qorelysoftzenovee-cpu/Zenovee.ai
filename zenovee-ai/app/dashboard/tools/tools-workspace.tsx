@@ -790,7 +790,6 @@ export function ToolsWorkspace() {
       setWorkspaces(loadedWorkspaces);
       setCredits(json.data.credits ?? 0);
       if (loadedWorkspaces.length > 0) {
-        const workspaceFromRoute = searchParams.get("workspace") ?? "";
         const workspaceFromStorage = readArrayFromStorage(ACTIVE_WORKSPACE_STORAGE_KEY)[0] ?? "";
         const selectedWorkspace = loadedWorkspaces.find((w) => w.id === workspaceFromRoute)
           ?? loadedWorkspaces.find((w) => w.id === workspaceFromStorage)
@@ -816,7 +815,26 @@ export function ToolsWorkspace() {
     };
 
     void init();
-  }, [searchParams]);
+  // Initial boot fetch only; route-driven workspace sync is handled separately.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const workspaceFromRoute = searchParams.get("workspace") ?? "";
+
+  useEffect(() => {
+    if (!workspaceFromRoute || !workspaces.length || workspaceFromRoute === activeWorkspaceId) return;
+    const workspace = workspaces.find((item) => item.id === workspaceFromRoute);
+    if (!workspace) return;
+    setActiveWorkspaceId(workspace.id);
+    writeArrayToStorage(ACTIVE_WORKSPACE_STORAGE_KEY, [workspace.id]);
+    const firstModule = workspace.modules[0];
+    setActiveModuleId(firstModule?.id ?? "");
+    if (firstModule?.tool) {
+      setActiveToolId(firstModule.tool.id);
+      setGenerationControls(getDefaultGenerationControls(firstModule.tool));
+      setExportFormat((firstModule.tool.exportFormats?.[0] as ExportFormat | undefined) ?? "json");
+    }
+  }, [workspaceFromRoute, workspaces, activeWorkspaceId]);
 
   useEffect(() => {
     if (!activeToolId) return;
@@ -928,9 +946,11 @@ export function ToolsWorkspace() {
   const selectWorkspace = (workspaceId: string) => {
     setActiveWorkspaceId(workspaceId);
     writeArrayToStorage(ACTIVE_WORKSPACE_STORAGE_KEY, [workspaceId]);
-    const nextParams = new URLSearchParams(searchParams.toString());
-    nextParams.set("workspace", workspaceId);
-    router.replace(`/dashboard/tools?${nextParams.toString()}`, { scroll: false });
+    if (workspaceFromRoute !== workspaceId) {
+      const nextParams = new URLSearchParams(searchParams.toString());
+      nextParams.set("workspace", workspaceId);
+      router.replace(`/dashboard/tools?${nextParams.toString()}`, { scroll: false });
+    }
     const workspace = workspaces.find((item) => item.id === workspaceId);
     const firstModule = workspace?.modules[0];
     setActiveModuleId(firstModule?.id ?? "");
@@ -1354,15 +1374,9 @@ export function ToolsWorkspace() {
               <p className="text-sm text-muted-foreground">Pick a tool, fill the input brief, and generate a structured marketing output.</p>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-              <div className="dashboard-metric">
-                <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Credits</p>
-                <p className="mt-3 text-2xl font-semibold tracking-tight">{credits}</p>
-              </div>
-              <div className="dashboard-metric">
-                <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Saved outputs</p>
-                <p className="mt-3 text-2xl font-semibold tracking-tight">{savedHistoryItems.length}</p>
-              </div>
+            <div className="dashboard-metric">
+              <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Available credits</p>
+              <p className="mt-3 text-2xl font-semibold tracking-tight">{credits}</p>
             </div>
 
             <div className="relative">
@@ -1399,37 +1413,13 @@ export function ToolsWorkspace() {
           </CardContent>
         </Card>
 
-        {favoriteTools.length ? (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Favorites</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {favoriteTools.map((tool) => (
-                <button
-                  key={tool.id}
-                  type="button"
-                  onClick={() => selectTool(tool)}
-                  className="surface-muted interactive-lift flex w-full items-center justify-between px-4 py-3 text-left"
-                >
-                  <span>
-                    <span className="mr-2 text-lg">{tool.metadata.icon}</span>
-                    <span className="text-sm font-medium">{tool.metadata.name}</span>
-                  </span>
-                  <Star size={14} className="fill-amber-300 text-amber-300" />
-                </button>
-              ))}
-            </CardContent>
-          </Card>
-        ) : null}
-
         <Card className="max-h-[70vh] overflow-hidden">
           <CardHeader>
             <CardTitle className="text-base">Workspace modules</CardTitle>
             <p className="text-xs text-muted-foreground">Choose one module to continue.</p>
           </CardHeader>
           <CardContent className="subtle-scrollbar space-y-3 overflow-auto">
-            {activeModules.length ? activeModules.slice(0, 8).map((module) => {
+            {activeModules.length ? activeModules.slice(0, 6).map((module) => {
               const isActive = module.id === activeModuleId;
               const resolvedTool = module.tool;
               const isFavorite = resolvedTool ? favoriteToolIds.includes(resolvedTool.id) : false;
@@ -1444,7 +1434,7 @@ export function ToolsWorkspace() {
                     <button type="button" onClick={() => selectModule(module.id)} className="flex-1 text-left">
                       <p className="text-sm font-medium text-foreground">{module.name}</p>
                       <p className="mt-1 text-xs text-muted-foreground">{resolvedTool ? `${resolvedTool.creditCost} credits` : "Coming soon"}</p>
-                      <p className="mt-3 text-xs leading-5 text-muted-foreground">{module.description}</p>
+                      <p className="mt-2 text-xs leading-5 text-muted-foreground line-clamp-2">{module.description}</p>
                     </button>
                     {resolvedTool ? (
                       <button type="button" onClick={() => toggleFavoriteTool(resolvedTool.id)} className="rounded-full border border-border/80 p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground">
@@ -1485,21 +1475,7 @@ export function ToolsWorkspace() {
           </CardContent>
         </Card>
 
-        {activeWorkspaceProjects.length ? (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Organization</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              {activeWorkspaceProjects.slice(0, 4).map((project) => (
-                <div key={project.id} className="rounded-2xl border border-border/70 bg-muted/35 px-3 py-2">
-                  <p className="font-medium">{project.name}</p>
-                  <p className="text-xs text-muted-foreground">Updated {formatGlobalDateTime(project.updatedAt)}</p>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        ) : null}
+
       </div>
 
       <div className="space-y-6">
@@ -1567,19 +1543,11 @@ export function ToolsWorkspace() {
                 <CardTitle>Input panel</CardTitle>
                 <p className="text-sm text-muted-foreground">Add your brief clearly. Better inputs produce stronger publish-ready outputs.</p>
                 {activeWorkspace ? (
-                  <div className="mt-3 grid gap-2 md:grid-cols-3">
-                    <div className="rounded-2xl border border-border/70 bg-muted/30 p-3">
-                      <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Audience presets</p>
-                      <p className="mt-2 text-xs text-foreground">{activeWorkspace.audiencePresets.join(" • ")}</p>
-                    </div>
-                    <div className="rounded-2xl border border-border/70 bg-muted/30 p-3">
-                      <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Tone presets</p>
-                      <p className="mt-2 text-xs text-foreground">{activeWorkspace.tonePresets.join(" • ")}</p>
-                    </div>
-                    <div className="rounded-2xl border border-border/70 bg-muted/30 p-3">
-                      <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Templates</p>
-                      <p className="mt-2 text-xs text-foreground">{activeWorkspace.templatePresets.join(" • ")}</p>
-                    </div>
+                  <div className="mt-3 rounded-2xl border border-border/70 bg-muted/30 p-3">
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Recommended setup</p>
+                    <p className="mt-2 text-xs text-foreground">
+                      {activeWorkspace.audiencePresets[0] ?? "Audience"} • {activeWorkspace.tonePresets[0] ?? "Tone"} • {activeWorkspace.templatePresets[0] ?? "Template"}
+                    </p>
                   </div>
                 ) : null}
                 {activeWorkspace?.id === "linkedin-authority-os" ? (
@@ -1884,43 +1852,7 @@ export function ToolsWorkspace() {
               </CardContent>
             </Card>
 
-            {activeWorkspace ? (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Workspace summary</CardTitle>
-                  <p className="text-sm text-muted-foreground">High-level records for current workspace.</p>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {Object.entries(workspaceOverview).length ? (
-                    Object.entries(workspaceOverview).slice(0, 5).map(([key, value]) => {
-                      const count = Array.isArray(value) ? value.length : 0;
-                      return (
-                        <div key={key} className="rounded-2xl border border-border/70 bg-muted/35 px-4 py-3">
-                          <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">{key.replace(/_/g, " ")}</p>
-                          <p className="mt-2 text-lg font-semibold text-foreground">{count}</p>
-                        </div>
-                      );
-                    })
-                  ) : (
-                    <p className="text-sm text-muted-foreground">No workspace records yet.</p>
-                  )}
-
-                  {activeWorkspace.id === "seo-growth-os" && Array.isArray(workspaceOverview.keyword_clusters) ? (
-                    <div className="rounded-2xl border border-cyan-400/25 bg-cyan-500/5 p-4">
-                      <p className="text-xs uppercase tracking-[0.16em] text-cyan-300">Topical map view</p>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {(workspaceOverview.keyword_clusters as Array<Record<string, unknown>>).slice(0, 12).map((cluster, i) => (
-                          <span key={`${String(cluster.id ?? i)}`} className="rounded-full border border-cyan-400/30 px-3 py-1 text-xs text-cyan-200">
-                            {String(cluster.topic ?? cluster.name ?? `Cluster ${i + 1}`)}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
-
-                </CardContent>
-              </Card>
-            ) : null}
+            
 
             <Card>
               <CardHeader>
@@ -1943,7 +1875,7 @@ export function ToolsWorkspace() {
                       <div className="flex flex-wrap items-center gap-2">
                         <Button variant={activeOutputView === "rendered" ? "default" : "outline"} size="sm" onClick={() => setActiveOutputView("rendered")}>Rendered</Button>
                         <Button variant={activeOutputView === "editor" ? "default" : "outline"} size="sm" onClick={() => setActiveOutputView("editor")}>Editor</Button>
-                        <Button variant={activeOutputView === "insights" ? "default" : "outline"} size="sm" onClick={() => setActiveOutputView("insights")}>Insights</Button>
+                        <Button variant={activeOutputView === "insights" ? "default" : "outline"} size="sm" onClick={() => setActiveOutputView("insights")}>Context</Button>
                         {resultExecutionId ? (
                           <Button variant="outline" size="sm" onClick={() => renameOutput(resultExecutionId, `${activeTool?.metadata.name ?? "Generated"} Output`)}>
                             Rename
@@ -2053,20 +1985,12 @@ export function ToolsWorkspace() {
                       {activeOutputView === "insights" ? (
                         <div className="grid gap-4 md:grid-cols-2">
                           <div className="rounded-3xl border border-white/10 p-4">
-                            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Workflow continuity</p>
-                            <p className="mt-2 text-sm">Drafts are persisted per workspace module with reusable context and favorite tools.</p>
-                          </div>
-                          <div className="rounded-3xl border border-white/10 p-4">
-                            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Output quality layer</p>
-                            <p className="mt-2 text-sm">Structured rendering + editable sections + revisions improve publish-readiness.</p>
+                            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Current workflow</p>
+                            <p className="mt-2 text-sm">Drafts are persisted per workspace module so you can continue without re-entering context.</p>
                           </div>
                           <div className="rounded-3xl border border-white/10 p-4">
                             <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Recent workspaces</p>
                             <p className="mt-2 text-sm">{workspaceRecents.length ? workspaceRecents.join(" • ") : "No recent workspace activity yet."}</p>
-                          </div>
-                          <div className="rounded-3xl border border-white/10 p-4">
-                            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Premium confidence signals</p>
-                            <p className="mt-2 text-sm">Stage-by-stage generation, quality metadata, and one-click regeneration are active.</p>
                           </div>
                         </div>
                       ) : null}

@@ -76,7 +76,7 @@
 @layer utilities {
   /* === SURFACE PATTERNS === */
   .surface-card {
-    @apply rounded-2xl border border-border/80 bg-card shadow-[0_10px_28px_-18px_rgba(15,23,42,0.28)] transition-all duration-200;
+    @apply rounded-2xl border border-border/80 bg-card shadow-[0_8px_20px_-18px_rgba(15,23,42,0.22)] transition-colors duration-150;
   }
 
   .surface-muted {
@@ -84,7 +84,7 @@
   }
 
   .hero-panel {
-    @apply rounded-3xl border border-border/80 bg-card shadow-[0_18px_40px_-24px_rgba(15,23,42,0.32)];
+    @apply rounded-3xl border border-border/80 bg-card shadow-[0_12px_28px_-22px_rgba(15,23,42,0.24)];
   }
 
   .premium-surface {
@@ -97,7 +97,7 @@
 
   /* === INTERACTIVE STATES === */
   .interactive-lift {
-    @apply transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-[0_18px_36px_-24px_rgba(15,23,42,0.35)];
+    @apply transition-colors duration-150 hover:shadow-[0_10px_24px_-22px_rgba(15,23,42,0.26)];
   }
 
   .interactive-glow {
@@ -147,7 +147,7 @@
   }
 
   .stat-chip {
-    @apply inline-flex items-center gap-2 rounded-full border border-border bg-muted px-3 py-1.5 text-xs text-muted-foreground transition-all duration-200;
+    @apply inline-flex items-center gap-2 rounded-full border border-border bg-muted px-3 py-1.5 text-xs text-muted-foreground transition-colors duration-150;
   }
 
   .stat-chip:hover {
@@ -156,11 +156,7 @@
 
   /* === DASHBOARD METRICS === */
   .dashboard-metric {
-    @apply rounded-2xl border border-border/80 bg-card p-5 shadow-[0_10px_30px_-24px_rgba(15,23,42,0.45)] transition-all duration-200 ease-out;
-  }
-
-  .dashboard-metric:hover {
-    @apply shadow-[0_16px_40px_-20px_rgba(15,23,42,0.55)] border-border/60;
+    @apply rounded-2xl border border-border/80 bg-card p-5 shadow-[0_8px_20px_-20px_rgba(15,23,42,0.28)] transition-colors duration-150;
   }
 
   .metric-highlight {
@@ -178,23 +174,23 @@
 
   /* === ANIMATION UTILITIES === */
   .animate-enter {
-    animation: enter 160ms ease-out both;
+    animation: enter 120ms ease-out both;
   }
 
   .animate-fade {
-    animation: fade 180ms ease-out both;
+    animation: fade 120ms ease-out both;
   }
 
   .animate-slide-up {
-    animation: slideUp 180ms ease-out both;
+    animation: slideUp 120ms ease-out both;
   }
 
   .animate-slide-in {
-    animation: slideIn 180ms ease-out both;
+    animation: slideIn 120ms ease-out both;
   }
 
   .animate-scale {
-    animation: scaleIn 140ms ease-out both;
+    animation: scaleIn 100ms ease-out both;
   }
 
   .animate-pulse-gentle {
@@ -328,6 +324,14 @@
     background: none;
     box-shadow: none;
     color: inherit;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 

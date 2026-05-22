@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import Script from "next/script";
@@ -47,15 +47,23 @@ export function PricingActions({ planId, planName }: { planId: string; planName:
   const [loading, setLoading] = useState(false);
   const [statusTone, setStatusTone] = useState<"default" | "success" | "error">("default");
   const [isScriptReady, setIsScriptReady] = useState(false);
-  const requestKey = useMemo(() => `plan:${planId}:${crypto.randomUUID()}`, [planId]);
+  const requestCounterRef = useRef(0);
 
   const handleCheckout = async () => {
     if (loading) return;
     setLoading(true);
     setStatus(null);
     setStatusTone("default");
+    if (!isScriptReady || !window.Razorpay) {
+      setStatusTone("error");
+      setStatus("Payments are still initializing. Please try again in a moment.");
+      setLoading(false);
+      return;
+    }
 
     try {
+      requestCounterRef.current += 1;
+      const requestKey = `plan:${planId}:${requestCounterRef.current}`;
       const response = await fetch("/api/billing/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-idempotency-key": requestKey },
@@ -111,14 +119,8 @@ export function PricingActions({ planId, planName }: { planId: string; planName:
         },
       };
 
-      if (window.Razorpay) {
-        const razorpay = new window.Razorpay(options);
-        razorpay.open();
-      } else {
-        setStatusTone("error");
-        setStatus("Payments are temporarily unavailable.");
-        setLoading(false);
-      }
+      const razorpay = new window.Razorpay(options);
+      razorpay.open();
     } catch {
       setStatusTone("error");
       setStatus("Unable to start checkout right now. Please try again.");
@@ -148,14 +150,22 @@ export function TopupActions({ topupId, label }: { topupId: string; label: strin
   const [loading, setLoading] = useState(false);
   const [statusTone, setStatusTone] = useState<"default" | "success" | "error">("default");
   const [isScriptReady, setIsScriptReady] = useState(false);
-  const requestKey = useMemo(() => `topup:${topupId}:${crypto.randomUUID()}`, [topupId]);
+  const requestCounterRef = useRef(0);
 
   const handleTopupCheckout = async () => {
     if (loading) return;
     setLoading(true);
     setStatus(null);
     setStatusTone("default");
+    if (!isScriptReady || !window.Razorpay) {
+      setStatusTone("error");
+      setStatus("Payments are still initializing. Please try again in a moment.");
+      setLoading(false);
+      return;
+    }
     try {
+      requestCounterRef.current += 1;
+      const requestKey = `topup:${topupId}:${requestCounterRef.current}`;
       const response = await fetch("/api/billing/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-idempotency-key": requestKey },
@@ -204,14 +214,8 @@ export function TopupActions({ topupId, label }: { topupId: string; label: strin
         },
       };
 
-      if (window.Razorpay) {
-        const razorpay = new window.Razorpay(options as unknown as RazorpayOptions);
-        razorpay.open();
-      } else {
-        setStatusTone("error");
-        setStatus("Payments are temporarily unavailable.");
-        setLoading(false);
-      }
+      const razorpay = new window.Razorpay(options as unknown as RazorpayOptions);
+      razorpay.open();
     } catch {
       setStatusTone("error");
       setStatus("Unable to start checkout right now. Please try again.");
