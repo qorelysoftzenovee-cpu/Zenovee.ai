@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   AlertCircle,
   Bookmark,
@@ -166,6 +167,7 @@ const WORKSPACE_PROJECTS_STORAGE_KEY = "zenovee_workspace_projects";
 const WORKSPACE_FOLDERS_STORAGE_KEY = "zenovee_workspace_folders";
 const WORKSPACE_FAVORITES_STORAGE_KEY = "zenovee_workspace_favorites";
 const WORKSPACE_RECENT_STORAGE_KEY = "zenovee_workspace_recent";
+const ACTIVE_WORKSPACE_STORAGE_KEY = "zenovee_workspace_active";
 
 type WorkspaceProject = { id: string; workspaceId: string; name: string; updatedAt: string };
 type WorkspaceFolder = { id: string; workspaceId: string; name: string; updatedAt: string };
@@ -652,8 +654,11 @@ function OutputWorkspace({
 }
 
 export function ToolsWorkspace() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const pendingToolRequestRef = useRef<string | null>(null);
   const pendingExportRequestsRef = useRef<Set<string>>(new Set());
+  const fetchedWorkspaceOverviewRef = useRef<Set<string>>(new Set());
   const [tools, setTools] = useState<ToolItem[]>([]);
   const [workspaces, setWorkspaces] = useState<WorkspaceItem[]>([]);
   const [activeWorkspaceId, setActiveWorkspaceId] = useState<string>("");
@@ -785,7 +790,13 @@ export function ToolsWorkspace() {
       setWorkspaces(loadedWorkspaces);
       setCredits(json.data.credits ?? 0);
       if (loadedWorkspaces.length > 0) {
-        const firstWorkspace = loadedWorkspaces[0];
+        const workspaceFromRoute = searchParams.get("workspace") ?? "";
+        const workspaceFromStorage = readArrayFromStorage(ACTIVE_WORKSPACE_STORAGE_KEY)[0] ?? "";
+        const selectedWorkspace = loadedWorkspaces.find((w) => w.id === workspaceFromRoute)
+          ?? loadedWorkspaces.find((w) => w.id === workspaceFromStorage)
+          ?? loadedWorkspaces[0];
+
+        const firstWorkspace = selectedWorkspace;
         setActiveWorkspaceId(firstWorkspace.id);
         const firstModule = firstWorkspace.modules[0];
         setActiveModuleId(firstModule?.id ?? "");
@@ -805,7 +816,7 @@ export function ToolsWorkspace() {
     };
 
     void init();
-  }, []);
+  }, [searchParams]);
 
   useEffect(() => {
     if (!activeToolId) return;
@@ -834,6 +845,7 @@ export function ToolsWorkspace() {
       };
       const endpoint = endpointByWorkspace[activeWorkspaceId];
       if (!endpoint) return;
+      if (fetchedWorkspaceOverviewRef.current.has(activeWorkspaceId)) return;
       try {
         const res = await fetch(endpoint);
         const json = await res.json();
@@ -842,6 +854,7 @@ export function ToolsWorkspace() {
         const total = Object.values(data).reduce<number>((sum, value) => sum + (Array.isArray(value) ? value.length : 0), 0);
         setWorkspaceDataCounts((prev) => ({ ...prev, [activeWorkspaceId]: total }));
         setWorkspaceOverview(data);
+        fetchedWorkspaceOverviewRef.current.add(activeWorkspaceId);
       } catch {
         // noop: non-blocking workspace data summary
       }
@@ -914,6 +927,10 @@ export function ToolsWorkspace() {
 
   const selectWorkspace = (workspaceId: string) => {
     setActiveWorkspaceId(workspaceId);
+    writeArrayToStorage(ACTIVE_WORKSPACE_STORAGE_KEY, [workspaceId]);
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.set("workspace", workspaceId);
+    router.replace(`/dashboard/tools?${nextParams.toString()}`, { scroll: false });
     const workspace = workspaces.find((item) => item.id === workspaceId);
     const firstModule = workspace?.modules[0];
     setActiveModuleId(firstModule?.id ?? "");
@@ -1328,7 +1345,7 @@ export function ToolsWorkspace() {
   }
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)] animate-enter">
+    <div className="grid gap-6 xl:grid-cols-[300px_minmax(0,1fr)]">
       <div className="space-y-6 xl:sticky xl:top-24 xl:self-start">
           <Card className="overflow-hidden border-border bg-card">
           <CardHeader>
@@ -1345,14 +1362,6 @@ export function ToolsWorkspace() {
               <div className="dashboard-metric">
                 <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Saved outputs</p>
                 <p className="mt-3 text-2xl font-semibold tracking-tight">{savedHistoryItems.length}</p>
-              </div>
-              <div className="dashboard-metric">
-                <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Workspace records</p>
-                <p className="mt-3 text-2xl font-semibold tracking-tight">{workspaceDataCounts[activeWorkspaceId] ?? 0}</p>
-              </div>
-              <div className="dashboard-metric">
-                <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Projects</p>
-                <p className="mt-3 text-2xl font-semibold tracking-tight">{activeWorkspaceProjects.length}</p>
               </div>
             </div>
 
@@ -1377,9 +1386,8 @@ export function ToolsWorkspace() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 gap-2">
               <Button size="sm" variant="outline" onClick={createWorkspaceProject}><FolderKanban size={14} /> New project</Button>
-              <Button size="sm" variant="outline" onClick={createWorkspaceFolder}>New folder</Button>
             </div>
 
             {activeWorkspace ? (
@@ -1418,10 +1426,10 @@ export function ToolsWorkspace() {
         <Card className="max-h-[70vh] overflow-hidden">
           <CardHeader>
             <CardTitle className="text-base">Workspace modules</CardTitle>
-            <p className="text-xs text-muted-foreground">Operate by workflow module, not disconnected tools.</p>
+            <p className="text-xs text-muted-foreground">Choose one module to continue.</p>
           </CardHeader>
           <CardContent className="subtle-scrollbar space-y-3 overflow-auto">
-            {activeModules.length ? activeModules.map((module) => {
+            {activeModules.length ? activeModules.slice(0, 8).map((module) => {
               const isActive = module.id === activeModuleId;
               const resolvedTool = module.tool;
               const isFavorite = resolvedTool ? favoriteToolIds.includes(resolvedTool.id) : false;
@@ -1477,7 +1485,7 @@ export function ToolsWorkspace() {
           </CardContent>
         </Card>
 
-        {(activeWorkspaceProjects.length || activeWorkspaceFolders.length) ? (
+        {activeWorkspaceProjects.length ? (
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Organization</CardTitle>
@@ -1487,11 +1495,6 @@ export function ToolsWorkspace() {
                 <div key={project.id} className="rounded-2xl border border-border/70 bg-muted/35 px-3 py-2">
                   <p className="font-medium">{project.name}</p>
                   <p className="text-xs text-muted-foreground">Updated {formatGlobalDateTime(project.updatedAt)}</p>
-                </div>
-              ))}
-              {activeWorkspaceFolders.slice(0, 4).map((folder) => (
-                <div key={folder.id} className="rounded-2xl border border-border/70 bg-muted/35 px-3 py-2">
-                  <p className="font-medium">📁 {folder.name}</p>
                 </div>
               ))}
             </CardContent>
@@ -1884,12 +1887,12 @@ export function ToolsWorkspace() {
             {activeWorkspace ? (
               <Card>
                 <CardHeader>
-                  <CardTitle>Workspace data panel</CardTitle>
-                  <p className="text-sm text-muted-foreground">Project/campaign/plan/gallery summaries for this workspace.</p>
+                  <CardTitle>Workspace summary</CardTitle>
+                  <p className="text-sm text-muted-foreground">High-level records for current workspace.</p>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {Object.entries(workspaceOverview).length ? (
-                    Object.entries(workspaceOverview).map(([key, value]) => {
+                    Object.entries(workspaceOverview).slice(0, 5).map(([key, value]) => {
                       const count = Array.isArray(value) ? value.length : 0;
                       return (
                         <div key={key} className="rounded-2xl border border-border/70 bg-muted/35 px-4 py-3">
@@ -1915,83 +1918,6 @@ export function ToolsWorkspace() {
                     </div>
                   ) : null}
 
-                  {activeWorkspace.id === "linkedin-authority-os" ? (
-                    <div className="grid gap-3 md:grid-cols-2">
-                      <div className="rounded-2xl border border-indigo-400/25 bg-indigo-500/5 p-4">
-                        <p className="text-xs uppercase tracking-[0.16em] text-indigo-300">Content calendar</p>
-                        <div className="mt-3 space-y-2 text-sm">
-                          {["Mon • Authority post", "Wed • Carousel", "Fri • Newsletter snippet"].map((slot) => (
-                            <div key={slot} className="rounded-xl border border-indigo-300/20 px-3 py-2">{slot}</div>
-                          ))}
-                        </div>
-                      </div>
-                      <div className="rounded-2xl border border-indigo-400/25 bg-indigo-500/5 p-4">
-                        <p className="text-xs uppercase tracking-[0.16em] text-indigo-300">Swipe file</p>
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          {[
-                            "Contrarian hook",
-                            "Founder story framework",
-                            "Authority CTA",
-                          ].map((item) => (
-                            <span key={item} className="rounded-full border border-indigo-300/25 px-3 py-1 text-xs">{item}</span>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  ) : null}
-
-                  {activeWorkspace.id === "sales-outreach-os" ? (
-                    <div className="rounded-2xl border border-emerald-400/25 bg-emerald-500/5 p-4">
-                      <p className="text-xs uppercase tracking-[0.16em] text-emerald-300">Outreach sequence builder</p>
-                      <div className="mt-3 grid gap-2 md:grid-cols-4 text-xs">
-                        {["Step 1: Icebreaker", "Step 2: Value pitch", "Step 3: Objection reply", "Step 4: Follow-up CTA"].map((step) => (
-                          <div key={step} className="rounded-xl border border-emerald-300/25 px-3 py-2">{step}</div>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
-
-                  {activeWorkspace.id === "seo-growth-os" ? (
-                    <div className="grid gap-3 md:grid-cols-2">
-                      <div className="rounded-2xl border border-cyan-400/25 bg-cyan-500/5 p-4">
-                        <p className="text-xs uppercase tracking-[0.16em] text-cyan-300">SERP preview planner</p>
-                        <div className="mt-3 rounded-xl border border-cyan-300/20 p-3 text-xs">
-                          <p className="text-cyan-200">zenovee.ai › seo-growth</p>
-                          <p className="mt-1 font-medium">How to Build Topical Authority in 90 Days</p>
-                          <p className="mt-1 text-cyan-100/80">Plan clusters, map internal links, and generate publish-ready briefs.</p>
-                        </div>
-                      </div>
-                      <div className="rounded-2xl border border-cyan-400/25 bg-cyan-500/5 p-4">
-                        <p className="text-xs uppercase tracking-[0.16em] text-cyan-300">Internal linking map</p>
-                        <div className="mt-3 space-y-2 text-xs">
-                          {["Pillar Page → Cluster A", "Cluster A → FAQ Hub", "Cluster B → Case Study"].map((link) => (
-                            <div key={link} className="rounded-xl border border-cyan-300/20 px-3 py-2">{link}</div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  ) : null}
-
-                  {activeWorkspace.id === "ai-brand-studio" ? (
-                    <div className="grid gap-3 md:grid-cols-2">
-                      <div className="rounded-2xl border border-fuchsia-400/25 bg-fuchsia-500/5 p-4">
-                        <p className="text-xs uppercase tracking-[0.16em] text-fuchsia-300">Style presets</p>
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          {["Luxury editorial", "Modern neon", "Minimal monochrome", "Bold ecommerce"].map((style) => (
-                            <span key={style} className="rounded-full border border-fuchsia-300/25 px-3 py-1 text-xs">{style}</span>
-                          ))}
-                        </div>
-                      </div>
-                      <div className="rounded-2xl border border-fuchsia-400/25 bg-fuchsia-500/5 p-4">
-                        <p className="text-xs uppercase tracking-[0.16em] text-fuchsia-300">Generation gallery</p>
-                        <div className="mt-3 grid grid-cols-3 gap-2">
-                          {[1, 2, 3, 4, 5, 6].map((tile) => (
-                            <div key={tile} className="aspect-square rounded-lg border border-fuchsia-300/20 bg-gradient-to-br from-fuchsia-500/15 to-indigo-500/15" />
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  ) : null}
                 </CardContent>
               </Card>
             ) : null}

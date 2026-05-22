@@ -18,14 +18,9 @@ export default async function AdminPage() {
     { label: "Total Revenue", value: formatInr(data.totals.totalRevenue) },
     { label: "30-Day Revenue", value: formatInr(data.totals.monthlyRevenue) },
     { label: "Total Users", value: data.totals.totalUsers },
-    { label: "Admin Users", value: data.totals.adminUsers },
     { label: "Active Subscriptions", value: data.totals.activeSubscriptions },
     { label: "Failed Payments", value: data.totals.failedPayments },
-    { label: "Refund Count", value: data.totals.refundCount },
     { label: "Tool Runs", value: data.totals.successfulExecutions },
-    { label: "Failed Runs", value: data.totals.failedExecutions },
-    { label: "Credits Consumed", value: data.totals.creditsConsumed },
-    { label: "Credits Remaining", value: data.totals.creditsRemaining },
     { label: "API Requests", value: data.totals.totalApiRequests },
     { label: "API Cost", value: formatInr(data.totals.totalApiCost) },
   ];
@@ -43,13 +38,13 @@ export default async function AdminPage() {
       variant="admin"
       className="bg-transparent"
     >
-      <p className="mb-6 text-xs text-slate-400">Server-verified admin session: {adminUser.email}</p>
+      <p className="mb-6 text-xs text-slate-600">Server-verified admin session: {adminUser.email}</p>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {metrics.map((metric) => (
           <Card key={metric.label} className="admin-surface">
             <CardHeader>
-              <CardTitle className="text-sm text-slate-400">{metric.label}</CardTitle>
+              <CardTitle className="text-sm text-slate-600">{metric.label}</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-2xl font-semibold tracking-tight">{metric.value}</p>
@@ -70,7 +65,7 @@ export default async function AdminPage() {
               <CardContent className="space-y-3">
                 {chart.items.map((item) => (
                   <div key={item.key} className="space-y-2">
-                    <div className="flex items-center justify-between text-xs text-slate-300">
+                    <div className="flex items-center justify-between text-xs text-slate-600">
                       <span>{item.label}</span>
                       <span>{chart.formatter ? chart.formatter(item.value) : item.value.toLocaleString()}</span>
                     </div>
@@ -92,15 +87,15 @@ export default async function AdminPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             {data.mostUsedTools.length === 0 ? (
-              <div className="admin-row text-sm text-slate-400">No tool usage yet.</div>
+              <div className="admin-row text-sm text-slate-600">No tool usage yet.</div>
             ) : (
               data.mostUsedTools.map((tool) => (
                 <div key={tool.tool} className="admin-row space-y-3 text-sm">
                   <div className="flex items-center justify-between gap-4">
-                    <span className="font-medium text-white">{tool.tool}</span>
+                    <span className="font-medium text-slate-900">{tool.tool}</span>
                     <span>{tool.usageCount} runs</span>
                   </div>
-                  <div className="grid gap-2 text-xs text-slate-300 md:grid-cols-4">
+                  <div className="grid gap-2 text-xs text-slate-600 md:grid-cols-4">
                     <span>Credits: {tool.creditConsumption}</span>
                     <span>API Cost: {formatInr(tool.apiCostEstimate)}</span>
                     <span>Latency: {tool.averageResponseMs} ms</span>
@@ -118,15 +113,15 @@ export default async function AdminPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             {data.topUsers.length === 0 ? (
-              <div className="admin-row text-sm text-slate-400">No user usage data yet.</div>
+              <div className="admin-row text-sm text-slate-600">No user usage data yet.</div>
             ) : (
               data.topUsers.map((user) => (
                 <div key={user.userId} className="admin-row flex items-center justify-between gap-4 text-sm">
                   <div className="min-w-0">
-                    <p className="truncate font-medium text-white">{user.name ?? user.email}</p>
-                    <p className="truncate text-xs text-slate-400">{user.email}</p>
+                    <p className="truncate font-medium text-slate-900">{user.name ?? user.email}</p>
+                    <p className="truncate text-xs text-slate-600">{user.email}</p>
                   </div>
-                  <div className="text-right text-xs text-slate-300">
+                  <div className="text-right text-xs text-slate-600">
                     <p>{user.totalRuns} runs</p>
                     <p>{user.totalCredits} credits</p>
                     <p>{formatInr(user.totalSpend)}</p>
@@ -137,29 +132,6 @@ export default async function AdminPage() {
           </CardContent>
         </Card>
 
-        <Card className="admin-surface xl:col-span-2">
-          <CardHeader>
-            <CardTitle>Recent payments</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {data.recentPayments.length === 0 ? (
-              <div className="admin-row text-sm text-slate-400">No recent payments.</div>
-            ) : (
-              data.recentPayments.map((payment) => (
-                <div key={payment.id} className="admin-row flex flex-col gap-3 text-sm md:flex-row md:items-center md:justify-between">
-                  <div>
-                    <p className="font-medium text-white">{payment.user?.name ?? payment.user?.email ?? payment.user_id}</p>
-                    <p className="text-xs text-slate-400">{payment.plan} • {payment.status} • {new Date(payment.created_at).toLocaleString()}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-semibold text-white">{formatInr(payment.payment_amount)}</p>
-                    {payment.failure_reason ? <p className="text-xs text-rose-300">{payment.failure_reason}</p> : null}
-                  </div>
-                </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
       </div>
     </PageShell>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import Script from "next/script";
@@ -46,6 +46,8 @@ export function PricingActions({ planId, planName }: { planId: string; planName:
   const [status, setStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [statusTone, setStatusTone] = useState<"default" | "success" | "error">("default");
+  const [isScriptReady, setIsScriptReady] = useState(false);
+  const requestKey = useMemo(() => `plan:${planId}:${crypto.randomUUID()}`, [planId]);
 
   const handleCheckout = async () => {
     if (loading) return;
@@ -56,7 +58,7 @@ export function PricingActions({ planId, planName }: { planId: string; planName:
     try {
       const response = await fetch("/api/billing/checkout", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-idempotency-key": requestKey },
         body: JSON.stringify({ planId }),
       });
 
@@ -126,8 +128,8 @@ export function PricingActions({ planId, planName }: { planId: string; planName:
 
   return (
     <div className="space-y-2">
-      <Script src="https://checkout.razorpay.com/v1/checkout.js" />
-      <Button className="w-full min-h-11" onClick={handleCheckout} disabled={loading} aria-label={`Checkout ${planName} plan`}>
+      <Script src="https://checkout.razorpay.com/v1/checkout.js" onLoad={() => setIsScriptReady(true)} />
+      <Button className="w-full min-h-11" onClick={handleCheckout} disabled={loading || !isScriptReady} aria-label={`Checkout ${planName} plan`}>
         {loading ? "Preparing..." : `Choose ${planName}`}
       </Button>
       <p className="text-xs text-muted-foreground">Secure payments via Razorpay. Your subscription updates automatically after payment.</p>
@@ -145,6 +147,8 @@ export function TopupActions({ topupId, label }: { topupId: string; label: strin
   const [status, setStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [statusTone, setStatusTone] = useState<"default" | "success" | "error">("default");
+  const [isScriptReady, setIsScriptReady] = useState(false);
+  const requestKey = useMemo(() => `topup:${topupId}:${crypto.randomUUID()}`, [topupId]);
 
   const handleTopupCheckout = async () => {
     if (loading) return;
@@ -154,7 +158,7 @@ export function TopupActions({ topupId, label }: { topupId: string; label: strin
     try {
       const response = await fetch("/api/billing/checkout", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-idempotency-key": requestKey },
         body: JSON.stringify({ topupId }),
       });
 
@@ -217,8 +221,8 @@ export function TopupActions({ topupId, label }: { topupId: string; label: strin
 
   return (
     <div className="space-y-2">
-      <Script src="https://checkout.razorpay.com/v1/checkout.js" />
-      <Button className="w-full min-h-11" onClick={handleTopupCheckout} disabled={loading} aria-label={`Buy ${label} topup`}>
+      <Script src="https://checkout.razorpay.com/v1/checkout.js" onLoad={() => setIsScriptReady(true)} />
+      <Button className="w-full min-h-11" onClick={handleTopupCheckout} disabled={loading || !isScriptReady} aria-label={`Buy ${label} topup`}>
         {loading ? "Preparing..." : `Buy ${label}`}
       </Button>
       <p className="text-xs text-muted-foreground">Secure payments via Razorpay. Your credits update automatically after payment.</p>

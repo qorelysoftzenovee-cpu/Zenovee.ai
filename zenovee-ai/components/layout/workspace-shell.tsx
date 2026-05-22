@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { Bolt, ChevronDown, CreditCard, Grid3X3, History, Menu, Settings2, Sparkles, X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -29,11 +29,23 @@ const workspaceNav = [
   "AI Brand Studio",
 ];
 
+const workspaceLabelById: Record<string, string> = {
+  "linkedin-authority-os": "LinkedIn Authority OS",
+  "sales-outreach-os": "Sales Outreach OS",
+  "conversion-copy-os": "Conversion Copy OS",
+  "seo-growth-os": "SEO Growth OS",
+  "ai-brand-studio": "AI Brand Studio",
+};
+
 export function WorkspaceShell({ children, title, subtitle }: WorkspaceShellProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [activeWorkspaceLabel, setActiveWorkspaceLabel] = useState(workspaceNav[0]);
+
+  const workspaceFromRoute = searchParams.get("workspace") ?? "";
+  const resolvedWorkspaceLabel = workspaceLabelById[workspaceFromRoute] ?? activeWorkspaceLabel;
 
   const activeTitle = useMemo(() => {
     const active = primaryNav.find((item) => pathname === item.href || pathname.startsWith(`${item.href}/`));
@@ -125,7 +137,7 @@ export function WorkspaceShell({ children, title, subtitle }: WorkspaceShellProp
             </div>
             <div className="hidden items-center gap-2 rounded-xl border border-border bg-muted/50 px-3 py-1.5 md:flex">
               <span className="text-xs text-muted-foreground">Workspace</span>
-              <span className="text-xs font-medium">{activeWorkspaceLabel}</span>
+              <span className="text-xs font-medium">{resolvedWorkspaceLabel}</span>
               <ChevronDown size={14} className="text-muted-foreground" />
             </div>
           </div>

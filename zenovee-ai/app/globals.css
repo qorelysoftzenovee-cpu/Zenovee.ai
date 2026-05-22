@@ -169,32 +169,32 @@
 
   /* === ADMIN SURFACES === */
   .admin-surface {
-    @apply border-white/10 bg-slate-900/85 text-slate-100 shadow-[0_20px_50px_-30px_rgba(2,6,23,0.9)] transition-all duration-200;
+    @apply border-slate-200 bg-white text-slate-900 shadow-[0_12px_28px_-22px_rgba(15,23,42,0.22)] transition-colors duration-150;
   }
 
   .admin-row {
-    @apply rounded-xl border border-white/10 bg-white/[0.03] px-4 py-4 transition-all duration-200 ease-out hover:bg-white/[0.06] hover:border-white/15;
+    @apply rounded-xl border border-slate-200 bg-slate-50 px-4 py-4 transition-colors duration-150 hover:bg-slate-100 hover:border-slate-300;
   }
 
   /* === ANIMATION UTILITIES === */
   .animate-enter {
-    animation: enter 220ms ease-out both;
+    animation: enter 160ms ease-out both;
   }
 
   .animate-fade {
-    animation: fade 300ms ease-out both;
+    animation: fade 180ms ease-out both;
   }
 
   .animate-slide-up {
-    animation: slideUp 300ms ease-out both;
+    animation: slideUp 180ms ease-out both;
   }
 
   .animate-slide-in {
-    animation: slideIn 300ms ease-out both;
+    animation: slideIn 180ms ease-out both;
   }
 
   .animate-scale {
-    animation: scaleIn 200ms ease-out both;
+    animation: scaleIn 140ms ease-out both;
   }
 
   .animate-pulse-gentle {

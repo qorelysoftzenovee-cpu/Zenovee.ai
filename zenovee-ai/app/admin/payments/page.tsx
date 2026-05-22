@@ -41,16 +41,16 @@ export default async function AdminPaymentsPage() {
               return (
                 <div key={payment.id} className="admin-row flex flex-col gap-3 text-sm md:flex-row md:items-center md:justify-between">
                   <div>
-                    <p className="font-medium text-white">{user?.name ?? user?.email ?? payment.user_id}</p>
-                    <p className="text-xs text-slate-400">{payment.plan} • {payment.status} • {new Date(payment.created_at).toLocaleString()}</p>
+                    <p className="font-medium text-slate-900">{user?.name ?? user?.email ?? payment.user_id}</p>
+                    <p className="text-xs text-slate-600">{payment.plan} • {payment.status} • {new Date(payment.created_at).toLocaleString()}</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-semibold text-white">{formatInr(Number(payment.payment_amount))}</p>
+                    <p className="font-semibold text-slate-900">{formatInr(Number(payment.payment_amount))}</p>
                     {payment.failure_reason ? <p className="text-xs text-rose-300">{payment.failure_reason}</p> : null}
                   </div>
                 </div>
               );
-            }) : <div className="admin-row text-sm text-slate-400">No payment records yet.</div>}
+            }) : <div className="admin-row text-sm text-slate-600">No payment records yet.</div>}
           </CardContent>
         </Card>
 
@@ -63,17 +63,17 @@ export default async function AdminPaymentsPage() {
                 <div key={subscription.id} className="admin-row text-sm">
                   <div className="flex items-center justify-between gap-4">
                     <div>
-                      <p className="font-medium text-white">{user?.name ?? user?.email ?? subscription.user_id}</p>
-                      <p className="text-xs text-slate-400">{subscription.plan_name} • {subscription.status}</p>
+                      <p className="font-medium text-slate-900">{user?.name ?? user?.email ?? subscription.user_id}</p>
+                      <p className="text-xs text-slate-600">{subscription.plan_name} • {subscription.status}</p>
                     </div>
-                    <div className="text-right text-xs text-slate-300">
+                    <div className="text-right text-xs text-slate-600">
                       <p>Renewal: {subscription.next_renewal_at ? new Date(subscription.next_renewal_at).toLocaleDateString() : "N/A"}</p>
                       <p>{subscription.cancel_at_period_end ? "Cancels at period end" : "Auto-renewing"}</p>
                     </div>
                   </div>
                 </div>
               );
-            }) : <div className="admin-row text-sm text-slate-400">No subscription records yet.</div>}
+            }) : <div className="admin-row text-sm text-slate-600">No subscription records yet.</div>}
           </CardContent>
         </Card>
 
@@ -85,13 +85,13 @@ export default async function AdminPaymentsPage() {
               return (
                 <div key={event.id} className="admin-row flex flex-col gap-3 text-sm md:flex-row md:items-center md:justify-between">
                   <div>
-                    <p className="font-medium text-white">{event.event_type}</p>
-                    <p className="text-xs text-slate-400">{user?.name ?? user?.email ?? event.user_id ?? "System"}</p>
+                    <p className="font-medium text-slate-900">{event.event_type}</p>
+                    <p className="text-xs text-slate-600">{user?.name ?? user?.email ?? event.user_id ?? "System"}</p>
                   </div>
-                  <p className="text-xs text-slate-300">{new Date(event.created_at).toLocaleString()}</p>
+                  <p className="text-xs text-slate-600">{new Date(event.created_at).toLocaleString()}</p>
                 </div>
               );
-            }) : <div className="admin-row text-sm text-slate-400">No billing events recorded yet.</div>}
+            }) : <div className="admin-row text-sm text-slate-600">No billing events recorded yet.</div>}
           </CardContent>
         </Card>
       </div>
