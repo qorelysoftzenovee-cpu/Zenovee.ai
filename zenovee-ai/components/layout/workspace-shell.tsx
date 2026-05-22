@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
-import { Bolt, ChevronDown, CreditCard, Grid3X3, History, Menu, Settings2, Sparkles, X } from "lucide-react";
+import { Bolt, CreditCard, Grid3X3, History, Menu, Search, Settings2, Sparkles, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LogoutButton } from "@/components/auth/logout-button";
 
@@ -35,6 +35,7 @@ export function WorkspaceShell({ children, title, subtitle }: WorkspaceShellProp
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [activeWorkspaceLabel] = useState("Workspace");
+  const [headerSearch, setHeaderSearch] = useState("");
 
   const workspaceFromRoute = searchParams.get("workspace") ?? "";
   const resolvedWorkspaceLabel = workspaceLabelById[workspaceFromRoute] ?? activeWorkspaceLabel;
@@ -105,7 +106,7 @@ export function WorkspaceShell({ children, title, subtitle }: WorkspaceShellProp
       </div>
 
       <div className={cn("transition-all duration-300", collapsed ? "lg:pl-[92px]" : "lg:pl-[284px]")}>
-        <header className="sticky top-0 z-30 border-b border-border/70 bg-background/90 backdrop-blur-xl">
+        <header className="sticky top-0 z-30 border-b border-border/70 bg-[#090f1e]/92 backdrop-blur-xl">
           <div className="flex h-16 items-center justify-between gap-4 px-4 md:px-6 lg:px-8">
             <div className="flex items-center gap-3">
               <button onClick={() => setMobileOpen(true)} className="rounded-lg border border-border/60 bg-card p-2 hover:bg-muted/60 lg:hidden">
@@ -116,13 +117,26 @@ export function WorkspaceShell({ children, title, subtitle }: WorkspaceShellProp
                 <p className="truncate text-xs text-muted-foreground">{subtitle ?? "Focused AI workspace"}</p>
               </div>
             </div>
-            <div className="hidden items-center gap-2 rounded-xl border border-border bg-muted/50 px-3 py-1.5 md:flex">
-              <span className="text-xs text-muted-foreground">Workspace</span>
-              <span className="text-xs font-medium">{resolvedWorkspaceLabel}</span>
-              <ChevronDown size={14} className="text-muted-foreground" />
+
+            <div className="hidden flex-1 items-center justify-end gap-3 md:flex">
+              <div className="relative w-full max-w-sm">
+                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  value={headerSearch}
+                  onChange={(e) => setHeaderSearch(e.target.value)}
+                  placeholder="Search workspace"
+                  className="h-9 w-full rounded-xl border border-border/80 bg-background/70 pl-9 pr-3 text-sm outline-none ring-primary/25 transition focus:ring-2"
+                />
+              </div>
+              <div className="rounded-xl border border-border bg-muted/40 px-3 py-1.5 text-xs">
+                Credits: <span className="font-semibold text-foreground">Live</span>
+              </div>
+              <div className="flex size-9 items-center justify-center rounded-full border border-border bg-muted/50 text-xs font-semibold">
+                Z
+              </div>
             </div>
           </div>
-          <div className="px-4 pb-3 text-xs text-muted-foreground md:px-6 lg:px-8">{breadcrumb.length ? breadcrumb.join(" / ") : "dashboard"}</div>
+          <div className="px-4 pb-3 text-xs text-muted-foreground md:px-6 lg:px-8">{resolvedWorkspaceLabel} · {breadcrumb.length ? breadcrumb.join(" / ") : "dashboard"}</div>
         </header>
 
         <main className="p-4 md:p-6 lg:p-8 overflow-x-hidden">{children}</main>
