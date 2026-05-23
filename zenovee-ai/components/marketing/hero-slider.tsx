@@ -57,17 +57,17 @@ export function HeroSlider() {
   const active = slides[index];
 
   return (
-    <div className="overflow-hidden rounded-[32px] border border-white/10 bg-white/[0.03] p-6 shadow-[0_24px_80px_-56px_rgba(15,23,42,0.6)] md:p-8 lg:p-10">
+    <div className="overflow-hidden rounded-[32px] border border-white/15 bg-gradient-to-br from-slate-950/95 via-slate-900/90 to-slate-950/95 p-6 shadow-[0_30px_90px_-52px_rgba(2,6,23,0.75)] md:p-8 lg:p-10">
       <div className="grid gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
-        <div className="space-y-5 transition-all duration-500">
-          <div className="stat-chip border-white/15 bg-white/10 text-white">{active.eyebrow}</div>
+        <div className="space-y-6 transition-all duration-500">
+          <div className="stat-chip border-white/20 bg-white/[0.12] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">{active.eyebrow}</div>
           <div className="space-y-3">
             <h2 className="text-balance text-3xl font-semibold tracking-tight text-white md:text-4xl lg:text-[2.8rem]">
               {active.headline}
             </h2>
-            <p className="max-w-xl text-sm text-slate-300 md:text-base lg:text-lg">{active.subtext}</p>
+            <p className="max-w-xl text-sm leading-relaxed text-slate-200 md:text-base lg:text-lg">{active.subtext}</p>
           </div>
-          <Button asChild size="lg" className="bg-white text-slate-950 hover:-translate-y-0.5 hover:bg-slate-100">
+          <Button asChild size="lg" className="bg-white text-slate-950 shadow-[0_16px_32px_-20px_rgba(255,255,255,0.9)] hover:-translate-y-0.5 hover:bg-slate-100">
             <Link href={active.href}>
               {active.cta}
               <ArrowUpRight size={16} />
@@ -75,15 +75,15 @@ export function HeroSlider() {
           </Button>
         </div>
 
-        <div className="hero-panel relative overflow-hidden p-5 md:p-6">
+        <div className="hero-panel relative overflow-hidden rounded-[28px] border border-white/15 bg-white/[0.04] p-5 md:p-6">
           <div className="relative grid gap-3">
-            <div className="rounded-3xl border border-white/10 bg-slate-950/35 p-4">
+            <div className="rounded-3xl border border-white/15 bg-slate-950/55 p-4">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Now showing</p>
+                  <p className="text-xs uppercase tracking-[0.22em] text-slate-300">Now showing</p>
                   <p className="mt-2 text-lg font-semibold text-white">{active.eyebrow}</p>
                 </div>
-                <div className="rounded-full border border-emerald-400/25 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-200">
+                <div className="rounded-full border border-emerald-300/35 bg-emerald-400/15 px-3 py-1 text-xs font-medium text-emerald-100">
                   Launch-ready workflow
                 </div>
               </div>
@@ -91,21 +91,21 @@ export function HeroSlider() {
 
             <div className="grid gap-3 sm:grid-cols-3">
               {active.stats.map(([label, value]) => (
-                <div key={label} className="rounded-3xl border border-white/15 bg-white/[0.08] p-4">
-                  <p className="text-[11px] uppercase tracking-[0.22em] text-slate-200">{label}</p>
+                <div key={label} className="rounded-3xl border border-white/20 bg-white/[0.12] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+                  <p className="text-[11px] uppercase tracking-[0.22em] text-slate-100">{label}</p>
                   <p className="mt-3 text-sm font-semibold text-white md:text-base">{value}</p>
                 </div>
               ))}
             </div>
 
-            <div className="rounded-[28px] border border-white/10 bg-white/[0.03] p-5">
+            <div className="rounded-[28px] border border-white/15 bg-white/[0.06] p-5">
               <div className="grid gap-3">
                 {["Clean search", "Focused tool runs", "Clear billing status"].map((item, lineIndex) => (
-                  <div key={item} className="flex items-center gap-3 rounded-2xl border border-white/6 bg-slate-950/25 px-4 py-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/8 text-sm text-white">
+                  <div key={item} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/45 px-4 py-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-white/10 text-sm text-white">
                       0{lineIndex + 1}
                     </div>
-                    <span className="text-sm text-slate-200">{item}</span>
+                    <span className="text-sm text-slate-100">{item}</span>
                   </div>
                 ))}
               </div>
