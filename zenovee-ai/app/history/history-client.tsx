@@ -31,6 +31,7 @@ export function HistoryClient({ initialRows }: { initialRows: HistoryRow[] }) {
   const router = useRouter();
   const [rows, setRows] = useState(initialRows);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [favoriteIds, setFavoriteIds] = useState<string[]>(() => {
     if (typeof window === "undefined") return [];
     try {
@@ -72,6 +73,7 @@ export function HistoryClient({ initialRows }: { initialRows: HistoryRow[] }) {
 
   const exportRow = async (row: HistoryRow) => {
     setBusyId(row.id);
+    setStatusMessage(null);
     try {
       const res = await fetch("/api/exports", {
         method: "POST",
@@ -81,6 +83,8 @@ export function HistoryClient({ initialRows }: { initialRows: HistoryRow[] }) {
       const json = await res.json();
       if (res.ok && json?.data?.signedUrl) {
         window.open(json.data.signedUrl, "_blank", "noopener,noreferrer");
+      } else {
+        setStatusMessage("Export failed. Please try again.");
       }
     } finally {
       setBusyId(null);
@@ -89,6 +93,7 @@ export function HistoryClient({ initialRows }: { initialRows: HistoryRow[] }) {
 
   const deleteRow = async (row: HistoryRow) => {
     setBusyId(row.id);
+    setStatusMessage(null);
     try {
       const res = await fetch("/api/exports", {
         method: "DELETE",
@@ -97,6 +102,8 @@ export function HistoryClient({ initialRows }: { initialRows: HistoryRow[] }) {
       });
       if (res.ok) {
         setRows((prev) => prev.filter((item) => item.id !== row.id));
+      } else {
+        setStatusMessage("Could not delete this record right now.");
       }
     } finally {
       setBusyId(null);
@@ -113,7 +120,8 @@ export function HistoryClient({ initialRows }: { initialRows: HistoryRow[] }) {
   ) : (
     <Card>
       <CardHeader><CardTitle>Recent generations</CardTitle></CardHeader>
-      <CardContent className="overflow-x-auto">
+      <CardContent className="overflow-x-auto space-y-3">
+        {statusMessage ? <p className="text-xs text-warning">{statusMessage}</p> : null}
         <table className="w-full min-w-[920px] text-sm">
           <thead className="text-left text-xs text-muted-foreground">
             <tr>
@@ -134,10 +142,11 @@ export function HistoryClient({ initialRows }: { initialRows: HistoryRow[] }) {
                 <td className="py-3">
                   <div className="flex flex-wrap gap-2">
                     <Button size="sm" variant="outline" onClick={() => void exportRow(item)} disabled={busyId === item.id}>Export</Button>
-                    <Button size="sm" variant="outline" onClick={() => reopen(item)}>Reopen</Button>
+                    <Button size="sm" variant="outline" onClick={() => reopen(item)} disabled={busyId === item.id}>Reopen</Button>
                     <Button
                       size="sm"
                       variant="outline"
+                      disabled={busyId === item.id}
                       onClick={() =>
                         persistFavorites(
                           favoriteIds.includes(item.id)

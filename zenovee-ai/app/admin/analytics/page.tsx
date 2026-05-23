@@ -15,7 +15,7 @@ export default async function AdminAnalyticsPage() {
   return (
     <PageShell title="Analytics" description="API economics, request trends, tool performance, and operational telemetry." variant="admin" className="bg-transparent">
       {hasPartialFailure ? (
-        <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div className="mb-4 rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning-foreground">
           Some analytics sources are temporarily unavailable. Metrics shown below may be partially delayed.
         </div>
       ) : null}
@@ -34,16 +34,16 @@ export default async function AdminAnalyticsPage() {
             {data.recentApiUsage.length ? data.recentApiUsage.map((row) => (
               <div key={row.id} className="admin-row flex flex-col gap-3 text-sm md:flex-row md:items-center md:justify-between">
                 <div>
-                  <p className="font-medium text-slate-900">{row.provider} • {row.model}</p>
-                  <p className="text-xs text-slate-600">{row.user?.email ?? row.user_id} • {new Date(row.created_at).toLocaleString()}</p>
+                  <p className="font-medium text-foreground">{row.provider} • {row.model}</p>
+                  <p className="text-xs text-muted-foreground">{row.user?.email ?? row.user_id} • {new Date(row.created_at).toLocaleString()}</p>
                 </div>
-                <div className="text-right text-xs text-slate-600">
+                <div className="text-right text-xs text-muted-foreground">
                   <p>{Number(row.total_tokens).toLocaleString()} tokens</p>
                   <p>{formatInr(Number(row.estimated_cost))}</p>
                   <p>{row.status}</p>
                 </div>
               </div>
-            )) : <div className="admin-row text-sm text-slate-600">No API activity yet.</div>}
+            )) : <div className="admin-row text-sm text-muted-foreground">No API activity yet.</div>}
           </CardContent>
         </Card>
 
@@ -53,17 +53,17 @@ export default async function AdminAnalyticsPage() {
             {data.toolsAnalytics.length ? data.toolsAnalytics.slice(0, 10).map((tool) => (
               <div key={tool.tool} className="admin-row text-sm">
                 <div className="flex items-center justify-between gap-4">
-                  <p className="font-medium text-slate-900">{tool.tool}</p>
+                  <p className="font-medium text-foreground">{tool.tool}</p>
                   <p>{tool.usageCount} runs</p>
                 </div>
-                <div className="mt-2 grid gap-2 text-xs text-slate-600 md:grid-cols-4">
+                <div className="mt-2 grid gap-2 text-xs text-muted-foreground md:grid-cols-4">
                   <span>Credits: {tool.creditConsumption}</span>
                   <span>API Cost: {formatInr(tool.apiCostEstimate)}</span>
                   <span>Latency: {tool.averageResponseMs} ms</span>
                   <span>Failure: {tool.failureRate}%</span>
                 </div>
               </div>
-            )) : <div className="admin-row text-sm text-slate-600">No tool performance data yet.</div>}
+            )) : <div className="admin-row text-sm text-muted-foreground">No tool performance data yet.</div>}
           </CardContent>
         </Card>
 
@@ -73,16 +73,16 @@ export default async function AdminAnalyticsPage() {
             {data.workspaceAnalytics?.length ? data.workspaceAnalytics.slice(0, 10).map((workspace) => (
               <div key={workspace.workspaceId} className="admin-row text-sm">
                 <div className="flex items-center justify-between gap-4">
-                  <p className="font-medium text-slate-900">{workspace.workspaceId}</p>
+                  <p className="font-medium text-foreground">{workspace.workspaceId}</p>
                   <p>{workspace.runs} runs</p>
                 </div>
-                <div className="mt-2 grid gap-2 text-xs text-slate-600 md:grid-cols-3">
+                <div className="mt-2 grid gap-2 text-xs text-muted-foreground md:grid-cols-3">
                   <span>Credits: {workspace.credits}</span>
                   <span>Failures: {workspace.failures}</span>
                   <span>Failure Rate: {workspace.failureRate}%</span>
                 </div>
               </div>
-            )) : <div className="admin-row text-sm text-slate-600">No workspace telemetry yet.</div>}
+            )) : <div className="admin-row text-sm text-muted-foreground">No workspace telemetry yet.</div>}
           </CardContent>
         </Card>
       </div>

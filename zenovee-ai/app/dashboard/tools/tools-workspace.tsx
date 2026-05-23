@@ -10,6 +10,7 @@ import {
   Save,
   Search,
   Sparkles,
+  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -84,6 +85,7 @@ export function ToolsWorkspace() {
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
   const [savedIds, setSavedIds] = useState<string[]>([]);
+  const [copied, setCopied] = useState(false);
 
   const activeTool = useMemo(() => tools.find((t) => t.id === activeToolId) ?? null, [tools, activeToolId]);
 
@@ -166,6 +168,18 @@ export function ToolsWorkspace() {
     setRunning(false);
   };
 
+  const copyResult = async () => {
+    if (!preview) return;
+    await navigator.clipboard.writeText(preview);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1200);
+  };
+
+  const exportResult = () => {
+    if (!resultExecutionId) return;
+    window.open(`/outputs/${resultExecutionId}`, "_blank", "noopener,noreferrer");
+  };
+
   if (loading) {
     return <div className="loading-skeleton h-[70vh] rounded-3xl" />;
   }
@@ -225,11 +239,6 @@ export function ToolsWorkspace() {
             </div>
           ))}
 
-          <details className="rounded-xl border border-white/10 p-3">
-            <summary className="cursor-pointer text-sm font-medium">Advanced options</summary>
-            <p className="mt-2 text-sm text-muted-foreground">Fine-tune your prompt quality from here in next iteration.</p>
-          </details>
-
           <Button className="w-full" onClick={() => void runTool()} disabled={running || !activeTool}>
             {running ? <><Loader2 className="size-4 animate-spin" /> Generating...</> : <><Sparkles className="size-4" /> Generate</>}
           </Button>
@@ -247,10 +256,10 @@ export function ToolsWorkspace() {
         </div>
 
         <div className="mb-3 flex flex-wrap gap-1.5">
-          <Button size="sm" variant="outline" onClick={() => navigator.clipboard.writeText(preview)}><Copy className="size-3.5" /> Copy</Button>
-          <Button size="sm" variant="outline"><Download className="size-3.5" /> Export</Button>
-          <Button size="sm" variant="outline" onClick={() => resultExecutionId && setSavedIds((p) => (p.includes(resultExecutionId) ? p : [resultExecutionId, ...p]))}><Save className="size-3.5" /> Save</Button>
-          <Button size="sm" variant="outline" onClick={() => void runTool()}><RefreshCcw className="size-3.5" /> Regenerate</Button>
+          <Button size="sm" variant="outline" onClick={() => void copyResult()} disabled={!preview}><Copy className="size-3.5" /> {copied ? "Copied" : "Copy"}</Button>
+          <Button size="sm" variant="outline" onClick={exportResult} disabled={!resultExecutionId} title={!resultExecutionId ? "Generate output first" : "Open published output"}><Download className="size-3.5" /> Export</Button>
+          <Button size="sm" variant="outline" onClick={() => resultExecutionId && setSavedIds((p) => (p.includes(resultExecutionId) ? p : [resultExecutionId, ...p]))} disabled={!resultExecutionId} title={!resultExecutionId ? "Generate output first" : "Save current output"}><Save className="size-3.5" /> Save</Button>
+          <Button size="sm" variant="outline" onClick={() => void runTool()} disabled={running || !activeTool}><RefreshCcw className="size-3.5" /> Regenerate</Button>
         </div>
 
         <div className="max-h-[58vh] overflow-y-auto rounded-xl border border-white/10 bg-black/20 p-3">
@@ -259,24 +268,29 @@ export function ToolsWorkspace() {
           ) : activeTab === "history" ? (
             <div className="space-y-2">
               {historyRows.length ? historyRows.map((row) => (
-                <button key={row.id} className="w-full rounded-lg border border-white/10 p-2 text-left hover:bg-white/5" onClick={() => { setResult(row.output); setResultExecutionId(row.id); setActiveTab("result"); }}>
+                 <button key={row.id} className="w-full rounded-lg border border-border/70 bg-muted/20 p-2 text-left transition hover:bg-muted/40" onClick={() => { setResult(row.output); setResultExecutionId(row.id); setActiveTab("result"); }}>
                   <p className="text-xs font-medium">{row.tool_name}</p>
                   <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{toReadable(row.output)}</p>
                   <p className="mt-1 text-[11px] text-muted-foreground"><History className="mr-1 inline size-3" />{row.credits_consumed} credits</p>
-                </button>
+                 </button>
               )) : <p className="text-sm text-muted-foreground">No history yet.</p>}
             </div>
           ) : (
             <div className="space-y-2">
               {savedRows.length ? savedRows.map((row) => (
-                <button key={row.id} className="w-full rounded-lg border border-white/10 p-2 text-left hover:bg-white/5" onClick={() => { setResult(row.output); setResultExecutionId(row.id); setActiveTab("result"); }}>
+                 <button key={row.id} className="w-full rounded-lg border border-border/70 bg-muted/20 p-2 text-left transition hover:bg-muted/40" onClick={() => { setResult(row.output); setResultExecutionId(row.id); setActiveTab("result"); }}>
                   <p className="text-xs font-medium">{row.tool_name}</p>
                   <p className="mt-1 text-[11px] text-muted-foreground">Saved output</p>
                 </button>
-              )) : <p className="text-sm text-muted-foreground">No saved outputs.</p>}
+               )) : <p className="text-sm text-muted-foreground">No saved outputs yet.</p>}
             </div>
           )}
         </div>
+        {resultExecutionId ? (
+          <a href={`/outputs/${resultExecutionId}`} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1 text-xs text-primary hover:text-primary/80">
+            View output page <ExternalLink className="size-3.5" />
+          </a>
+        ) : null}
       </aside>
     </div>
   );

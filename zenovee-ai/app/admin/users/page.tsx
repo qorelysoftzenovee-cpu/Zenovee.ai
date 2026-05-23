@@ -101,35 +101,35 @@ export default async function AdminUsersPage() {
               <div key={u.id} className="admin-row text-sm">
                 <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                   <div>
-                    <p className="font-semibold text-white">{u.name ?? u.email}</p>
-                    <p className="text-xs text-slate-400 break-all">{u.email}</p>
+                    <p className="font-semibold text-foreground">{u.name ?? u.email}</p>
+                    <p className="text-xs text-muted-foreground break-all">{u.email}</p>
                   </div>
-                  <div className="flex flex-wrap gap-2 text-xs">
-                    <span className="rounded-full border border-white/10 px-2 py-1">{u.role}</span>
-                    <span className="rounded-full border border-white/10 px-2 py-1">{u.status}</span>
-                    <span className="rounded-full border border-white/10 px-2 py-1">Available: {credit?.available_credits ?? 0}</span>
-                    <span className="rounded-full border border-white/10 px-2 py-1">{sub?.plan_name ?? "No Plan"}</span>
+                  <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                    <span className="rounded-full border border-border px-2 py-1">{u.role}</span>
+                    <span className="rounded-full border border-border px-2 py-1">{u.status}</span>
+                    <span className="rounded-full border border-border px-2 py-1">Available: {credit?.available_credits ?? 0}</span>
+                    <span className="rounded-full border border-border px-2 py-1">{sub?.plan_name ?? "No plan"}</span>
                   </div>
                 </div>
                 <div className="mt-3 grid gap-4 lg:grid-cols-[1fr_1fr_auto]">
                   <div>
-                    <p className="mb-1 text-xs font-medium text-slate-400">Recent payments</p>
-                    {userPayments.length === 0 ? <p className="text-xs text-slate-400">None</p> : userPayments.map((p) => <p key={p.id} className="text-xs">{p.status} • ₹{Number(p.payment_amount).toFixed(2)}</p>)}
+                    <p className="mb-1 text-xs font-medium text-muted-foreground">Recent payments</p>
+                    {userPayments.length === 0 ? <p className="text-xs text-muted-foreground">No payments yet</p> : userPayments.map((p) => <p key={p.id} className="text-xs text-muted-foreground">{p.status} • ₹{Number(p.payment_amount).toFixed(2)}</p>)}
                   </div>
                   <div>
-                    <p className="mb-1 text-xs font-medium text-slate-400">Recent tool usage</p>
-                    {userUsage.length === 0 ? <p className="text-xs text-slate-400">None</p> : userUsage.map((x, i) => <p key={`${u.id}-${i}`} className="text-xs">{x.tool_name} • {x.credits_charged} credits • {x.status}</p>)}
+                    <p className="mb-1 text-xs font-medium text-muted-foreground">Recent tool usage</p>
+                    {userUsage.length === 0 ? <p className="text-xs text-muted-foreground">No activity yet</p> : userUsage.map((x, i) => <p key={`${u.id}-${i}`} className="text-xs text-muted-foreground">{x.tool_name} • {x.credits_charged} credits • {x.status}</p>)}
                   </div>
                   <form action="/api/admin/users" method="post" className="flex flex-col gap-2">
                     <input type="hidden" name="userId" value={u.id} />
-                    <button type="submit" name="action" value="activate" className="rounded-xl border border-emerald-500/30 px-3 py-2 text-xs font-medium text-emerald-200 transition hover:bg-emerald-500/10">Activate</button>
-                    <button type="submit" name="action" value="suspend" className="rounded-xl border border-amber-500/30 px-3 py-2 text-xs font-medium text-amber-200 transition hover:bg-amber-500/10">Suspend</button>
-                    <button type="submit" name="action" value="ban" className="rounded-xl border border-rose-500/30 px-3 py-2 text-xs font-medium text-rose-200 transition hover:bg-rose-500/10">Ban</button>
+                    <button type="submit" name="action" value="activate" className="rounded-xl border border-success/40 px-3 py-2 text-xs font-medium text-success transition hover:bg-success/10">Activate</button>
+                    <button type="submit" name="action" value="suspend" className="rounded-xl border border-warning/40 px-3 py-2 text-xs font-medium text-warning transition hover:bg-warning/10">Suspend</button>
+                    <button type="submit" name="action" value="ban" className="rounded-xl border border-danger/40 px-3 py-2 text-xs font-medium text-danger transition hover:bg-danger/10">Ban</button>
                   </form>
                 </div>
               </div>
             );
-          }) : <div className="admin-row text-sm text-slate-400">No users found yet.</div>}
+          }) : <div className="admin-row text-sm text-muted-foreground">No users found yet.</div>}
         </CardContent>
       </Card>
     </PageShell>

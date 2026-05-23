@@ -128,8 +128,8 @@ export function WorkspaceShell({ children, title, subtitle }: WorkspaceShellProp
                   className="h-9 w-full rounded-xl border border-border/80 bg-card pl-9 pr-3 text-sm outline-none ring-primary/20 transition focus:ring-2"
                 />
               </div>
-              <div className="rounded-xl border border-border bg-card px-3 py-1.5 text-xs">
-                Credits: <span className="font-semibold text-foreground">Live</span>
+              <div className="rounded-xl border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground">
+                Workspace navigation
               </div>
               <div className="flex size-9 items-center justify-center rounded-full border border-border bg-muted/50 text-xs font-semibold">
                 Z

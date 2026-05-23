@@ -135,24 +135,12 @@ export default async function BillingPage() {
           </CardContent>
         </Card>
 
-        <section className="grid gap-4 lg:grid-cols-2">
-          <Card>
-            <CardHeader><CardTitle>Billing FAQ</CardTitle></CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              <details className="rounded-xl border border-border/70 p-3"><summary className="cursor-pointer font-medium">When are credits renewed?</summary><p className="mt-2 text-muted-foreground">Credits reset at each monthly renewal based on your active plan.</p></details>
-              <details className="rounded-xl border border-border/70 p-3"><summary className="cursor-pointer font-medium">Can I cancel anytime?</summary><p className="mt-2 text-muted-foreground">Yes, cancellation can be set for period end from current plan actions.</p></details>
-              <details className="rounded-xl border border-border/70 p-3"><summary className="cursor-pointer font-medium">How fast are top-ups applied?</summary><p className="mt-2 text-muted-foreground">Top-ups are added immediately after payment verification.</p></details>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader><CardTitle>Razorpay Trust</CardTitle></CardHeader>
-            <CardContent className="space-y-2 text-sm text-muted-foreground">
-              <p>• Secure billing via Razorpay.</p>
-              <p>• Encrypted payment processing.</p>
-              <p>• Cancel subscription anytime from billing settings.</p>
-            </CardContent>
-          </Card>
-        </section>
+        <Card>
+          <CardHeader><CardTitle>Billing support</CardTitle></CardHeader>
+          <CardContent className="text-sm text-muted-foreground">
+            For invoice corrections, payment verification delays, or subscription changes, contact support with your payment ID and account email.
+          </CardContent>
+        </Card>
       </div>
     </WorkspaceShell>
   );

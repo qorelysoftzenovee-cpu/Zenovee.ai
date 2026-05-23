@@ -38,13 +38,13 @@ export default async function AdminPage() {
       variant="admin"
       className="bg-transparent"
     >
-      <p className="mb-6 text-xs text-slate-600">Server-verified admin session: {adminUser.email}</p>
+      <p className="mb-6 text-xs text-muted-foreground">Server-verified admin session: {adminUser.email}</p>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {metrics.map((metric) => (
           <Card key={metric.label} className="admin-surface">
             <CardHeader>
-              <CardTitle className="text-sm text-slate-600">{metric.label}</CardTitle>
+              <CardTitle className="text-sm text-muted-foreground">{metric.label}</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-2xl font-semibold tracking-tight">{metric.value}</p>
@@ -65,7 +65,7 @@ export default async function AdminPage() {
               <CardContent className="space-y-3">
                 {chart.items.map((item) => (
                   <div key={item.key} className="space-y-2">
-                    <div className="flex items-center justify-between text-xs text-slate-600">
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
                       <span>{item.label}</span>
                       <span>{chart.formatter ? chart.formatter(item.value) : item.value.toLocaleString()}</span>
                     </div>
@@ -87,15 +87,15 @@ export default async function AdminPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             {data.mostUsedTools.length === 0 ? (
-              <div className="admin-row text-sm text-slate-600">No tool usage yet.</div>
+              <div className="admin-row text-sm text-muted-foreground">No tool usage yet.</div>
             ) : (
               data.mostUsedTools.map((tool) => (
                 <div key={tool.tool} className="admin-row space-y-3 text-sm">
                   <div className="flex items-center justify-between gap-4">
-                    <span className="font-medium text-slate-900">{tool.tool}</span>
+                    <span className="font-medium text-foreground">{tool.tool}</span>
                     <span>{tool.usageCount} runs</span>
                   </div>
-                  <div className="grid gap-2 text-xs text-slate-600 md:grid-cols-4">
+                  <div className="grid gap-2 text-xs text-muted-foreground md:grid-cols-4">
                     <span>Credits: {tool.creditConsumption}</span>
                     <span>API Cost: {formatInr(tool.apiCostEstimate)}</span>
                     <span>Latency: {tool.averageResponseMs} ms</span>
@@ -113,15 +113,15 @@ export default async function AdminPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             {data.topUsers.length === 0 ? (
-              <div className="admin-row text-sm text-slate-600">No user usage data yet.</div>
+              <div className="admin-row text-sm text-muted-foreground">No user usage data yet.</div>
             ) : (
               data.topUsers.map((user) => (
                 <div key={user.userId} className="admin-row flex items-center justify-between gap-4 text-sm">
                   <div className="min-w-0">
-                    <p className="truncate font-medium text-slate-900">{user.name ?? user.email}</p>
-                    <p className="truncate text-xs text-slate-600">{user.email}</p>
+                    <p className="truncate font-medium text-foreground">{user.name ?? user.email}</p>
+                    <p className="truncate text-xs text-muted-foreground">{user.email}</p>
                   </div>
-                  <div className="text-right text-xs text-slate-600">
+                  <div className="text-right text-xs text-muted-foreground">
                     <p>{user.totalRuns} runs</p>
                     <p>{user.totalCredits} credits</p>
                     <p>{formatInr(user.totalSpend)}</p>
@@ -134,7 +134,7 @@ export default async function AdminPage() {
 
       </div>
 
-      <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+      <div className="mt-6 rounded-2xl border border-border bg-muted/30 p-4 text-sm text-muted-foreground">
         Detailed payment operations, refunds, failed transactions, subscription state transitions, and event logs now live in the dedicated Payments section.
       </div>
     </PageShell>
