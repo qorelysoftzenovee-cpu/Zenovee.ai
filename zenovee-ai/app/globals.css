@@ -76,7 +76,7 @@
 @layer utilities {
   /* === SURFACE PATTERNS === */
   .surface-card {
-    @apply rounded-2xl border border-border/80 bg-card shadow-[0_8px_20px_-18px_rgba(15,23,42,0.22)] transition-colors duration-150;
+    @apply rounded-2xl border border-border/80 bg-card text-card-foreground shadow-[0_8px_20px_-18px_rgba(15,23,42,0.22)] transition-colors duration-150;
   }
 
   .surface-muted {
@@ -88,11 +88,11 @@
   }
 
   .premium-surface {
-    @apply rounded-2xl border border-border/60 bg-gradient-to-br from-card to-card/95 shadow-[0_12px_32px_-20px_rgba(15,23,42,0.32)] backdrop-blur-sm;
+    @apply rounded-2xl border border-border/60 bg-gradient-to-br from-card to-card/95 text-card-foreground shadow-[0_12px_32px_-20px_rgba(15,23,42,0.32)] backdrop-blur-sm;
   }
 
   .premium-surface-elevated {
-    @apply rounded-3xl border border-border/50 bg-gradient-to-br from-card via-card to-background/50 shadow-[0_24px_48px_-30px_rgba(15,23,42,0.45)] backdrop-blur-md;
+    @apply rounded-3xl border border-border/50 bg-gradient-to-br from-card via-card to-background/50 text-card-foreground shadow-[0_24px_48px_-30px_rgba(15,23,42,0.45)] backdrop-blur-md;
   }
 
   /* === INTERACTIVE STATES === */
@@ -156,7 +156,7 @@
 
   /* === DASHBOARD METRICS === */
   .dashboard-metric {
-    @apply rounded-2xl border border-border/80 bg-card p-5 shadow-[0_8px_20px_-20px_rgba(15,23,42,0.28)] transition-colors duration-150;
+    @apply rounded-2xl border border-border/80 bg-card text-card-foreground p-5 shadow-[0_8px_20px_-20px_rgba(15,23,42,0.28)] transition-colors duration-150;
   }
 
   .metric-highlight {
