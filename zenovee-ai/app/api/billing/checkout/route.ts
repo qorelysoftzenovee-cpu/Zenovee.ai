@@ -68,7 +68,7 @@ export async function POST(request: Request) {
       level: "info",
       route: "api/billing/checkout",
       message: "Checkout payload received",
-      payload: { userId: user.id, planId, topupId, amount, currency, credits, requestKey },
+      metadata: { userId: user.id, planId, topupId, amount, currency, credits, requestKey },
     });
 
     if (topupId) {
@@ -121,7 +121,7 @@ export async function POST(request: Request) {
         level: "info",
         route: "api/billing/checkout",
         message: "Razorpay topup order payload",
-        payload: { userId: user.id, topupId: topup.id, amountInPaise: topup.amountInPaise, currency: "INR", orderId: order.id },
+        metadata: { userId: user.id, topupId: topup.id, amountInPaise: topup.amountInPaise, currency: "INR", orderId: order.id },
       });
 
       const topupAmount = Number((topup.amountInPaise / 100).toFixed(2));
@@ -132,7 +132,6 @@ export async function POST(request: Request) {
       const { error: paymentError } = await supabaseAdmin.from("payments").insert({
         user_id: user.id,
         payment_amount: topupAmount,
-        amount: topupAmount,
         plan: `topup:${topup.id}`,
         currency: "INR",
         status: "PENDING",
@@ -167,7 +166,7 @@ export async function POST(request: Request) {
       level: "info",
       route: "api/billing/checkout",
       message: "Selected plan resolved",
-      payload: {
+      metadata: {
         userId: user.id,
         plan: {
           id: plan.id,
@@ -249,7 +248,7 @@ export async function POST(request: Request) {
       level: "info",
       route: "api/billing/checkout",
       message: "Razorpay subscription payload",
-      payload: {
+      metadata: {
         userId: user.id,
         planId: plan.id,
         amountInPaise: plan.amountInPaise,
@@ -278,13 +277,12 @@ export async function POST(request: Request) {
       level: "info",
       route: "api/billing/checkout",
       message: "Amount before payments insert",
-      payload: { userId: user.id, planId: plan.id, amount: normalizedAmount, currency: plan.currency, subscriptionId: subscription.id },
+      metadata: { userId: user.id, planId: plan.id, amount: normalizedAmount, currency: plan.currency, subscriptionId: subscription.id },
     });
 
     const { error: paymentError } = await supabaseAdmin.from("payments").insert({
       user_id: user.id,
       payment_amount: normalizedAmount,
-      amount: normalizedAmount,
       plan: plan.id,
       currency: plan.currency,
       status: "PENDING",
