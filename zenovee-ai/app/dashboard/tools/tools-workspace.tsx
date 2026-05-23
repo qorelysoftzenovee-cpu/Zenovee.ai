@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { OutputRenderer } from "@/components/tools/output-renderer";
 
 type ToolField = {
   name: string;
@@ -86,6 +87,8 @@ export function ToolsWorkspace() {
   const [running, setRunning] = useState(false);
   const [savedIds, setSavedIds] = useState<string[]>([]);
   const [copied, setCopied] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   const activeTool = useMemo(() => tools.find((t) => t.id === activeToolId) ?? null, [tools, activeToolId]);
 
@@ -152,20 +155,43 @@ export function ToolsWorkspace() {
 
   const runTool = async () => {
     if (!activeTool) return;
-    setRunning(true);
-    const res = await fetch("/api/tools", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ toolId: activeTool.id, input: formData }),
-    });
-    const json = await res.json();
-    if (res.ok) {
-      setResult(json.data);
-      setResultExecutionId(json.executionId ?? null);
-      setCredits(json.metrics?.creditsAfter ?? credits);
-      setActiveTab("result");
+    const missing: Record<string, string> = {};
+    for (const field of activeTool.fields) {
+      if (!field.required) continue;
+      const value = (formData[field.name] ?? "").trim();
+      if (!value) missing[field.name] = `${field.label} is required.`;
     }
-    setRunning(false);
+    setValidationErrors(missing);
+    if (Object.keys(missing).length > 0) {
+      setErrorMessage("Please complete the required fields before generating.");
+      return;
+    }
+
+    setRunning(true);
+    setErrorMessage(null);
+    try {
+      const res = await fetch("/api/tools", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-idempotency-key": crypto.randomUUID(),
+        },
+        body: JSON.stringify({ toolId: activeTool.id, input: formData }),
+      });
+      const json = await res.json();
+      if (res.ok) {
+        setResult(json.data);
+        setResultExecutionId(json.executionId ?? null);
+        setCredits(json.metrics?.creditsAfter ?? credits);
+        setActiveTab("result");
+      } else {
+        setErrorMessage(json?.error ?? "Generation failed. Please try again.");
+      }
+    } catch {
+      setErrorMessage("Network issue detected. Please check your connection and retry.");
+    } finally {
+      setRunning(false);
+    }
   };
 
   const copyResult = async () => {
@@ -236,8 +262,11 @@ export function ToolsWorkspace() {
               ) : (
                 <Input value={formData[field.name] ?? ""} onChange={(e) => setFormData((p) => ({ ...p, [field.name]: e.target.value }))} placeholder={field.placeholder} />
               )}
+              {validationErrors[field.name] ? <p className="text-xs text-red-500">{validationErrors[field.name]}</p> : null}
             </div>
           ))}
+
+          {errorMessage ? <div className="rounded-lg border border-red-300/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">{errorMessage}</div> : null}
 
           <Button className="w-full" onClick={() => void runTool()} disabled={running || !activeTool}>
             {running ? <><Loader2 className="size-4 animate-spin" /> Generating...</> : <><Sparkles className="size-4" /> Generate</>}
@@ -264,7 +293,7 @@ export function ToolsWorkspace() {
 
         <div className="max-h-[58vh] overflow-y-auto rounded-xl border border-border bg-muted/20 p-3">
           {activeTab === "result" ? (
-            preview ? <pre className="whitespace-pre-wrap text-xs leading-6 text-foreground">{preview}</pre> : <p className="text-sm text-muted-foreground">No output yet.</p>
+            <OutputRenderer value={result} className="text-xs" />
           ) : activeTab === "history" ? (
             <div className="space-y-2">
               {historyRows.length ? historyRows.map((row) => (

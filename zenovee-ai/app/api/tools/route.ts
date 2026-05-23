@@ -25,6 +25,29 @@ function getErrorMessage(error: unknown) {
   return "Unexpected error occurred.";
 }
 
+function classifyExecutionError(error: unknown): { message: string; code: string; status: number } {
+  const message = safeErrorMessage(error, "Tool execution failed.");
+  const normalized = message.toLowerCase();
+
+  if (normalized.includes("active subscription required")) {
+    return { message: "An active subscription is required to run this tool.", code: "SUBSCRIPTION_REQUIRED", status: 402 };
+  }
+  if (normalized.includes("insufficient credits")) {
+    return { message: "You don't have enough credits for this generation.", code: "INSUFFICIENT_CREDITS", status: 402 };
+  }
+  if (normalized.includes("timed out")) {
+    return { message: "The generation timed out. Please try again.", code: "TIMEOUT", status: 504 };
+  }
+  if (normalized.includes("please wait") && normalized.includes("before running")) {
+    return { message, code: "COOLDOWN_ACTIVE", status: 429 };
+  }
+  if (normalized.includes("duplicate execution")) {
+    return { message: "A similar generation is already running. Please wait a moment.", code: "DUPLICATE_EXECUTION", status: 409 };
+  }
+
+  return { message, code: "TOOL_EXECUTION_FAILED", status: 400 };
+}
+
 export async function POST(req: Request) {
   return withApiErrorHandling("/api/tools:POST", async () => {
     try {
@@ -83,7 +106,11 @@ export async function POST(req: Request) {
           { status: 400 }
         );
       }
-      return jsonApiError(safeErrorMessage(error, "Tool execution failed."), 400);
+      const classified = classifyExecutionError(error);
+      return NextResponse.json(
+        { success: false, error: classified.message, code: classified.code },
+        { status: classified.status }
+      );
     }
   }, "Tool execution failed.");
 }
