@@ -41,6 +41,19 @@ declare global {
   }
 }
 
+async function resolveCheckoutError(response: Response, fallback: string) {
+  let payload: unknown = null;
+  try {
+    payload = await response.json();
+  } catch {
+    // Non-JSON response; handled by fallback below.
+  }
+
+  const data = payload as { error?: string; reason?: string; source?: string } | null;
+  const details = [data?.error, data?.reason, data?.source ? `source: ${data.source}` : null].filter(Boolean).join(" • ");
+  return details || `${fallback} (HTTP ${response.status})`;
+}
+
 export function PricingActions({ planId, planName }: { planId: string; planName: string }) {
   const router = useRouter();
   const [status, setStatus] = useState<string | null>(null);
@@ -70,11 +83,21 @@ export function PricingActions({ planId, planName }: { planId: string; planName:
         body: JSON.stringify({ planId }),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
         setStatusTone("error");
-        setStatus(data.error ?? "We couldn't start checkout right now.");
+        setStatus(await resolveCheckoutError(response, "Checkout initialization failed"));
+        setLoading(false);
+        return;
+      }
+
+      const data = (await response.json()) as {
+        razorpayKey?: string;
+        subscription?: { id?: string };
+      };
+
+      if (!data?.razorpayKey || !data?.subscription?.id) {
+        setStatusTone("error");
+        setStatus("Checkout initialized with incomplete payload. Missing Razorpay key or subscription id.");
         setLoading(false);
         return;
       }
@@ -100,7 +123,7 @@ export function PricingActions({ planId, planName }: { planId: string; planName:
             return;
           }
           setStatusTone("error");
-          setStatus("Payment was received, but your subscription is still syncing. Please contact support if it does not update shortly.");
+          setStatus(await resolveCheckoutError(verify, "Payment captured but verification failed"));
           setLoading(false);
         },
         prefill: {
@@ -121,9 +144,9 @@ export function PricingActions({ planId, planName }: { planId: string; planName:
 
       const razorpay = new window.Razorpay(options);
       razorpay.open();
-    } catch {
+    } catch (error) {
       setStatusTone("error");
-      setStatus("Unable to start checkout right now. Please try again.");
+      setStatus(`Unable to start checkout. ${error instanceof Error ? error.message : "Unknown client error"}`);
       setLoading(false);
     }
   };
@@ -172,10 +195,21 @@ export function TopupActions({ topupId, label }: { topupId: string; label: strin
         body: JSON.stringify({ topupId }),
       });
 
-      const data = await response.json();
       if (!response.ok) {
         setStatusTone("error");
-        setStatus(data.error ?? "We couldn't start checkout right now.");
+        setStatus(await resolveCheckoutError(response, "Top-up checkout initialization failed"));
+        setLoading(false);
+        return;
+      }
+
+      const data = (await response.json()) as {
+        razorpayKey?: string;
+        order?: { id?: string };
+      };
+
+      if (!data?.razorpayKey || !data?.order?.id) {
+        setStatusTone("error");
+        setStatus("Top-up checkout initialized with incomplete payload. Missing Razorpay key or order id.");
         setLoading(false);
         return;
       }
@@ -200,7 +234,7 @@ export function TopupActions({ topupId, label }: { topupId: string; label: strin
             return;
           }
           setStatusTone("error");
-          setStatus("Payment was received, but your credits are still syncing. Please contact support if they do not update shortly.");
+          setStatus(await resolveCheckoutError(verify, "Payment captured but top-up verification failed"));
           setLoading(false);
         },
         prefill: { name: "", email: "" },
@@ -216,9 +250,9 @@ export function TopupActions({ topupId, label }: { topupId: string; label: strin
 
       const razorpay = new window.Razorpay(options as unknown as RazorpayOptions);
       razorpay.open();
-    } catch {
+    } catch (error) {
       setStatusTone("error");
-      setStatus("Unable to start checkout right now. Please try again.");
+      setStatus(`Unable to start top-up checkout. ${error instanceof Error ? error.message : "Unknown client error"}`);
       setLoading(false);
     }
   };

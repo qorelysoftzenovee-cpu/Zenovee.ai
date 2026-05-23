@@ -217,6 +217,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.issues[0]?.message ?? "Invalid checkout request." }, { status: 400 });
     }
 
+    const errorMessage = error instanceof Error ? error.message : "Unknown checkout error";
     serverLog({
       level: "error",
       route: "api/billing/checkout",
@@ -224,6 +225,13 @@ export async function POST(request: Request) {
       error,
     });
 
-    return NextResponse.json({ error: "Unable to initialize checkout right now." }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: "Unable to initialize checkout right now.",
+        reason: errorMessage,
+        source: "api/billing/checkout",
+      },
+      { status: 500 }
+    );
   }
 }
