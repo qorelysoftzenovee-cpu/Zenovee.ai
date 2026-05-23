@@ -60,7 +60,7 @@ export function HeroSlider() {
     <div className="overflow-hidden rounded-[32px] border border-white/10 bg-white/[0.03] p-6 shadow-[0_24px_80px_-56px_rgba(15,23,42,0.6)] md:p-8 lg:p-10">
       <div className="grid gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
         <div className="space-y-5 transition-all duration-500">
-          <div className="stat-chip border-white/10 bg-white/6 text-slate-200">{active.eyebrow}</div>
+          <div className="stat-chip border-white/15 bg-white/10 text-white">{active.eyebrow}</div>
           <div className="space-y-3">
             <h2 className="text-balance text-3xl font-semibold tracking-tight text-white md:text-4xl lg:text-[2.8rem]">
               {active.headline}
@@ -91,9 +91,9 @@ export function HeroSlider() {
 
             <div className="grid gap-3 sm:grid-cols-3">
               {active.stats.map(([label, value]) => (
-                <div key={label} className="rounded-3xl border border-white/10 bg-white/[0.04] p-4">
-                  <p className="text-[11px] uppercase tracking-[0.22em] text-slate-400">{label}</p>
-                  <p className="mt-3 text-sm font-medium text-white md:text-base">{value}</p>
+                <div key={label} className="rounded-3xl border border-white/15 bg-white/[0.08] p-4">
+                  <p className="text-[11px] uppercase tracking-[0.22em] text-slate-200">{label}</p>
+                  <p className="mt-3 text-sm font-semibold text-white md:text-base">{value}</p>
                 </div>
               ))}
             </div>
