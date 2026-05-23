@@ -13,7 +13,6 @@ import { checkRateLimit, resolveClientIp } from "@/lib/rate-limit";
 const checkoutRequestSchema = z
   .object({
     planId: z.string().min(1).optional(),
-    amount: z.number().finite().positive().optional(),
     currency: z.string().min(3).max(8).optional(),
     credits: z.number().int().positive().optional(),
     topupId: z.string().min(1).optional(),
@@ -79,14 +78,14 @@ export async function POST(request: Request) {
       );
     }
 
-    const { planId, topupId, amount, currency, credits } = checkoutRequestSchema.parse(await request.json());
+    const { planId, topupId, currency, credits } = checkoutRequestSchema.parse(await request.json());
     const requestKey = request.headers.get(IDEMPOTENCY_HEADER)?.trim() || null;
 
     serverLog({
       level: "info",
       route: "api/billing/checkout",
       message: "Checkout payload received",
-      metadata: { userId: user.id, planId, topupId, amount, currency, credits, requestKey },
+      metadata: { userId: user.id, planId, topupId, currency, credits, requestKey },
     });
 
     if (topupId) {
@@ -216,10 +215,6 @@ export async function POST(request: Request) {
 
     if (!Number.isFinite(plan.price) || plan.price <= 0 || !Number.isFinite(plan.amountInPaise) || plan.amountInPaise <= 0) {
       return buildValidationError("Plan amount is invalid", { planId: plan.id, planPrice: plan.price, planAmountInPaise: plan.amountInPaise });
-    }
-
-    if (amount !== undefined && Number(amount.toFixed(2)) !== Number(selectedPlan.amount.toFixed(2))) {
-      return buildValidationError("Plan amount mismatch", { planId: plan.id, expectedAmount: selectedPlan.amount, receivedAmount: amount });
     }
 
     if (currency !== undefined && currency.toUpperCase() !== plan.currency.toUpperCase()) {
