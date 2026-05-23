@@ -13,6 +13,9 @@ import { checkRateLimit, resolveClientIp } from "@/lib/rate-limit";
 const checkoutRequestSchema = z
   .object({
     planId: z.string().min(1).optional(),
+    amount: z.number().finite().positive().optional(),
+    currency: z.string().min(3).max(8).optional(),
+    credits: z.number().int().positive().optional(),
     topupId: z.string().min(1).optional(),
   })
   .refine((value) => Number(Boolean(value.planId)) + Number(Boolean(value.topupId)) === 1, {
@@ -20,6 +23,18 @@ const checkoutRequestSchema = z
   });
 
 const IDEMPOTENCY_HEADER = "x-idempotency-key";
+
+function buildValidationError(message: string, details?: Record<string, unknown>) {
+  return NextResponse.json(
+    {
+      error: "Invalid checkout payload",
+      reason: message,
+      source: "api/billing/checkout",
+      ...(details ? { details } : {}),
+    },
+    { status: 400 }
+  );
+}
 
 export async function POST(request: Request) {
   try {
@@ -46,8 +61,15 @@ export async function POST(request: Request) {
       );
     }
 
-    const { planId, topupId } = checkoutRequestSchema.parse(await request.json());
+    const { planId, topupId, amount, currency, credits } = checkoutRequestSchema.parse(await request.json());
     const requestKey = request.headers.get(IDEMPOTENCY_HEADER)?.trim() || null;
+
+    serverLog({
+      level: "info",
+      route: "api/billing/checkout",
+      message: "Checkout payload received",
+      payload: { userId: user.id, planId, topupId, amount, currency, credits, requestKey },
+    });
 
     if (topupId) {
       const topup = getCreditTopupById(topupId);
@@ -95,9 +117,22 @@ export async function POST(request: Request) {
         },
       });
 
+      serverLog({
+        level: "info",
+        route: "api/billing/checkout",
+        message: "Razorpay topup order payload",
+        payload: { userId: user.id, topupId: topup.id, amountInPaise: topup.amountInPaise, currency: "INR", orderId: order.id },
+      });
+
+      const topupAmount = Number((topup.amountInPaise / 100).toFixed(2));
+      if (!Number.isFinite(topupAmount) || topupAmount <= 0) {
+        return buildValidationError("Invalid topup amount before payment insert", { topupId: topup.id, topupAmount });
+      }
+
       const { error: paymentError } = await supabaseAdmin.from("payments").insert({
         user_id: user.id,
-        payment_amount: Number((topup.amountInPaise / 100).toFixed(2)),
+        payment_amount: topupAmount,
+        amount: topupAmount,
         plan: `topup:${topup.id}`,
         currency: "INR",
         status: "PENDING",
@@ -126,6 +161,44 @@ export async function POST(request: Request) {
 
     if (!plan) {
       return NextResponse.json({ error: "Plan not found." }, { status: 404 });
+    }
+
+    serverLog({
+      level: "info",
+      route: "api/billing/checkout",
+      message: "Selected plan resolved",
+      payload: {
+        userId: user.id,
+        plan: {
+          id: plan.id,
+          name: plan.name,
+          amount: plan.price,
+          amountInPaise: plan.amountInPaise,
+          currency: plan.currency,
+          credits: plan.credits,
+          billingInterval: plan.razorpayInterval,
+        },
+      },
+    });
+
+    if (!plan.id || !plan.name || !plan.currency || !plan.razorpayInterval) {
+      return buildValidationError("Plan data is incomplete", { planId: plan.id });
+    }
+
+    if (!Number.isFinite(plan.price) || plan.price <= 0 || !Number.isFinite(plan.amountInPaise) || plan.amountInPaise <= 0) {
+      return buildValidationError("Plan amount is invalid", { planId: plan.id, planPrice: plan.price, planAmountInPaise: plan.amountInPaise });
+    }
+
+    if (amount !== undefined && Number(amount.toFixed(2)) !== Number(plan.price.toFixed(2))) {
+      return buildValidationError("Plan amount mismatch", { planId: plan.id, expectedAmount: plan.price, receivedAmount: amount });
+    }
+
+    if (currency !== undefined && currency.toUpperCase() !== plan.currency.toUpperCase()) {
+      return buildValidationError("Plan currency mismatch", { planId: plan.id, expectedCurrency: plan.currency, receivedCurrency: currency });
+    }
+
+    if (credits !== undefined && credits !== plan.credits) {
+      return buildValidationError("Plan credits mismatch", { planId: plan.id, expectedCredits: plan.credits, receivedCredits: credits });
     }
 
     if (!env.RAZORPAY_KEY_ID || !env.RAZORPAY_KEY_SECRET) {
@@ -172,9 +245,46 @@ export async function POST(request: Request) {
       },
     });
 
+    serverLog({
+      level: "info",
+      route: "api/billing/checkout",
+      message: "Razorpay subscription payload",
+      payload: {
+        userId: user.id,
+        planId: plan.id,
+        amountInPaise: plan.amountInPaise,
+        currency: plan.currency,
+        razorpayPlanId,
+        subscriptionId: subscription.id,
+      },
+    });
+
+    const normalizedAmount = Number((plan.amountInPaise / 100).toFixed(2));
+    if (!user.id || !plan.id || !plan.currency) {
+      return buildValidationError("Missing required payment fields before insert", {
+        hasUserId: Boolean(user.id),
+        hasPlanId: Boolean(plan.id),
+        hasCurrency: Boolean(plan.currency),
+      });
+    }
+    if (!Number.isFinite(normalizedAmount) || normalizedAmount <= 0) {
+      return buildValidationError("Invalid amount before payment insert", {
+        planId: plan.id,
+        normalizedAmount,
+      });
+    }
+
+    serverLog({
+      level: "info",
+      route: "api/billing/checkout",
+      message: "Amount before payments insert",
+      payload: { userId: user.id, planId: plan.id, amount: normalizedAmount, currency: plan.currency, subscriptionId: subscription.id },
+    });
+
     const { error: paymentError } = await supabaseAdmin.from("payments").insert({
       user_id: user.id,
-      payment_amount: Number((plan.amountInPaise / 100).toFixed(2)),
+      payment_amount: normalizedAmount,
+      amount: normalizedAmount,
       plan: plan.id,
       currency: plan.currency,
       status: "PENDING",

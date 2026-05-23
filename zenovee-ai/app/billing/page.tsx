@@ -93,7 +93,7 @@ export default async function BillingPage() {
                     {plan.features.map((feature) => <li key={feature}>• {feature}</li>)}
                     <li>• {plan.id === "scale" ? "Priority support" : plan.id === "growth" ? "Business-hours support" : "Email support"}</li>
                   </ul>
-                  <PricingActions planId={plan.id} planName={plan.name} />
+                  <PricingActions planId={plan.id} planName={plan.name} amount={plan.price} currency={plan.currency} credits={plan.credits} />
                 </CardContent>
               </Card>
             );

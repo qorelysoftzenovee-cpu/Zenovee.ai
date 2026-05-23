@@ -54,7 +54,19 @@ async function resolveCheckoutError(response: Response, fallback: string) {
   return details || `${fallback} (HTTP ${response.status})`;
 }
 
-export function PricingActions({ planId, planName }: { planId: string; planName: string }) {
+export function PricingActions({
+  planId,
+  planName,
+  amount,
+  currency,
+  credits,
+}: {
+  planId: string;
+  planName: string;
+  amount: number;
+  currency: string;
+  credits: number;
+}) {
   const router = useRouter();
   const [status, setStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -80,7 +92,7 @@ export function PricingActions({ planId, planName }: { planId: string; planName:
       const response = await fetch("/api/billing/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-idempotency-key": requestKey },
-        body: JSON.stringify({ planId }),
+        body: JSON.stringify({ planId, amount, currency, credits }),
       });
 
       if (!response.ok) {

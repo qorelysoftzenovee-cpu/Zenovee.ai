@@ -37,6 +37,9 @@ export default async function PricingPage() {
                 <PricingActions
                   planId={plan.id}
                   planName={plan.id === "starter" ? "Starter" : plan.id === "growth" ? "Growth" : "Scale"}
+                  amount={plan.price}
+                  currency={plan.currency}
+                  credits={plan.credits}
                 />
               </CardContent>
             </Card>
