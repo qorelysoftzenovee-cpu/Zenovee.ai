@@ -106,7 +106,7 @@ export function WorkspaceShell({ children, title, subtitle }: WorkspaceShellProp
       </div>
 
       <div className={cn("transition-all duration-300", collapsed ? "lg:pl-[92px]" : "lg:pl-[284px]")}>
-        <header className="sticky top-0 z-30 border-b border-border/70 bg-[#090f1e]/92 backdrop-blur-xl">
+        <header className="sticky top-0 z-30 border-b border-border/70 bg-background/92 backdrop-blur-xl">
           <div className="flex h-16 items-center justify-between gap-4 px-4 md:px-6 lg:px-8">
             <div className="flex items-center gap-3">
               <button onClick={() => setMobileOpen(true)} className="rounded-lg border border-border/60 bg-card p-2 hover:bg-muted/60 lg:hidden">
@@ -114,7 +114,7 @@ export function WorkspaceShell({ children, title, subtitle }: WorkspaceShellProp
               </button>
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold tracking-tight">{activeTitle}</p>
-                <p className="truncate text-xs text-muted-foreground">{subtitle ?? "Focused AI workspace"}</p>
+                {subtitle ? <p className="truncate text-xs text-muted-foreground">{subtitle}</p> : null}
               </div>
             </div>
 
@@ -125,10 +125,10 @@ export function WorkspaceShell({ children, title, subtitle }: WorkspaceShellProp
                   value={headerSearch}
                   onChange={(e) => setHeaderSearch(e.target.value)}
                   placeholder="Search workspace"
-                  className="h-9 w-full rounded-xl border border-border/80 bg-background/70 pl-9 pr-3 text-sm outline-none ring-primary/25 transition focus:ring-2"
+                  className="h-9 w-full rounded-xl border border-border/80 bg-card pl-9 pr-3 text-sm outline-none ring-primary/20 transition focus:ring-2"
                 />
               </div>
-              <div className="rounded-xl border border-border bg-muted/40 px-3 py-1.5 text-xs">
+              <div className="rounded-xl border border-border bg-card px-3 py-1.5 text-xs">
                 Credits: <span className="font-semibold text-foreground">Live</span>
               </div>
               <div className="flex size-9 items-center justify-center rounded-full border border-border bg-muted/50 text-xs font-semibold">
