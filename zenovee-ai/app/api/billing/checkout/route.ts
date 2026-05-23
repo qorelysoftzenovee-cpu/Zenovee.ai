@@ -146,15 +146,25 @@ export async function POST(request: Request) {
         return buildValidationError("Invalid topup amount before payment insert", { topupId: topup.id, topupAmount });
       }
 
-      const { error: paymentError } = await supabaseAdmin.from("payments").insert({
+      const insertPayload = {
         user_id: user.id,
         payment_amount: topupAmount,
+        amount: topupAmount,
         plan: `topup:${topup.id}`,
         currency: "INR",
         status: "PENDING",
         order_id: order.id,
         invoice_id: requestKey ? `idemp:${requestKey}` : null,
+      };
+
+      console.log("PAYMENT INSERT DEBUG", {
+        planId,
+        selectedPlan: null,
+        amount: topupAmount,
+        insertPayload,
       });
+
+      const { error: paymentError } = await supabaseAdmin.from("payments").insert(insertPayload);
 
       if (paymentError) {
         throw new Error(paymentError.message);
@@ -291,10 +301,11 @@ export async function POST(request: Request) {
       });
     }
 
-    console.log({
+    console.log("PAYMENT INSERT DEBUG", {
       planId,
       selectedPlan,
       amount,
+      insertPayload: null,
     });
 
     if (!amount || amount <= 0) {
@@ -319,15 +330,25 @@ export async function POST(request: Request) {
       metadata: { userId: user.id, planId: plan.id, amount, currency: plan.currency, subscriptionId: subscription.id },
     });
 
-    const { error: paymentError } = await supabaseAdmin.from("payments").insert({
+    const insertPayload = {
       user_id: user.id,
-      payment_amount: amount,
+      payment_amount: selectedPlan.amount,
+      amount: selectedPlan.amount,
       plan: plan.id,
       currency: plan.currency,
       status: "PENDING",
       subscription_id: subscription.id,
       invoice_id: requestKey ? `idemp:${requestKey}` : null,
+    };
+
+    console.log("PAYMENT INSERT DEBUG", {
+      planId,
+      selectedPlan,
+      amount: selectedPlan.amount,
+      insertPayload,
     });
+
+    const { error: paymentError } = await supabaseAdmin.from("payments").insert(insertPayload);
 
     if (paymentError) {
       throw new Error(paymentError.message);
