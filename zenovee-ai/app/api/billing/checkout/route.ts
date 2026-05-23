@@ -24,6 +24,12 @@ const checkoutRequestSchema = z
 
 const IDEMPOTENCY_HEADER = "x-idempotency-key";
 
+const PLAN_MAP = {
+  starter: { amount: 299, credits: 40 },
+  growth: { amount: 799, credits: 150 },
+  scale: { amount: 1999, credits: 500 },
+} as const;
+
 function buildValidationError(message: string, details?: Record<string, unknown>) {
   return NextResponse.json(
     {
@@ -156,10 +162,16 @@ export async function POST(request: Request) {
       });
     }
 
+    const selectedPlan = planId?.toLowerCase();
+    const mappedPlan = selectedPlan ? PLAN_MAP[selectedPlan as keyof typeof PLAN_MAP] : undefined;
     const plan = planId ? getPlanById(planId) : undefined;
 
     if (!plan) {
       return NextResponse.json({ error: "Plan not found." }, { status: 404 });
+    }
+
+    if (!mappedPlan) {
+      return NextResponse.json({ error: "Invalid plan selected." }, { status: 400 });
     }
 
     serverLog({
@@ -188,16 +200,16 @@ export async function POST(request: Request) {
       return buildValidationError("Plan amount is invalid", { planId: plan.id, planPrice: plan.price, planAmountInPaise: plan.amountInPaise });
     }
 
-    if (amount !== undefined && Number(amount.toFixed(2)) !== Number(plan.price.toFixed(2))) {
-      return buildValidationError("Plan amount mismatch", { planId: plan.id, expectedAmount: plan.price, receivedAmount: amount });
+    if (amount !== undefined && Number(amount.toFixed(2)) !== Number(mappedPlan.amount.toFixed(2))) {
+      return buildValidationError("Plan amount mismatch", { planId: plan.id, expectedAmount: mappedPlan.amount, receivedAmount: amount });
     }
 
     if (currency !== undefined && currency.toUpperCase() !== plan.currency.toUpperCase()) {
       return buildValidationError("Plan currency mismatch", { planId: plan.id, expectedCurrency: plan.currency, receivedCurrency: currency });
     }
 
-    if (credits !== undefined && credits !== plan.credits) {
-      return buildValidationError("Plan credits mismatch", { planId: plan.id, expectedCredits: plan.credits, receivedCredits: credits });
+    if (credits !== undefined && credits !== mappedPlan.credits) {
+      return buildValidationError("Plan credits mismatch", { planId: plan.id, expectedCredits: mappedPlan.credits, receivedCredits: credits });
     }
 
     if (!env.RAZORPAY_KEY_ID || !env.RAZORPAY_KEY_SECRET) {
@@ -258,7 +270,7 @@ export async function POST(request: Request) {
       },
     });
 
-    const normalizedAmount = Number((plan.amountInPaise / 100).toFixed(2));
+    const normalizedAmount = mappedPlan.amount;
     if (!user.id || !plan.id || !plan.currency) {
       return buildValidationError("Missing required payment fields before insert", {
         hasUserId: Boolean(user.id),
@@ -266,11 +278,19 @@ export async function POST(request: Request) {
         hasCurrency: Boolean(plan.currency),
       });
     }
-    if (!Number.isFinite(normalizedAmount) || normalizedAmount <= 0) {
-      return buildValidationError("Invalid amount before payment insert", {
-        planId: plan.id,
-        normalizedAmount,
-      });
+    console.log("selected plan", planId);
+    console.log("resolved plan object", mappedPlan);
+    console.log("amount", normalizedAmount);
+    console.log("currency", plan.currency);
+    console.log("credits", mappedPlan.credits);
+
+    if (!normalizedAmount || normalizedAmount <= 0) {
+      return NextResponse.json(
+        {
+          error: "Invalid billing amount",
+        },
+        { status: 400 }
+      );
     }
 
     serverLog({
