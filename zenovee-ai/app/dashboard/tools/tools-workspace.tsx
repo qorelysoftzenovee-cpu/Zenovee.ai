@@ -186,7 +186,7 @@ export function ToolsWorkspace() {
 
   return (
     <div className="grid min-h-[72vh] gap-4 xl:grid-cols-[280px_minmax(0,1fr)_420px]">
-      <aside className="rounded-2xl border border-white/10 bg-[#0e1424]/75 p-3">
+      <aside className="rounded-2xl border border-border bg-card p-3">
         <div className="relative mb-3">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search tools" className="pl-10" />
@@ -202,7 +202,7 @@ export function ToolsWorkspace() {
                     <button
                       key={tool.id}
                       onClick={() => setActiveToolId(tool.id)}
-                      className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left transition ${active ? "bg-primary/20 text-primary-foreground" : "hover:bg-white/5"}`}
+                      className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left transition ${active ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
                     >
                       <span className="truncate text-sm">{tool.metadata.icon} {tool.metadata.name}</span>
                       <span className="text-xs text-muted-foreground">{tool.creditCost}</span>
@@ -215,7 +215,7 @@ export function ToolsWorkspace() {
         </div>
       </aside>
 
-      <section className="rounded-2xl border border-white/10 bg-[#0b1220]/80 p-5">
+      <section className="rounded-2xl border border-border bg-card p-5">
         <div className="mb-5">
           <p className="text-xs uppercase tracking-[0.15em] text-muted-foreground">Input Workspace</p>
           <h2 className="mt-1 text-xl font-semibold">{activeTool?.metadata.name ?? "Select a tool"}</h2>
@@ -245,9 +245,9 @@ export function ToolsWorkspace() {
         </div>
       </section>
 
-      <aside className="sticky top-20 h-fit rounded-2xl border border-white/10 bg-[#0f1729]/80 p-4">
+      <aside className="sticky top-20 h-fit rounded-2xl border border-border bg-card p-4">
         <div className="mb-3 flex items-center justify-between">
-          <div className="flex gap-1 rounded-lg bg-white/5 p-1 text-xs">
+          <div className="flex gap-1 rounded-lg bg-muted/60 p-1 text-xs">
             {(["result", "history", "saved"] as const).map((tab) => (
               <button key={tab} onClick={() => setActiveTab(tab)} className={`rounded-md px-2 py-1 ${activeTab === tab ? "bg-primary/25" : ""}`}>{tab[0].toUpperCase() + tab.slice(1)}</button>
             ))}
@@ -262,9 +262,9 @@ export function ToolsWorkspace() {
           <Button size="sm" variant="outline" onClick={() => void runTool()} disabled={running || !activeTool}><RefreshCcw className="size-3.5" /> Regenerate</Button>
         </div>
 
-        <div className="max-h-[58vh] overflow-y-auto rounded-xl border border-white/10 bg-black/20 p-3">
+        <div className="max-h-[58vh] overflow-y-auto rounded-xl border border-border bg-muted/20 p-3">
           {activeTab === "result" ? (
-            preview ? <pre className="whitespace-pre-wrap text-xs leading-6 text-slate-200">{preview}</pre> : <p className="text-sm text-muted-foreground">No output yet.</p>
+            preview ? <pre className="whitespace-pre-wrap text-xs leading-6 text-foreground">{preview}</pre> : <p className="text-sm text-muted-foreground">No output yet.</p>
           ) : activeTab === "history" ? (
             <div className="space-y-2">
               {historyRows.length ? historyRows.map((row) => (
