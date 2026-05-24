@@ -109,6 +109,10 @@ export function ToastContainer({
 export function useToast() {
   const [toasts, setToasts] = React.useState<ToastProps[]>([]);
 
+  const removeToast = React.useCallback((id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
   const addToast = React.useCallback((
     {
       title,
@@ -120,11 +124,7 @@ export function useToast() {
   ) => {
     const id = Math.random().toString(36).slice(2, 11);
     setToasts((prev) => [...prev, { id, title, description, variant, duration, onClose: removeToast, action }]);
-  }, []);
-
-  const removeToast = React.useCallback((id: string) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
-  }, []);
+  }, [removeToast]);
 
   return { toasts, addToast, removeToast };
 }

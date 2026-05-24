@@ -1,6 +1,15 @@
 import { z } from "zod";
 import type { ToolDefinition } from "@/types/tools";
 
+const hiddenPublicToolIds = new Set(
+  (process.env.NEXT_PUBLIC_HIDDEN_TOOL_IDS ?? "")
+    .split(",")
+    .map((id) => id.trim())
+    .filter(Boolean)
+);
+
+export const isPublicToolHidden = (toolId: string) => hiddenPublicToolIds.has(toolId);
+
 export const TOOL_CATEGORIES = {
   EXECUTIVE_BRANDING: "Executive Branding",
   B2B_SALES: "B2B Sales",
@@ -155,6 +164,30 @@ function buildTool(item: Item): ToolDefinition {
   const inputSchema = isExec ? executiveInputSchema : isSales ? salesInputSchema : isCopy ? copyInputSchema : isSeo ? seoInputSchema : imageInputSchema;
   const outputSchema = isExec ? executiveOutputSchema : isSales ? salesOutputSchema : isCopy ? copyOutputSchema : isSeo ? seoOutputSchema : imageOutputSchema;
 
+  const formatOptionLabel = (value: string) =>
+    value.replace(/[-_]/g, " ").replace(/\b\w/g, (char: string) => char.toUpperCase());
+
+  const shape = (inputSchema as z.ZodObject<z.ZodRawShape>).shape;
+  const fields = Object.entries(shape).map(([key, schema]) => {
+    const unwrapped = schema instanceof z.ZodOptional || schema instanceof z.ZodDefault ? schema._def.innerType : schema;
+    const isEnum = unwrapped instanceof z.ZodEnum;
+    const options = isEnum
+      ? Array.from((unwrapped as unknown as { options: readonly string[] }).options).map((value) => ({
+          label: formatOptionLabel(value),
+          value,
+        }))
+      : undefined;
+
+    return {
+      name: key,
+      label: key.replace(/([A-Z])/g, " $1").trim(),
+      type: isEnum ? ("select" as const) : ("textarea" as const),
+      required: !(schema instanceof z.ZodOptional) && !(schema instanceof z.ZodDefault),
+      options,
+      placeholder: `Enter ${key.replace(/([A-Z])/g, " $1").toLowerCase()}`,
+    };
+  });
+
   return {
     id: item.id,
     metadata: {
@@ -171,7 +204,7 @@ function buildTool(item: Item): ToolDefinition {
       availability: "active",
       visibility: "public",
     },
-    fields: Object.keys((inputSchema as z.ZodObject<z.ZodRawShape>).shape).map((key) => ({ name: key, label: key.replace(/([A-Z])/g, " $1"), type: "textarea", required: true })),
+    fields,
     examples: [{ title: `${item.name} run`, description: item.description }],
     presets: [],
     inputSchema,
@@ -179,7 +212,7 @@ function buildTool(item: Item): ToolDefinition {
     creditCost: item.creditCost,
     usageClass: item.usageClass ?? "standard",
     aiModel: item.usageClass === "heavy" ? "llama-3.1-70b-versatile" : "mixtral-8x7b",
-    exportFormats: isSeo ? ["md", "txt", "json"] : ["txt", "json"],
+    exportFormats: ["txt", "md", "pdf", "json"],
     promptTemplate: (input) => buildPrompt(item, input as Record<string, unknown>),
     outputFormatter: (response) => parseJsonResponse(response),
   };
@@ -198,7 +231,7 @@ export const internalToolDefinitions: ToolDefinition[] = idsByCategory[TOOL_CATE
   aiModel: "llama-3.1-70b-versatile",
   promptTemplate: (i) => `Browser tool ${id}.\n${JSON.stringify(i)}`,
   outputFormatter: (r) => parseJsonResponse(r),
-  exportFormats: ["txt", "json"],
+  exportFormats: ["txt", "md", "pdf", "json"],
 }));
 
 export const allToolDefinitions: ToolDefinition[] = [...premiumToolDefinitions, ...internalToolDefinitions];
@@ -206,10 +239,11 @@ export const toolRegistry: Record<string, ToolDefinition> = Object.fromEntries(a
 
 export const getToolDefinition = (toolId: string) => toolRegistry[toolId];
 export const listToolDefinitions = () => Object.values(toolRegistry);
-export const getPublicToolDefinitions = () => premiumToolDefinitions;
-export const getFeaturedToolDefinitions = () => premiumToolDefinitions.filter((t) => t.metadata.featured);
-export const getTrendingToolDefinitions = () => premiumToolDefinitions.filter((t) => t.metadata.trending);
-export const getToolsByCategory = (category: string) => premiumToolDefinitions.filter((t) => t.metadata.category === category);
+export const getPublicToolDefinitions = () => premiumToolDefinitions.filter((t) => !isPublicToolHidden(t.id));
+export const getFeaturedToolDefinitions = () => getPublicToolDefinitions().filter((t) => t.metadata.featured);
+export const getTrendingToolDefinitions = () => getPublicToolDefinitions().filter((t) => t.metadata.trending);
+export const getToolsByCategory = (category: string) =>
+  getPublicToolDefinitions().filter((t) => t.metadata.category === category);
 export const getPricingForTool = (toolId: string): ToolPricingInfo | undefined => {
   const t = getToolDefinition(toolId);
   return t ? { toolId: t.id, creditCost: t.creditCost, usageClass: t.usageClass } : undefined;

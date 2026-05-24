@@ -172,14 +172,19 @@ export function SkeletonLoader({
   lines?: number;
   className?: string;
 }) {
+  const widths = React.useMemo(
+    () => Array.from({ length: lines }, (_, i) => 72 + ((i * 11) % 24)),
+    [lines]
+  );
+
   return (
     <div className={cn("space-y-3", className)}>
-      {Array.from({ length: lines }).map((_, i) => (
+      {widths.map((width, i) => (
         <div
           key={i}
           className="loading-skeleton h-4 rounded"
           style={{
-            width: `${Math.random() * 30 + 70}%`,
+            width: `${width}%`,
             backgroundSize: "200% 100%",
           }}
         />

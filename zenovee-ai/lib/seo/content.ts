@@ -1,4 +1,4 @@
-import { listToolDefinitions } from "@/definitions";
+import { getPublicToolDefinitions } from "@/definitions";
 import type { ToolOutputType } from "@/types/tools";
 
 type FAQ = { question: string; answer: string };
@@ -120,7 +120,7 @@ const toolSpecificCopy: Record<string, ToolSeoNarrative> = {
   },
 };
 
-export const toolSeoPages: ToolSeoEntry[] = listToolDefinitions()
+export const toolSeoPages: ToolSeoEntry[] = getPublicToolDefinitions()
   .filter((tool) => tool.metadata.availability !== "coming_soon" && (tool.metadata.visibility ?? "public") === "public")
   .map((tool) => {
     const specific = toolSpecificCopy[tool.id] || {

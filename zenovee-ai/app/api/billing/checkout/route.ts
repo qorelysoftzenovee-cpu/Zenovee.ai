@@ -364,20 +364,9 @@ export async function POST(request: Request) {
       razorpay_subscription_id: subscription.id,
     };
 
-    let { error: subscriptionError } = await supabaseAdmin
+    const { error: subscriptionError } = await supabaseAdmin
       .from("subscriptions")
       .upsert({ ...subscriptionBasePayload, plan_name: plan.id }, { onConflict: "user_id" });
-
-    if (subscriptionError?.message?.includes("plan_name")) {
-      const fallbackPayload = {
-        ...subscriptionBasePayload,
-        plan: plan.id,
-      };
-      const retry = await (supabaseAdmin.from("subscriptions") as any).upsert(fallbackPayload, {
-        onConflict: "user_id",
-      });
-      subscriptionError = retry.error;
-    }
 
     if (subscriptionError) throw new Error(subscriptionError.message);
 

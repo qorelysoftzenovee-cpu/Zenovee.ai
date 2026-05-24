@@ -1,0 +1,21 @@
+{
+  "toolsPostRoute": true,
+  "toolsGetRoute": true,
+  "requestValidation": true,
+  "rateLimit": true,
+  "executionCall": true,
+  "executionErrorMapping": true,
+  "historyMode": true,
+  "creditsMetrics": true,
+  "exportsPostRoute": true,
+  "exportsGetRoute": true,
+  "exportsDeleteRoute": true,
+  "exportCreate": true,
+  "exportSignedUrl": true,
+  "uiRunTool": true,
+  "uiHistoryLoad": true,
+  "uiExportActions": true,
+  "uiExportFormats": true,
+  "historyServerPage": true,
+  "pass": true
+}

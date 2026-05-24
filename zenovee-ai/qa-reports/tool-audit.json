@@ -1,0 +1,23 @@
+{
+  "totalIdsFound": 54,
+  "expectedTotal": 54,
+  "expectedPremium": 50,
+  "hasExpectedCount": true,
+  "hasExpectedPremiumCount": true,
+  "hasExportFormats": true,
+  "hasPublicFiltering": true,
+  "hasInputSchema": true,
+  "hasOutputSchema": true,
+  "hasPromptTemplate": true,
+  "hasOutputFormatter": true,
+  "hasRateLimit": true,
+  "hasHistoryMode": true,
+  "hasExportRoute": true,
+  "hasValidation": true,
+  "hasRetries": true,
+  "hasRollback": true,
+  "hasUsageLogs": true,
+  "hasAbuseProtection": true,
+  "hasIdempotency": true,
+  "pass": true
+}

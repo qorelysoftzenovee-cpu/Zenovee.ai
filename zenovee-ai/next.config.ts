@@ -15,6 +15,7 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   compress: true,
+  allowedDevOrigins: ["127.0.0.1", "localhost"],
   distDir: process.env.NEXT_DIST_DIR?.trim() || ".next",
   turbopack: {
     root: path.join(__dirname),

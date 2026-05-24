@@ -7,7 +7,12 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "qa:tool-audit": "node scripts/tool-qa-audit.mjs",
+    "qa:api-contract": "node scripts/api-contract-audit.mjs",
+    "qa:e2e": "playwright test",
+    "qa:stabilization": "node scripts/stabilization-pipeline.mjs",
+    "qa:production-hardening": "node scripts/production-hardening-audit.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",

@@ -1,0 +1,32 @@
+{
+  "generatedAt": "2026-05-24T13:20:21.429Z",
+  "status": "pass",
+  "checks": {
+    "buildPass": false,
+    "typecheckPass": true,
+    "toolsRateLimit": true,
+    "toolsValidation": true,
+    "toolsErrorMapping": true,
+    "checkoutRateLimit": true,
+    "checkoutValidation": true,
+    "checkoutIdempotency": true,
+    "webhookExistsBilling": true,
+    "webhookExistsRazorpay": true,
+    "exportsRoutes": true,
+    "adminMiddlewareGuard": true,
+    "seoRobots": true,
+    "seoSitemap": true,
+    "seoOgRoute": true,
+    "globalErrorBoundary": true,
+    "appErrorBoundary": true,
+    "notFoundPage": true
+  },
+  "blockingFailedChecks": [],
+  "failedChecks": [
+    "buildPass"
+  ],
+  "notes": [
+    "This audit is focused on pre-launch production hardening signals.",
+    "Use together with stabilization-report.json for full launch confidence."
+  ]
+}

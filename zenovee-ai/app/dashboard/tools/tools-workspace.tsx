@@ -8,6 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { listToolDefinitions } from "@/definitions";
 
 const CATEGORY_ORDER = ["LinkedIn", "Sales", "SEO", "Conversion", "Brand", "General"];
+const FAVORITES_KEY = "zenovee_tool_favorites";
+const RECENTS_KEY = "zenovee_recent_tools";
 
 function resolveCategory(raw: string) {
   const c = raw.toLowerCase();
@@ -28,6 +30,24 @@ function getBenefit(description: string) {
 export function ToolsWorkspace() {
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<string>("All");
+  const [favoriteIds, setFavoriteIds] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const parsed = JSON.parse(window.localStorage.getItem(FAVORITES_KEY) ?? "[]");
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  });
+  const [recentIds] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const parsed = JSON.parse(window.localStorage.getItem(RECENTS_KEY) ?? "[]");
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  });
 
   const tools = useMemo(
     () =>
@@ -58,6 +78,15 @@ export function ToolsWorkspace() {
     });
   }, [tools, query, activeCategory]);
 
+  const recentTools = useMemo(() => recentIds.map((id) => tools.find((t) => t.id === id)).filter(Boolean), [recentIds, tools]);
+  const favoriteTools = useMemo(() => favoriteIds.map((id) => tools.find((t) => t.id === id)).filter(Boolean), [favoriteIds, tools]);
+
+  const toggleFavorite = (id: string) => {
+    const next = favoriteIds.includes(id) ? favoriteIds.filter((x) => x !== id) : [id, ...favoriteIds].slice(0, 24);
+    setFavoriteIds(next);
+    if (typeof window !== "undefined") window.localStorage.setItem(FAVORITES_KEY, JSON.stringify(next));
+  };
+
   return (
     <div className="space-y-5">
       <div className="relative max-w-xl">
@@ -83,6 +112,36 @@ export function ToolsWorkspace() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {favoriteTools.slice(0, 3).map((tool) => (
+          <Card key={`fav-${tool!.id}`} className="border-amber-200 bg-amber-50/40">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">⭐ {tool!.name}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-slate-600">{getBenefit(tool!.description)}</p>
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-medium text-slate-500">{tool!.creditCost} credits</p>
+                <Link href={`/dashboard/tools/${tool!.id}`} className="rounded-md bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800">Open</Link>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+
+        {recentTools.slice(0, 3).map((tool) => (
+          <Card key={`recent-${tool!.id}`} className="border-blue-200 bg-blue-50/40">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">🕘 {tool!.name}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-slate-600">{getBenefit(tool!.description)}</p>
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-medium text-slate-500">{tool!.creditCost} credits</p>
+                <Link href={`/dashboard/tools/${tool!.id}`} className="rounded-md bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800">Open</Link>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+
         {filtered.map((tool) => (
           <Card key={tool.id} className="border-slate-200 bg-white">
             <CardHeader className="pb-2">
@@ -92,9 +151,14 @@ export function ToolsWorkspace() {
               <p className="text-sm text-slate-600">{getBenefit(tool.description)}</p>
               <div className="flex items-center justify-between">
                 <p className="text-xs font-medium text-slate-500">{tool.creditCost} credits</p>
-                <Link href={`/tools/${tool.id}`} className="rounded-md bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800">
+                <div className="flex items-center gap-2">
+                  <button type="button" onClick={() => toggleFavorite(tool.id)} className="rounded-md border px-2 py-1 text-xs">
+                    {favoriteIds.includes(tool.id) ? "★" : "☆"}
+                  </button>
+                  <Link href={`/dashboard/tools/${tool.id}`} className="rounded-md bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800">
                   Open Tool
-                </Link>
+                  </Link>
+                </div>
               </div>
             </CardContent>
           </Card>

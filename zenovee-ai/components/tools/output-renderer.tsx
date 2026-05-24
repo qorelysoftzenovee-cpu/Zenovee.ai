@@ -1,4 +1,7 @@
-import type { ReactNode } from "react";
+"use client";
+
+import { useState, type ReactNode } from "react";
+import { Button } from "@/components/ui/button";
 
 type OutputRendererProps = {
   value: unknown;
@@ -82,9 +85,42 @@ function renderMarkdownLike(content: string) {
 }
 
 export function OutputRenderer({ value, className }: OutputRendererProps) {
+  const [copied, setCopied] = useState<string | null>(null);
   const content = toDisplayString(value);
   if (!content) {
     return <p className="text-sm text-muted-foreground">No output yet.</p>;
+  }
+
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    const entries = Object.entries(value as Record<string, unknown>);
+    return (
+      <div className={className}>
+        <div className="grid gap-3">
+          {entries.map(([key, section]) => {
+            const sectionText = toDisplayString(section);
+            return (
+              <div key={key} className="rounded-xl border bg-card p-3">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <h4 className="text-sm font-semibold capitalize">{key.replace(/([A-Z])/g, " $1")}</h4>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={async () => {
+                      await navigator.clipboard.writeText(sectionText);
+                      setCopied(key);
+                      setTimeout(() => setCopied(null), 1200);
+                    }}
+                  >
+                    {copied === key ? "Copied" : "Copy"}
+                  </Button>
+                </div>
+                {isMarkdownLike(sectionText) ? renderMarkdownLike(sectionText) : <pre className="whitespace-pre-wrap text-sm leading-7 text-foreground">{sectionText}</pre>}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
   }
 
   return (

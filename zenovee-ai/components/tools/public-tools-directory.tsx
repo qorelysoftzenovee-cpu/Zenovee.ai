@@ -20,6 +20,8 @@ type ToolSeoItem = {
 export function PublicToolsDirectory({ tools }: { tools: ToolSeoItem[] }) {
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 12;
 
   const categories = useMemo(() => ["All", ...Array.from(new Set(tools.map((tool) => tool.category)))], [tools]);
 
@@ -35,13 +37,11 @@ export function PublicToolsDirectory({ tools }: { tools: ToolSeoItem[] }) {
   const featured = filtered.filter((tool) => tool.featured).slice(0, 8);
   const trending = filtered.filter((tool) => tool.trending).slice(0, 8);
 
-  const grouped = useMemo(() => {
-    return filtered.reduce<Record<string, ToolSeoItem[]>>((acc, tool) => {
-      acc[tool.category] = acc[tool.category] ?? [];
-      acc[tool.category].push(tool);
-      return acc;
-    }, {});
-  }, [filtered]);
+  const paginated = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return filtered.slice(start, start + PAGE_SIZE);
+  }, [filtered, page]);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
 
   const renderCards = (items: ToolSeoItem[]) => (
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -95,13 +95,16 @@ export function PublicToolsDirectory({ tools }: { tools: ToolSeoItem[] }) {
 
       <section className="space-y-4">
         <h2 className="text-xl font-semibold tracking-tight">All premium tools</h2>
-        <div className="space-y-8">
-          {Object.entries(grouped).map(([category, items]) => (
-            <section key={category} className="space-y-3">
-              <h3 className="text-lg font-semibold">{category}</h3>
-              {renderCards(items)}
-            </section>
-          ))}
+        <div className="space-y-4">
+          {renderCards(paginated)}
+          <div className="flex items-center justify-between text-sm text-muted-foreground">
+            <p>Showing {paginated.length} of {filtered.length} tools</p>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}>Previous</Button>
+              <span>Page {page} / {totalPages}</span>
+              <Button variant="outline" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>Next</Button>
+            </div>
+          </div>
         </div>
       </section>
     </div>

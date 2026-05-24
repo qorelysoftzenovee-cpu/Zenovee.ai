@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
@@ -115,7 +116,7 @@ export function HistoryClient({ initialRows }: { initialRows: HistoryRow[] }) {
       <div className="empty-state-icon">⏳</div>
       <p className="empty-state-title">No generations yet</p>
       <p className="empty-state-description">Once you run your first tool, your history will appear here with export and reopen actions.</p>
-      <Button asChild className="empty-state-action"><a href="/dashboard/tools">Open Workspace</a></Button>
+      <Button asChild className="empty-state-action"><Link href="/dashboard/tools">Open Workspace</Link></Button>
     </div>
   ) : (
     <Card>

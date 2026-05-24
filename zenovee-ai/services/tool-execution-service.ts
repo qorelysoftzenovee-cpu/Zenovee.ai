@@ -35,6 +35,12 @@ type WorkspaceConfigRow = {
 };
 
 const TOOL_EXECUTION_TIMEOUT_MS = 90_000;
+const TRANSIENT_ERROR_PATTERNS = ["timed out", "timeout", "rate limit", "429", "overloaded", "temporarily unavailable"];
+
+function isTransientError(error: unknown) {
+  const message = error instanceof Error ? error.message.toLowerCase() : String(error ?? "").toLowerCase();
+  return TRANSIENT_ERROR_PATTERNS.some((pattern) => message.includes(pattern));
+}
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
@@ -274,16 +280,36 @@ export class ToolExecutionService {
 
     const startedAt = Date.now();
     try {
-      const generation = await withTimeout(
-        generateToolOutput({
-          tool: tool as ToolDefinition<Record<string, unknown>, Record<string, unknown>>,
-          input: validatedInput,
-          options: executionOptions,
-          adminOverrides: price?.metadata,
-        }),
-        TOOL_EXECUTION_TIMEOUT_MS,
-        "Tool execution timed out. Please retry."
-      );
+      const maxValidationRetries = Math.max(0, Number((price?.metadata as Record<string, unknown> | null)?.maxValidationRetries ?? 1));
+      const totalAttempts = Math.min(4, maxValidationRetries + 1);
+      let generation: Awaited<ReturnType<typeof generateToolOutput>> | null = null;
+      let lastError: unknown = null;
+
+      for (let attempt = 1; attempt <= totalAttempts; attempt += 1) {
+        try {
+          generation = await withTimeout(
+            generateToolOutput({
+              tool: tool as ToolDefinition<Record<string, unknown>, Record<string, unknown>>,
+              input: validatedInput,
+              options: executionOptions,
+              adminOverrides: price?.metadata,
+            }),
+            TOOL_EXECUTION_TIMEOUT_MS,
+            "Tool execution timed out. Please retry."
+          );
+          break;
+        } catch (attemptError) {
+          lastError = attemptError;
+          if (attempt >= totalAttempts || !isTransientError(attemptError)) {
+            throw attemptError;
+          }
+        }
+      }
+
+      if (!generation) {
+        throw lastError instanceof Error ? lastError : new Error("Tool execution failed after retries.");
+      }
+
       const { aiResponse, output, meta } = generation;
 
       const executionMs = Date.now() - startedAt;

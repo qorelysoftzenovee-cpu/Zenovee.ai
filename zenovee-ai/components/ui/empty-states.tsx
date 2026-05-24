@@ -133,7 +133,7 @@ export function FilteringEmptyState({
       <div className="space-y-2">
         <h3 className="empty-state-title">No results found</h3>
         <p className="empty-state-description">
-          We couldn't find any results matching {appliedFilters.length === 1 ? "that filter" : "those filters"}.
+          We couldn&apos;t find any results matching {appliedFilters.length === 1 ? "that filter" : "those filters"}.
         </p>
       </div>
       {onClear && (
@@ -205,7 +205,7 @@ export function ErrorEmptyState({
 /* === PERMISSION EMPTY STATE === */
 export function PermissionEmptyState({
   title = "Access denied",
-  description = "You don't have permission to view this content.",
+  description = "You don&apos;t have permission to view this content.",
   action,
 }: {
   title?: string;
