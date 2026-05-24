@@ -44,6 +44,8 @@ export function HistoryClient({ initialRows }: { initialRows: HistoryRow[] }) {
   });
 
   const hasRows = rows.length > 0;
+  const favoriteSet = new Set(favoriteIds);
+  const visibleRows = useMemo(() => rows, [rows]);
 
   const previewById = useMemo(
     () =>
@@ -119,9 +121,24 @@ export function HistoryClient({ initialRows }: { initialRows: HistoryRow[] }) {
       <Button asChild className="empty-state-action"><Link href="/dashboard/tools">Open Workspace</Link></Button>
     </div>
   ) : (
-    <Card>
-      <CardHeader><CardTitle>Recent generations</CardTitle></CardHeader>
-      <CardContent className="overflow-x-auto space-y-3">
+    <div className="space-y-4">
+      <section className="premium-surface-elevated p-5 md:p-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="premium-label">History</p>
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight">Execution log and output history</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Reopen runs, export results, and keep important outputs starred for quick access.</p>
+          </div>
+          <div className="flex gap-2 text-xs">
+            <span className="stat-chip">{rows.length} records</span>
+            <span className="stat-chip">{favoriteIds.length} favorites</span>
+          </div>
+        </div>
+      </section>
+
+      <Card className="premium-surface">
+        <CardHeader><CardTitle>Recent generations</CardTitle></CardHeader>
+        <CardContent className="overflow-x-auto space-y-3">
         {statusMessage ? <p className="text-xs text-warning">{statusMessage}</p> : null}
         <table className="w-full min-w-[920px] text-sm">
           <thead className="text-left text-xs text-muted-foreground">
@@ -134,7 +151,7 @@ export function HistoryClient({ initialRows }: { initialRows: HistoryRow[] }) {
             </tr>
           </thead>
           <tbody>
-            {rows.map((item) => (
+            {visibleRows.map((item) => (
               <tr key={item.id} className="border-t border-border/60 align-top">
                 <td className="py-3 font-medium">{item.tool_name}</td>
                 <td className="py-3 max-w-[320px] text-muted-foreground line-clamp-2">{previewById[item.id]}...</td>
@@ -156,7 +173,7 @@ export function HistoryClient({ initialRows }: { initialRows: HistoryRow[] }) {
                         )
                       }
                     >
-                      {favoriteIds.includes(item.id) ? "Favorited" : "Favorite"}
+                      {favoriteSet.has(item.id) ? "Favorited" : "Favorite"}
                     </Button>
                     <Button size="sm" variant="outline" onClick={() => void deleteRow(item)} disabled={busyId === item.id}>Delete</Button>
                   </div>
@@ -165,7 +182,8 @@ export function HistoryClient({ initialRows }: { initialRows: HistoryRow[] }) {
             ))}
           </tbody>
         </table>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

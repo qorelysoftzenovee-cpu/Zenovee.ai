@@ -3,7 +3,23 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useMemo, useState } from "react";
-import { Bolt, CreditCard, FolderHeart, History, Menu, Settings2, TerminalSquare, Wrench, Upload, X } from "lucide-react";
+import {
+  Bolt,
+  ChevronLeft,
+  ChevronRight,
+  CreditCard,
+  FolderHeart,
+  History,
+  Menu,
+  Search,
+  Settings2,
+  Sparkles,
+  Star,
+  TerminalSquare,
+  Upload,
+  Wrench,
+  X,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LogoutButton } from "@/components/auth/logout-button";
 
@@ -23,6 +39,15 @@ const primaryNav = [
   { label: "Settings", href: "/settings", icon: Settings2 },
 ];
 
+const workspaceTabs = [
+  { label: "Tools", href: "/dashboard/tools", icon: Wrench },
+  { label: "History", href: "/history", icon: History },
+  { label: "Favorites", href: "/history?view=favorites", icon: Star },
+  { label: "Exports", href: "/exports", icon: Upload },
+  { label: "Billing", href: "/billing", icon: CreditCard },
+  { label: "Settings", href: "/settings", icon: Settings2 },
+];
+
 export function WorkspaceShell({ children, title, subtitle }: WorkspaceShellProps) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
@@ -36,27 +61,34 @@ export function WorkspaceShell({ children, title, subtitle }: WorkspaceShellProp
   const breadcrumb = pathname.split("/").filter(Boolean);
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
-      <div className={cn("fixed inset-y-0 left-0 z-40 hidden border-r border-slate-800/80 bg-slate-950 text-slate-100 transition-all duration-300 lg:block", collapsed ? "w-[92px]" : "w-[284px]")}>
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,hsl(var(--primary)/0.08),transparent_35%),hsl(var(--background))] text-foreground">
+      <div className={cn("fixed inset-y-0 left-0 z-40 hidden border-r border-border/70 bg-slate-950/95 text-slate-100 backdrop-blur-xl transition-all duration-300 lg:block", collapsed ? "w-[94px]" : "w-[288px]")}>
         <aside className="flex h-full flex-col p-4">
-          <div className="mb-2 flex items-center justify-between gap-3 pb-4">
+          <div className="mb-3 flex items-center justify-between gap-3 pb-3">
             <Link href="/dashboard" className="group flex items-center gap-3 overflow-hidden">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/10 text-white">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/10 text-white shadow-[0_10px_20px_-14px_rgba(255,255,255,0.6)]">
                 <Bolt size={16} />
               </div>
               {!collapsed ? (
                 <div>
                   <p className="text-sm font-semibold tracking-tight">Zenovee</p>
-                  <p className="text-[11px] uppercase tracking-[0.16em] text-slate-400">Workspace</p>
+                  <p className="text-[11px] uppercase tracking-[0.16em] text-slate-400">AI Workspace</p>
                 </div>
               ) : null}
             </Link>
-            <button onClick={() => setCollapsed((v) => !v)} className="rounded-lg border border-white/20 bg-white/10 px-2 py-1 text-xs font-medium text-slate-200 hover:bg-white/20">
-              {collapsed ? "→" : "←"}
+            <button onClick={() => setCollapsed((v) => !v)} className="rounded-lg border border-white/15 bg-white/10 p-1.5 text-slate-200 transition hover:bg-white/20">
+              {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
             </button>
           </div>
 
-          <div className="mb-4 h-px bg-white/15" />
+          {!collapsed ? (
+            <div className="mb-4 rounded-xl border border-white/10 bg-white/5 p-2">
+              <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-xs text-slate-300">
+                <Search size={13} />
+                Quick search
+              </div>
+            </div>
+          ) : null}
 
           <nav className="flex-1 space-y-1.5">
             {primaryNav.map((item) => {
@@ -69,7 +101,7 @@ export function WorkspaceShell({ children, title, subtitle }: WorkspaceShellProp
                   className={cn(
                     "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200",
                     active
-                      ? "bg-white text-slate-900"
+                      ? "bg-white text-slate-900 shadow-[0_10px_20px_-16px_rgba(255,255,255,0.95)]"
                       : "text-slate-300 hover:bg-white/10 hover:text-white"
                   )}
                 >
@@ -81,14 +113,12 @@ export function WorkspaceShell({ children, title, subtitle }: WorkspaceShellProp
           </nav>
 
           {!collapsed ? (
-            <div className="mt-auto space-y-3 border-t border-white/15 pt-4">
-              <div className="rounded-lg border border-white/15 bg-white/5 px-3 py-2">
-                <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Credits remaining</p>
-                <p className="mt-1 text-sm font-semibold text-white">Live in Console</p>
-              </div>
-              <div className="rounded-lg border border-white/15 bg-white/5 px-3 py-2">
-                <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Current plan</p>
-                <p className="mt-1 text-sm font-semibold text-white">Manage in Billing</p>
+            <div className="mt-auto space-y-3 border-t border-white/10 pt-4">
+              <div className="rounded-xl border border-white/15 bg-white/5 px-3 py-2.5">
+                <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Usage & Credits</p>
+                <Link href="/billing" className="mt-1 inline-flex items-center gap-1.5 text-sm font-medium text-white/90 hover:text-white">
+                  View usage dashboard <Sparkles size={13} />
+                </Link>
               </div>
               <LogoutButton className="w-full justify-start border-white/20 bg-transparent text-slate-100 hover:bg-white/10" />
             </div>
@@ -97,23 +127,44 @@ export function WorkspaceShell({ children, title, subtitle }: WorkspaceShellProp
       </div>
 
       <div className={cn("transition-all duration-300", collapsed ? "lg:pl-[92px]" : "lg:pl-[284px]")}>
-        <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur-xl">
+        <header className="sticky top-0 z-30 border-b border-border/70 bg-background/92 backdrop-blur-xl">
           <div className="flex h-16 items-center justify-between gap-4 px-4 md:px-6 lg:px-8">
             <div className="flex items-center gap-3">
-              <button onClick={() => setMobileOpen(true)} className="rounded-lg border border-slate-300 bg-white p-2 hover:bg-slate-50 lg:hidden">
+              <button onClick={() => setMobileOpen(true)} className="rounded-lg border border-border bg-card p-2 hover:bg-muted lg:hidden">
                 <Menu size={18} />
               </button>
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold tracking-tight">{activeTitle}</p>
-                {subtitle ? <p className="truncate text-xs text-slate-500">{subtitle}</p> : null}
+                {subtitle ? <p className="truncate text-xs text-muted-foreground">{subtitle}</p> : null}
               </div>
             </div>
-            <div className="text-xs text-slate-500">Zenovee Workspace</div>
+            <div className="hidden text-xs text-muted-foreground md:block">Zenovee Workspace</div>
           </div>
-          <div className="px-4 pb-3 text-xs text-slate-500 md:px-6 lg:px-8">{breadcrumb.length ? breadcrumb.join(" / ") : "dashboard"}</div>
+          <div className="border-t border-border/60 px-4 py-2.5 md:px-6 lg:px-8">
+            <div className="no-scrollbar flex gap-2 overflow-x-auto">
+              {workspaceTabs.map((tab) => {
+                const Icon = tab.icon;
+                const active = pathname === tab.href || pathname.startsWith(`${tab.href}/`) || (tab.href.includes("history?view=favorites") && pathname === "/history");
+                return (
+                  <Link
+                    key={tab.label}
+                    href={tab.href}
+                    className={cn(
+                      "inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium transition",
+                      active ? "border-primary/20 bg-primary/10 text-primary" : "border-border/70 bg-card/80 text-muted-foreground hover:bg-muted"
+                    )}
+                  >
+                    <Icon size={13} />
+                    {tab.label}
+                  </Link>
+                );
+              })}
+            </div>
+            <div className="pt-2 text-xs text-muted-foreground">{breadcrumb.length ? breadcrumb.join(" / ") : "dashboard"}</div>
+          </div>
         </header>
 
-        <main className="p-4 md:p-6 lg:p-8 overflow-x-hidden">{children}</main>
+        <main className="overflow-x-hidden p-4 md:p-6 lg:p-8">{children}</main>
       </div>
 
       {mobileOpen ? (

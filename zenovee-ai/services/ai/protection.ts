@@ -1,5 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { CreditService } from "@/credit-service";
+import { CreditService } from "@/lib/services/CreditService";
 import type { Json } from "@/lib/supabase/types";
 
 type PlanId = "starter" | "growth" | "scale";

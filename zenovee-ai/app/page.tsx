@@ -9,7 +9,7 @@ import { Footer } from "@/components/layout/footer";
 import { JsonLd } from "@/components/seo/json-ld";
 import { createBreadcrumbSchema, createMetadata } from "@/lib/seo/site";
 import { toolSeoPages } from "@/lib/seo/content";
-import { subscriptionPlans } from "@/app/subscription-plans";
+import { getActivePlans, formatRupees } from "@/lib/billing/plans";
 import { HeroSlider } from "@/components/marketing/hero-slider";
 
 const premiumShowcaseSlugs = new Set([
@@ -39,6 +39,7 @@ const steps = [
 export default async function LandingPage() {
   const user = await getCurrentUser();
   const topTools = toolSeoPages.filter((tool) => premiumShowcaseSlugs.has(tool.slug));
+  const subscriptionPlans = getActivePlans();
 
   return (
     <div className="min-h-screen bg-background">
@@ -115,7 +116,7 @@ export default async function LandingPage() {
                   <CardDescription>{plan.credits.toLocaleString()} credits / month</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-3xl font-semibold tracking-tight">₹{plan.price.toLocaleString("en-IN")}<span className="ml-1 text-base font-normal text-muted-foreground">/month</span></p>
+                  <p className="text-3xl font-semibold tracking-tight">{formatRupees(plan.monthlyPriceRupees)}<span className="ml-1 text-base font-normal text-muted-foreground">/month</span></p>
                 </CardContent>
               </Card>
             ))}

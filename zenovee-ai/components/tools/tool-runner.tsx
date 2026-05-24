@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { OutputRenderer } from "@/components/tools/output-renderer";
 import type { ToolDefinition } from "@/types/tools";
+import { AlertDialog } from "@/components/ui/dialogs";
 
 type Props = {
   tool: ToolDefinition;
@@ -22,6 +23,11 @@ export function ToolRunner({ tool }: Props) {
   const [lastPayload, setLastPayload] = useState<Record<string, unknown> | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
   const [exporting, setExporting] = useState<"txt" | "md" | "pdf" | "json" | null>(null);
+  const [upgradeModal, setUpgradeModal] = useState<{ open: boolean; title: string; description: string }>({
+    open: false,
+    title: "Premium access required",
+    description: "Upgrade your plan to continue.",
+  });
 
   const validationError = useMemo(() => {
     const missing = tool.fields.find((field) => field.required && String(input[field.name] ?? "").trim().length === 0);
@@ -49,7 +55,27 @@ export function ToolRunner({ tool }: Props) {
         body: JSON.stringify({ toolId: tool.id, input: payloadInput }),
       });
       const json = await res.json();
-      if (!res.ok || !json?.success) throw new Error(json?.error ?? "Execution failed.");
+      if (!res.ok || !json?.success) {
+        const code = String(json?.code ?? "");
+        if (code === "SUBSCRIPTION_REQUIRED" || code === "INSUFFICIENT_CREDITS" || code === "TOOL_DISABLED") {
+          setUpgradeModal({
+            open: true,
+            title:
+              code === "SUBSCRIPTION_REQUIRED"
+                ? "Upgrade required"
+                : code === "INSUFFICIENT_CREDITS"
+                ? "Credits required"
+                : "Tool unavailable",
+            description:
+              code === "SUBSCRIPTION_REQUIRED"
+                ? "You need an active plan to use this tool."
+                : code === "INSUFFICIENT_CREDITS"
+                ? "You don’t have enough credits. Top up or upgrade to continue."
+                : "This tool is temporarily unavailable. Please try again later.",
+          });
+        }
+        throw new Error(json?.error ?? "Execution failed.");
+      }
       setOutput(json.data);
       setExecutionId(json.executionId ?? null);
       setLastPayload(payloadInput);
@@ -103,6 +129,17 @@ export function ToolRunner({ tool }: Props) {
 
   return (
     <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+      <AlertDialog
+        isOpen={upgradeModal.open}
+        onClose={() => setUpgradeModal((prev) => ({ ...prev, open: false }))}
+        title={upgradeModal.title}
+        description={upgradeModal.description}
+        actionLabel="View plans"
+        action={() => {
+          window.location.href = "/pricing";
+        }}
+        variant="warning"
+      />
       <Card>
         <CardHeader>
           <CardTitle>{tool.metadata.name}</CardTitle>

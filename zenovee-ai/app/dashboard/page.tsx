@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { listToolDefinitions } from "@/definitions";
 import { requireStandardUser } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { getBillingSnapshot } from "@/lib/billing/credits";
 
 type UsageItem = {
   id: string;
@@ -11,10 +12,6 @@ type UsageItem = {
   credits_charged: number;
   status: string;
   created_at: string;
-};
-
-type CreditSummary = {
-  available_credits: number;
 };
 
 function formatDateTime(dateValue: string) {
@@ -30,28 +27,19 @@ function formatDateTime(dateValue: string) {
 export default async function DashboardPage() {
   const user = await requireStandardUser();
 
-  const [usageRes, latestSubscriptionRes, creditSummaryRes] = await Promise.all([
+  const [usageRes, billingSnapshot] = await Promise.all([
     supabaseAdmin
       .from("tool_executions")
       .select("id,tool_name,credits_charged,status,created_at")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(5),
-    supabaseAdmin
-      .from("subscriptions")
-      .select("plan_name,status,next_renewal_at")
-      .eq("user_id", user.id)
-      .maybeSingle<{ plan_name: string; status: string; next_renewal_at: string | null }>(),
-    supabaseAdmin
-      .from("user_credits")
-      .select("available_credits")
-      .eq("user_id", user.id)
-      .maybeSingle<CreditSummary>(),
+    getBillingSnapshot(user.id),
   ]);
 
-  const credits = creditSummaryRes.data?.available_credits ?? 0;
+  const credits = billingSnapshot.availableCredits;
   const usage = (usageRes.data ?? []) as UsageItem[];
-  const latestSubscription = latestSubscriptionRes.data;
+  const usageProgress = billingSnapshot.totalCredits > 0 ? Math.min(100, Math.round((billingSnapshot.usedCredits / billingSnapshot.totalCredits) * 100)) : 0;
 
   const quickAccessTools = listToolDefinitions()
     .filter((tool) => tool.metadata.availability === "active" && (tool.metadata.visibility ?? "public") === "public")
@@ -72,8 +60,11 @@ export default async function DashboardPage() {
       <Card className="border-slate-200 bg-white">
         <CardHeader><CardTitle>Current Plan</CardTitle></CardHeader>
         <CardContent>
-          <p className="text-lg font-semibold">{latestSubscription?.plan_name ?? "No plan"}</p>
-          <p className="text-sm text-muted-foreground">{latestSubscription?.status ?? "Inactive"}</p>
+          <p className="text-lg font-semibold">{billingSnapshot.plan ?? "No plan"}</p>
+          <p className="text-xs text-muted-foreground mt-1">{billingSnapshot.subscriptionStatus ?? "Inactive"}</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Renewal: {billingSnapshot.renewalAt ? formatDateTime(billingSnapshot.renewalAt) : "N/A"}
+          </p>
         </CardContent>
       </Card>
 
@@ -104,6 +95,7 @@ export default async function DashboardPage() {
         <CardHeader><CardTitle>Credits Remaining</CardTitle></CardHeader>
         <CardContent>
           <p className="text-2xl font-semibold">{credits.toLocaleString()}</p>
+          <p className="mt-1 text-xs text-muted-foreground">Usage progress: {usageProgress}% ({billingSnapshot.usedCredits}/{billingSnapshot.totalCredits})</p>
         </CardContent>
       </Card>
     </div>

@@ -35,6 +35,9 @@ function classifyExecutionError(error: unknown): { message: string; code: string
   if (normalized.includes("insufficient credits")) {
     return { message: "You don't have enough credits for this generation.", code: "INSUFFICIENT_CREDITS", status: 402 };
   }
+  if (normalized.includes("temporarily disabled")) {
+    return { message: "This tool is temporarily unavailable.", code: "TOOL_DISABLED", status: 423 };
+  }
   if (normalized.includes("timed out")) {
     return { message: "The generation timed out. Please try again.", code: "TIMEOUT", status: 504 };
   }

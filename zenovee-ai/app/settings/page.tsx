@@ -9,8 +9,14 @@ export default async function SettingsPage() {
 
   return (
     <WorkspaceShell title="Settings">
+      <div className="space-y-4">
+        <section className="premium-surface-elevated p-5 md:p-6">
+          <p className="premium-label">Settings</p>
+          <h2 className="mt-2 text-2xl font-semibold tracking-tight">Account and workspace controls</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Manage profile, security, billing access, support, and session controls.</p>
+        </section>
       <div className="grid gap-5 lg:grid-cols-2">
-        <Card className="border-slate-200 bg-white">
+        <Card className="premium-surface">
           <CardHeader><CardTitle>Profile</CardTitle></CardHeader>
           <CardContent>
             <p className="text-sm text-slate-600">Name</p>
@@ -18,14 +24,14 @@ export default async function SettingsPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-slate-200 bg-white">
+        <Card className="premium-surface">
           <CardHeader><CardTitle>Email</CardTitle></CardHeader>
           <CardContent>
             <p className="text-sm font-medium">{user.email}</p>
           </CardContent>
         </Card>
 
-        <Card className="border-slate-200 bg-white">
+        <Card className="premium-surface">
           <CardHeader><CardTitle>Password Reset</CardTitle></CardHeader>
           <CardContent>
             <Link href="/auth/callback" className="rounded-md border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">
@@ -34,14 +40,14 @@ export default async function SettingsPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-slate-200 bg-white">
+        <Card className="premium-surface">
           <CardHeader><CardTitle>Theme Toggle</CardTitle></CardHeader>
           <CardContent>
             <SettingsClient />
           </CardContent>
         </Card>
 
-        <Card className="border-slate-200 bg-white lg:col-span-2">
+        <Card className="premium-surface lg:col-span-2">
           <CardHeader><CardTitle>Support</CardTitle></CardHeader>
           <CardContent>
             <Link href="/contact" className="rounded-md border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">
@@ -49,6 +55,7 @@ export default async function SettingsPage() {
             </Link>
           </CardContent>
         </Card>
+      </div>
       </div>
     </WorkspaceShell>
   );

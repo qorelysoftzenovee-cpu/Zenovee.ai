@@ -17,12 +17,18 @@ export default async function ExportsPage() {
 
   return (
     <WorkspaceShell title="Exports" subtitle="All export files in one place">
-      <Card className="border-slate-200 bg-white">
+      <div className="space-y-4">
+      <section className="premium-surface-elevated p-5 md:p-6">
+        <p className="premium-label">Exports</p>
+        <h2 className="mt-2 text-2xl font-semibold tracking-tight">Export center</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Track every generated file and access your exported assets from one place.</p>
+      </section>
+      <Card className="premium-surface">
         <CardHeader><CardTitle>Exports</CardTitle></CardHeader>
         <CardContent className="space-y-2">
           {(exports ?? []).length ? (
             (exports ?? []).map((item) => (
-              <div key={item.id} className="rounded-lg border border-slate-200 px-3 py-2">
+              <div key={item.id} className="rounded-xl border border-border/70 bg-card px-3 py-2">
                 <p className="text-sm font-medium">{(item.file_type ?? "file").toUpperCase()}</p>
                 <p className="text-xs text-muted-foreground">{new Date(item.created_at).toLocaleString("en-IN")}</p>
               </div>
@@ -32,6 +38,7 @@ export default async function ExportsPage() {
           )}
         </CardContent>
       </Card>
+      </div>
     </WorkspaceShell>
   );
 }

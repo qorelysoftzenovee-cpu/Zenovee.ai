@@ -68,6 +68,25 @@ export default async function AdminAnalyticsPage() {
         </Card>
 
         <Card className="admin-surface">
+          <CardHeader><CardTitle>Top Users by Credit Usage</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            {data.topUsers.length ? data.topUsers.map((user) => (
+              <div key={user.userId} className="admin-row text-sm">
+                <div className="flex items-center justify-between gap-4">
+                  <p className="font-medium text-foreground">{user.email}</p>
+                  <p>{user.totalRuns} runs</p>
+                </div>
+                <div className="mt-2 grid gap-2 text-xs text-muted-foreground md:grid-cols-3">
+                  <span>Credits: {user.totalCredits}</span>
+                  <span>Spend: {formatInr(user.totalSpend)}</span>
+                  <span>Last Active: {user.lastActiveAt ? new Date(user.lastActiveAt).toLocaleString() : "N/A"}</span>
+                </div>
+              </div>
+            )) : <div className="admin-row text-sm text-muted-foreground">No user usage data yet.</div>}
+          </CardContent>
+        </Card>
+
+        <Card className="admin-surface">
           <CardHeader><CardTitle>Workspace Performance Snapshot</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             {data.workspaceAnalytics?.length ? data.workspaceAnalytics.slice(0, 10).map((workspace) => (

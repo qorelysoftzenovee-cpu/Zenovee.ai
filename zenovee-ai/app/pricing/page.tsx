@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PricingActions } from "@/components/pricing/pricing-actions";
-import { subscriptionPlans } from "@/app/subscription-plans";
+import { getActivePlans, formatRupees } from "@/lib/billing/plans";
 import Navigation from "@/app/components/Navigation";
 import { Footer } from "@/components/layout/footer";
 import { getCurrentUser } from "@/lib/auth";
@@ -8,6 +8,7 @@ import { SUPPORT_EMAIL } from "@/lib/seo/site";
 
 export default async function PricingPage() {
   const user = await getCurrentUser();
+  const subscriptionPlans = getActivePlans();
   return (
     <div className="min-h-screen bg-background">
       <Navigation isAuthenticated={Boolean(user)} isAdmin={user?.role === "admin"} />
@@ -25,7 +26,7 @@ export default async function PricingPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-3xl font-semibold tracking-tight">
-                  ₹{plan.price.toLocaleString("en-IN")}
+                  {formatRupees(plan.monthlyPriceRupees)}
                   <span className="text-base font-normal text-muted-foreground">/month</span>
                 </p>
                 <ul className="space-y-2 text-sm text-muted-foreground">
@@ -37,9 +38,6 @@ export default async function PricingPage() {
                 <PricingActions
                   planId={plan.id}
                   planName={plan.id === "starter" ? "Starter" : plan.id === "growth" ? "Growth" : "Scale"}
-                  amount={plan.price}
-                  currency={plan.currency}
-                  credits={plan.credits}
                 />
               </CardContent>
             </Card>

@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { getPlanById } from "@/app/subscription-plans";
-import { getRazorpayClient } from "@/services/razorpay";
+import { getPlanById } from "@/lib/billing/plans";
+import { getRazorpayClient } from "@/lib/razorpay/client";
 
 export async function GET() {
   const user = await getCurrentUser();

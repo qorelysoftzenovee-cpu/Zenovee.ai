@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-05-24T13:20:21.429Z",
+  "generatedAt": "2026-05-24T17:41:11.390Z",
   "status": "pass",
   "checks": {
-    "buildPass": false,
+    "buildPass": true,
     "typecheckPass": true,
     "toolsRateLimit": true,
     "toolsValidation": true,
@@ -22,9 +22,7 @@
     "notFoundPage": true
   },
   "blockingFailedChecks": [],
-  "failedChecks": [
-    "buildPass"
-  ],
+  "failedChecks": [],
   "notes": [
     "This audit is focused on pre-launch production hardening signals.",
     "Use together with stabilization-report.json for full launch confidence."

@@ -1,12 +1,18 @@
 import { getToolDefinition, listToolDefinitions } from "@/definitions";
 import { AIProtectionError, AIProtectionService } from "@/services/ai/protection";
-import { buildToolPromptPreview, generateToolOutput } from "@/services/ai/prompt-orchestrator";
 import { generationExecutionOptionsSchema, getToolPromptControlCatalog } from "@/services/ai/prompt-system";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/supabase/types";
 import type { ToolDefinition } from "@/types/tools";
 import { listWorkspaceConfigs } from "@/services/workspaces/registry";
 import { serverLog } from "@/lib/logger";
+import { canUseTool, getToolCreditRule } from "@/lib/billing/credits";
+import { PromptBuilderService } from "@/services/execution/prompt-builder-service";
+import { AIExecutionService } from "@/services/execution/ai-execution-service";
+import { OutputValidationService } from "@/services/execution/output-validation-service";
+import { ToolFormattingService } from "@/services/execution/tool-formatting-service";
+import { RetryService } from "@/services/execution/retry-service";
+import { ExecutionMetricsService } from "@/services/execution/execution-metrics-service";
 
 type SupabaseRpcClient = {
   rpc: (
@@ -34,27 +40,11 @@ type WorkspaceConfigRow = {
   template_presets: unknown;
 };
 
-const TOOL_EXECUTION_TIMEOUT_MS = 90_000;
 const TRANSIENT_ERROR_PATTERNS = ["timed out", "timeout", "rate limit", "429", "overloaded", "temporarily unavailable"];
 
 function isTransientError(error: unknown) {
   const message = error instanceof Error ? error.message.toLowerCase() : String(error ?? "").toLowerCase();
   return TRANSIENT_ERROR_PATTERNS.some((pattern) => message.includes(pattern));
-}
-
-function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error(message)), timeoutMs);
-    promise
-      .then((value) => {
-        clearTimeout(timer);
-        resolve(value);
-      })
-      .catch((error) => {
-        clearTimeout(timer);
-        reject(error);
-      });
-  });
 }
 
 export class ToolExecutionService {
@@ -148,6 +138,14 @@ export class ToolExecutionService {
     if (!tool) throw new Error("Requested tool was not found.");
     if (tool.metadata.availability === "coming_soon") throw new Error(tool.metadata.disabledReason ?? "Tool unavailable.");
 
+    const toolAccess = await canUseTool(args.userId, tool.id);
+    if (!toolAccess.allowed) {
+      if (toolAccess.code === "SUBSCRIPTION_REQUIRED") throw new Error("Active subscription required.");
+      if (toolAccess.code === "INSUFFICIENT_CREDITS") throw new Error("Insufficient credits for this tool execution.");
+      if (toolAccess.code === "COOLDOWN_ACTIVE") throw new Error(toolAccess.message ?? "Tool cooldown active.");
+      if (toolAccess.code === "TOOL_DISABLED") throw new Error("This tool is temporarily disabled by admin.");
+    }
+
     const [{ data: priceRaw }, { data: subscriptionRaw }] = await Promise.all([
       supabase.from("tool_pricing").select("credits_cost,is_active,cooldown_seconds,metadata").eq("tool_id", tool.id).maybeSingle<{ credits_cost: number; is_active: boolean; cooldown_seconds: number; metadata: Record<string, unknown> | null }>(),
       supabase
@@ -221,7 +219,7 @@ export class ToolExecutionService {
     const sanitizedInput = AIProtectionService.sanitizeInput(args.rawInput);
     const validatedInput = tool.inputSchema.parse(sanitizedInput) as Record<string, unknown>;
     const executionOptions = generationExecutionOptionsSchema.parse(args.options ?? {});
-    const prompt = buildToolPromptPreview({
+    const promptPayload = PromptBuilderService.buildOptimizedPrompt({
       tool: tool as ToolDefinition<Record<string, unknown>, Record<string, unknown>>,
       input: validatedInput,
       options: executionOptions,
@@ -232,12 +230,13 @@ export class ToolExecutionService {
       userId: args.userId,
       toolId: tool.id,
       usageClass: tool.usageClass ?? "standard",
-      prompt,
+      prompt: promptPayload.prompt,
       input: validatedInput,
       ipAddress: args.ipAddress,
     });
 
-    const creditCost = Number(price?.credits_cost ?? tool.creditCost);
+    const toolRule = await getToolCreditRule(tool.id);
+    const creditCost = Number(toolRule.creditCost);
     const { data: execution, error: executionError } = await supabase
       .from("tool_executions")
       .insert({
@@ -278,48 +277,65 @@ export class ToolExecutionService {
     const debitRow = Array.isArray(debit) ? debit[0] : null;
     const debitTxId = debitRow?.transaction_id as string | undefined;
 
+    if (debitTxId) {
+      await supabase.from("credit_execution_audit").insert({
+        execution_id: execution.id,
+        user_id: args.userId,
+        tool_id: tool.id,
+        idempotency_key: idempotencyKey,
+        phase: "reserved",
+        credit_transaction_id: debitTxId,
+        credits: creditCost,
+        metadata: {
+          reference: `tool:${tool.id}`,
+          workspaceId: args.workspaceId ?? null,
+          moduleId: args.moduleId ?? null,
+        },
+      } as never);
+    }
+
     const startedAt = Date.now();
     try {
       const maxValidationRetries = Math.max(0, Number((price?.metadata as Record<string, unknown> | null)?.maxValidationRetries ?? 1));
       const totalAttempts = Math.min(4, maxValidationRetries + 1);
-      let generation: Awaited<ReturnType<typeof generateToolOutput>> | null = null;
-      let lastError: unknown = null;
-
-      for (let attempt = 1; attempt <= totalAttempts; attempt += 1) {
-        try {
-          generation = await withTimeout(
-            generateToolOutput({
-              tool: tool as ToolDefinition<Record<string, unknown>, Record<string, unknown>>,
-              input: validatedInput,
-              options: executionOptions,
-              adminOverrides: price?.metadata,
-            }),
-            TOOL_EXECUTION_TIMEOUT_MS,
-            "Tool execution timed out. Please retry."
-          );
-          break;
-        } catch (attemptError) {
-          lastError = attemptError;
-          if (attempt >= totalAttempts || !isTransientError(attemptError)) {
-            throw attemptError;
-          }
+      const retryResult = await RetryService.run(
+        async () =>
+          AIExecutionService.execute({
+            tool: tool as ToolDefinition<Record<string, unknown>, Record<string, unknown>>,
+            input: validatedInput,
+            options: executionOptions,
+            adminOverrides: price?.metadata,
+          }),
+        {
+          maxAttempts: totalAttempts,
+          baseDelayMs: 400,
+          isRetryable: (error) => AIExecutionService.isRetryable(error) || isTransientError(error),
         }
-      }
+      );
 
-      if (!generation) {
-        throw lastError instanceof Error ? lastError : new Error("Tool execution failed after retries.");
-      }
+      const generation = retryResult.value;
 
       const { aiResponse, output, meta } = generation;
+      const validatedOutput = OutputValidationService.validateStructuredOutput(
+        tool as ToolDefinition<Record<string, unknown>, Record<string, unknown>>,
+        output
+      );
+      const premiumOutput = ToolFormattingService.formatPremiumOutput(tool.metadata.name, validatedOutput);
 
-      const executionMs = Date.now() - startedAt;
+      const executionMetrics = ExecutionMetricsService.build({
+        startedAt,
+        attempts: retryResult.attempts,
+        model: aiResponse.model,
+        creditsConsumed: creditCost,
+      });
+      const executionMs = executionMetrics.durationMs;
       const tokenEstimate = Number(aiResponse.usage.totalTokens ?? 0);
       const estimatedApiCost = Number(aiResponse.costUsd ?? 0);
 
       await Promise.all([
         supabase.from("tool_executions").update({
           status: "success",
-          output,
+          output: premiumOutput,
           error_message: null,
           api_model: aiResponse.model,
           api_provider: aiResponse.provider,
@@ -338,7 +354,7 @@ export class ToolExecutionService {
             workspaceId: args.workspaceId ?? null,
             moduleId: args.moduleId ?? null,
             promptVersion: meta.promptVersion,
-            attempts: meta.attempts,
+            retries: executionMetrics.retries,
             qualityScore: meta.qualityScore,
             mode: meta.mode,
             modelReason: meta.modelReason,
@@ -362,13 +378,28 @@ export class ToolExecutionService {
           tool_id: tool.id,
           tool_name: tool.metadata.name,
           input: validatedInput as Json,
-          output: output as Json,
+          output: premiumOutput as Json,
           credits_consumed: creditCost,
           cost: creditCost,
           ai_model: aiResponse.model,
           provider: aiResponse.provider,
           generation_duration_ms: executionMs,
           api_cost: estimatedApiCost,
+        } as never),
+        supabase.from("credit_execution_audit").insert({
+          execution_id: execution.id,
+          user_id: args.userId,
+          tool_id: tool.id,
+          idempotency_key: idempotencyKey,
+          phase: "finalized",
+          credit_transaction_id: debitTxId ?? null,
+          credits: creditCost,
+          metadata: {
+            provider: aiResponse.provider,
+            model: aiResponse.model,
+            executionMs,
+            retries: executionMetrics.retries,
+          },
         } as never),
       ]);
 
@@ -378,12 +409,12 @@ export class ToolExecutionService {
         ipAddress: args.ipAddress,
         usageClass: tool.usageClass ?? "standard",
         planId: protection.planId,
-        promptChars: prompt.length,
+        promptChars: promptPayload.promptChars,
         totalTokens: tokenEstimate,
       });
 
       const creditsAfter = Number(debitRow?.balance_after ?? (await this.getCredits(args.userId)));
-      return { executionId: execution.id, output, usage: aiResponse.usage, remainingCredits: creditsAfter, replay: false, meta };
+      return { executionId: execution.id, output: premiumOutput, usage: aiResponse.usage, remainingCredits: creditsAfter, replay: false, meta: { ...meta, retries: executionMetrics.retries } };
     } catch (error) {
       const message = error instanceof Error ? error.message : "Tool execution failed.";
 
@@ -408,6 +439,27 @@ export class ToolExecutionService {
               toolId: tool.id,
             },
           });
+          await supabase.from("credit_execution_audit").insert({
+            execution_id: execution.id,
+            user_id: args.userId,
+            tool_id: tool.id,
+            idempotency_key: idempotencyKey,
+            phase: "failed",
+            credit_transaction_id: debitTxId,
+            credits: creditCost,
+            metadata: { refundError: refundError.message, reason: message },
+          } as never);
+        } else {
+          await supabase.from("credit_execution_audit").insert({
+            execution_id: execution.id,
+            user_id: args.userId,
+            tool_id: tool.id,
+            idempotency_key: idempotencyKey,
+            phase: "refunded",
+            credit_transaction_id: debitTxId,
+            credits: creditCost,
+            metadata: { reason: message },
+          } as never);
         }
       }
 

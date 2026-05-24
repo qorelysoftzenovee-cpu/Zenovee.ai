@@ -28,6 +28,7 @@ const toolsApi = read("app/api/tools/route.ts");
 const checkoutApi = read("app/api/billing/checkout/route.ts");
 const billingWebhook = read("app/api/billing/webhook/route.ts");
 const razorpayWebhook = read("app/api/razorpay/webhook/route.ts");
+const canonicalRazorpayWebhook = read("app/api/webhooks/razorpay/route.ts");
 const exportsApi = read("app/api/exports/route.ts");
 const middleware = readFirst("middleware.ts", "proxy.ts");
 const robots = read("app/robots.ts");
@@ -60,7 +61,10 @@ const checks = {
   webhookExistsBilling:
     /export\s+async\s+function\s+POST\(/.test(billingWebhook) ||
     /export\s*\{\s*POST\s*\}/.test(billingWebhook),
-  webhookExistsRazorpay: /export\s+async\s+function\s+POST\(/.test(razorpayWebhook),
+  webhookExistsRazorpay:
+    /export\s+async\s+function\s+POST\(/.test(razorpayWebhook) ||
+    /export\s*\{\s*POST\s*\}\s*from/.test(razorpayWebhook) ||
+    /export\s+async\s+function\s+POST\(/.test(canonicalRazorpayWebhook),
   exportsRoutes: /export\s+async\s+function\s+POST\(/.test(exportsApi) && /GET\(/.test(exportsApi),
   adminMiddlewareGuard: /admin/.test(middleware),
   seoRobots: /sitemap/.test(robots),

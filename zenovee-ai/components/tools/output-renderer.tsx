@@ -8,6 +8,28 @@ type OutputRendererProps = {
   className?: string;
 };
 
+type PremiumSection = {
+  id: string;
+  heading: string;
+  body: string;
+  bullets?: string[];
+};
+
+type PremiumOutputEnvelope = {
+  version: "v2";
+  title: string;
+  summary: string;
+  sections: PremiumSection[];
+  raw: Record<string, unknown>;
+  actions?: { copy?: boolean; export?: boolean; regenerate?: boolean; improve?: boolean };
+};
+
+function isPremiumEnvelope(value: unknown): value is PremiumOutputEnvelope {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Record<string, unknown>;
+  return candidate.version === "v2" && typeof candidate.title === "string" && Array.isArray(candidate.sections);
+}
+
 function toDisplayString(value: unknown): string {
   if (value == null) return "";
   if (typeof value === "string") return value;
@@ -89,6 +111,59 @@ export function OutputRenderer({ value, className }: OutputRendererProps) {
   const content = toDisplayString(value);
   if (!content) {
     return <p className="text-sm text-muted-foreground">No output yet.</p>;
+  }
+
+  if (isPremiumEnvelope(value)) {
+    return (
+      <div className={className}>
+        <div className="mb-3 rounded-xl border bg-card p-3">
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <h3 className="text-base font-semibold">{value.title}</h3>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={async () => {
+                await navigator.clipboard.writeText(JSON.stringify(value.raw, null, 2));
+                setCopied("all");
+                setTimeout(() => setCopied(null), 1200);
+              }}
+            >
+              {copied === "all" ? "Copied" : "Copy all"}
+            </Button>
+          </div>
+          <p className="text-sm text-muted-foreground">{value.summary}</p>
+        </div>
+
+        <div className="grid gap-3">
+          {value.sections.map((section) => (
+            <div key={section.id} className="rounded-xl border bg-card p-3">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <h4 className="text-sm font-semibold">{section.heading}</h4>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={async () => {
+                    await navigator.clipboard.writeText(section.body);
+                    setCopied(section.id);
+                    setTimeout(() => setCopied(null), 1200);
+                  }}
+                >
+                  {copied === section.id ? "Copied" : "Copy"}
+                </Button>
+              </div>
+              {section.bullets && section.bullets.length > 0 ? (
+                <ul className="mb-2 list-disc space-y-1 pl-5 text-sm">
+                  {section.bullets.map((bullet, idx) => (
+                    <li key={`${section.id}-${idx}`}>{bullet}</li>
+                  ))}
+                </ul>
+              ) : null}
+              {isMarkdownLike(section.body) ? renderMarkdownLike(section.body) : <pre className="whitespace-pre-wrap text-sm leading-7 text-foreground">{section.body}</pre>}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   if (value && typeof value === "object" && !Array.isArray(value)) {

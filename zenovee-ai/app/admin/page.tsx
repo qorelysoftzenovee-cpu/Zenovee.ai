@@ -38,11 +38,16 @@ export default async function AdminPage() {
       variant="admin"
       className="bg-transparent"
     >
-      <p className="mb-6 text-xs text-muted-foreground">Server-verified admin session: {adminUser.email}</p>
+      <section className="premium-surface-elevated mb-6 p-5 md:p-6">
+        <p className="premium-label">Admin</p>
+        <h2 className="mt-2 text-2xl font-semibold tracking-tight">Operational analytics overview</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Revenue, subscription quality, usage health, and API cost controls in one command center.</p>
+        <p className="mt-2 text-xs text-muted-foreground">Server-verified admin session: {adminUser.email}</p>
+      </section>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {metrics.map((metric) => (
-          <Card key={metric.label} className="admin-surface">
+          <Card key={metric.label} className="admin-surface premium-surface">
             <CardHeader>
               <CardTitle className="text-sm text-muted-foreground">{metric.label}</CardTitle>
             </CardHeader>
@@ -58,7 +63,7 @@ export default async function AdminPage() {
           const maxValue = Math.max(...chart.items.map((item) => item.value), 1);
 
           return (
-            <Card key={chart.title} className="admin-surface">
+            <Card key={chart.title} className="admin-surface premium-surface">
               <CardHeader>
                 <CardTitle>{chart.title}</CardTitle>
               </CardHeader>
@@ -69,7 +74,7 @@ export default async function AdminPage() {
                       <span>{item.label}</span>
                       <span>{chart.formatter ? chart.formatter(item.value) : item.value.toLocaleString()}</span>
                     </div>
-                    <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                    <div className="h-2 overflow-hidden rounded-full bg-muted">
                       <div className={`h-full rounded-full bg-gradient-to-r ${chart.accent}`} style={{ width: `${Math.max(8, (item.value / maxValue) * 100)}%` }} />
                     </div>
                   </div>
@@ -81,7 +86,7 @@ export default async function AdminPage() {
       </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-2">
-        <Card className="admin-surface">
+        <Card className="admin-surface premium-surface">
           <CardHeader>
             <CardTitle>Most Used Tools</CardTitle>
           </CardHeader>
@@ -107,7 +112,7 @@ export default async function AdminPage() {
           </CardContent>
         </Card>
 
-        <Card className="admin-surface">
+        <Card className="admin-surface premium-surface">
           <CardHeader>
             <CardTitle>Top users</CardTitle>
           </CardHeader>
