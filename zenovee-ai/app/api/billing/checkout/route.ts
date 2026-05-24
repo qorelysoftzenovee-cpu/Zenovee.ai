@@ -9,6 +9,7 @@ import { getRazorpayClient } from "@/services/razorpay";
 import { getOrCreateRazorpayPlanId } from "@/services/billing";
 import { serverLog } from "@/lib/logger";
 import { checkRateLimit, resolveClientIp } from "@/lib/rate-limit";
+import type { Database } from "@/lib/supabase/types";
 
 const checkoutRequestSchema = z
   .object({
@@ -146,10 +147,9 @@ export async function POST(request: Request) {
         return buildValidationError("Invalid topup amount before payment insert", { topupId: topup.id, topupAmount });
       }
 
-      const insertPayload = {
+      const insertPayload: Database["public"]["Tables"]["payments"]["Insert"] = {
         user_id: user.id,
         payment_amount: topupAmount,
-        amount: topupAmount,
         plan: `topup:${topup.id}`,
         currency: "INR",
         status: "PENDING",
@@ -330,10 +330,9 @@ export async function POST(request: Request) {
       metadata: { userId: user.id, planId: plan.id, amount, currency: plan.currency, subscriptionId: subscription.id },
     });
 
-    const insertPayload = {
+    const insertPayload: Database["public"]["Tables"]["payments"]["Insert"] = {
       user_id: user.id,
       payment_amount: selectedPlan.amount,
-      amount: selectedPlan.amount,
       plan: plan.id,
       currency: plan.currency,
       status: "PENDING",
