@@ -17,21 +17,40 @@ export function getRazorpayClient() {
 }
 
 export function verifyCheckoutSignature(params: {
-  razorpay_order_id: string;
+  razorpay_order_id?: string;
+  razorpay_subscription_id?: string;
   razorpay_payment_id: string;
   razorpay_signature: string;
 }) {
-  if (!env.RAZORPAY_KEY_SECRET) return false;
-  const body = `${params.razorpay_order_id}|${params.razorpay_payment_id}`;
-  const expected = crypto.createHmac("sha256", env.RAZORPAY_KEY_SECRET).update(body).digest("hex");
-  return expected === params.razorpay_signature;
+  const secret = env.RAZORPAY_KEY_SECRET?.trim();
+  if (!secret) return false;
+
+  const normalizedSignature = params.razorpay_signature.trim();
+
+  const candidates: string[] = [];
+  if (params.razorpay_order_id) {
+    candidates.push(`${params.razorpay_order_id}|${params.razorpay_payment_id}`);
+  }
+
+  if (params.razorpay_subscription_id) {
+    // Razorpay subscription checkout signatures are generated as:
+    // razorpay_payment_id + "|" + razorpay_subscription_id
+    candidates.push(`${params.razorpay_payment_id}|${params.razorpay_subscription_id}`);
+  }
+
+  return candidates.some((payload) => {
+    const expected = crypto.createHmac("sha256", secret).update(payload).digest("hex");
+    return expected === normalizedSignature;
+  });
 }
 
 export function verifyWebhookSignature(rawBody: string, signature: string | null) {
-  if (!signature || !env.RAZORPAY_WEBHOOK_SECRET) return false;
-  const expected = crypto.createHmac("sha256", env.RAZORPAY_WEBHOOK_SECRET).update(rawBody).digest("hex");
+  const secret = env.RAZORPAY_WEBHOOK_SECRET?.trim();
+  const normalizedSignature = signature?.trim();
+  if (!normalizedSignature || !secret) return false;
+  const expected = crypto.createHmac("sha256", secret).update(rawBody).digest("hex");
   const expectedBuffer = Buffer.from(expected, "utf8");
-  const signatureBuffer = Buffer.from(signature, "utf8");
+  const signatureBuffer = Buffer.from(normalizedSignature, "utf8");
 
   if (expectedBuffer.length !== signatureBuffer.length) return false;
 

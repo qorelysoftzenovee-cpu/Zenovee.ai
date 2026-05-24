@@ -67,15 +67,37 @@ export async function POST(request: Request) {
 
     const body = verifyPayloadSchema.parse(await request.json());
 
-    const verificationRef = body.razorpay_order_id ?? body.razorpay_subscription_id!;
-
     const valid = verifyCheckoutSignature({
-      razorpay_order_id: verificationRef,
+      razorpay_order_id: body.razorpay_order_id,
+      razorpay_subscription_id: body.razorpay_subscription_id,
       razorpay_payment_id: body.razorpay_payment_id,
       razorpay_signature: body.razorpay_signature,
     });
 
-    if (!valid) return NextResponse.json({ error: "Invalid payment signature" }, { status: 400 });
+    serverLog({
+      level: "info",
+      route: "api/billing/verify",
+      message: "Razorpay verification payload audit",
+      metadata: {
+        userId: user.id,
+        razorpay_order_id: body.razorpay_order_id ?? null,
+        razorpay_subscription_id: body.razorpay_subscription_id ?? null,
+        razorpay_payment_id: body.razorpay_payment_id,
+        signature_length: body.razorpay_signature.length,
+        verification_valid: valid,
+      },
+    });
+
+    if (!valid) {
+      return NextResponse.json(
+        {
+          error: "Invalid payment signature",
+          reason: "Razorpay signature mismatch. Confirm live key secret and payload pairing.",
+          source: "api/billing/verify",
+        },
+        { status: 400 }
+      );
+    }
 
     const supabaseAdmin = getSupabaseAdmin();
 
@@ -151,19 +173,25 @@ export async function POST(request: Request) {
         .maybeSingle<{ id: string; status: string }>(),
     ]);
 
+    const subscriptionUpdate = await supabaseAdmin
+      .from("subscriptions")
+      .update({
+        status: "ACTIVE",
+        renewal_date: nextRenewal,
+        current_period_end: nextRenewal,
+        next_renewal_at: nextRenewal,
+        last_payment_at: nowIso,
+        grace_until: null,
+        cancel_at_period_end: false,
+        updated_at: nowIso,
+      } as never)
+      .eq("user_id", user.id);
+
+    if (subscriptionUpdate.error) {
+      throw new Error(`Subscription activation failed: ${subscriptionUpdate.error.message}`);
+    }
+
     await Promise.all([
-      supabaseAdmin
-        .from("subscriptions")
-        .update({
-          status: "ACTIVE",
-          renewal_date: nextRenewal,
-          current_period_end: nextRenewal,
-          next_renewal_at: nextRenewal,
-          last_payment_at: nowIso,
-          grace_until: null,
-          updated_at: nowIso,
-        } as never)
-        .eq("user_id", user.id),
       pendingSubscriptionPayment?.id
         ? markPendingPaymentAsProcessed(supabaseAdmin, pendingSubscriptionPayment.id, {
             status: "SUCCESS",
@@ -185,6 +213,18 @@ export async function POST(request: Request) {
           ),
       assignPlanCredits(user.id, plan.id, `subscription:${body.razorpay_payment_id}`),
     ]);
+
+    serverLog({
+      level: "info",
+      route: "api/billing/verify",
+      message: "Subscription verification success",
+      metadata: {
+        userId: user.id,
+        subscriptionId,
+        planId: plan.id,
+        razorpay_payment_id: body.razorpay_payment_id,
+      },
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {
