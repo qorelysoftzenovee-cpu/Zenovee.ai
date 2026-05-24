@@ -1,8 +1,16 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireStandardUser } from "@/lib/auth";
 import { WorkspaceShell } from "@/components/layout/workspace-shell";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { HistoryClient } from "./history-client";
+
+function formatDate(value: string) {
+  return new Date(value).toLocaleString("en-IN", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
 
 export default async function HistoryPage() {
   const user = await requireStandardUser();
@@ -10,21 +18,40 @@ export default async function HistoryPage() {
 
   const { data: rows } = await supabase
     .from("tool_usage")
-    .select("id,tool_id,tool_name,output,credits_consumed,created_at")
+    .select("id,tool_name,credits_consumed,created_at")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(24);
 
   return (
-    <WorkspaceShell title="History" subtitle="Track outputs, activity, and exports">
-      <div className="space-y-6">
-        <section className="surface-card p-5 md:p-6">
-          <p className="premium-label">History</p>
-          <h1 className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">Generation History</h1>
-          <p className="mt-2 text-sm text-muted-foreground">Reopen winning outputs, export deliverables, and keep your workflow auditable.</p>
-        </section>
-
-        <HistoryClient initialRows={rows ?? []} />
+    <WorkspaceShell title="History">
+      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+        <table className="w-full min-w-[760px] text-sm">
+          <thead className="text-left text-xs text-slate-500">
+            <tr>
+              <th className="px-4 py-3">Tool Used</th>
+              <th className="px-4 py-3">Date</th>
+              <th className="px-4 py-3">Credits Used</th>
+              <th className="px-4 py-3">Reopen</th>
+              <th className="px-4 py-3">Export</th>
+            </tr>
+          </thead>
+          <tbody>
+            {(rows ?? []).map((row) => (
+              <tr key={row.id} className="border-t border-slate-200">
+                <td className="px-4 py-3 font-medium">{row.tool_name}</td>
+                <td className="px-4 py-3 text-slate-600">{formatDate(row.created_at)}</td>
+                <td className="px-4 py-3">{row.credits_consumed}</td>
+                <td className="px-4 py-3">
+                  <a href={`/outputs/${row.id}`} className="rounded-md border border-slate-200 px-2 py-1 text-xs hover:bg-slate-50">Reopen</a>
+                </td>
+                <td className="px-4 py-3">
+                  <a href={`/outputs/${row.id}`} className="rounded-md border border-slate-200 px-2 py-1 text-xs hover:bg-slate-50">Export</a>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </WorkspaceShell>
   );

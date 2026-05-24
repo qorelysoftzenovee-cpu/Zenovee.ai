@@ -1,326 +1,105 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import {
-  Copy,
-  Download,
-  History,
-  Loader2,
-  RefreshCcw,
-  Save,
-  Search,
-  Sparkles,
-  ExternalLink,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { useMemo, useState } from "react";
+import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { OutputRenderer } from "@/components/tools/output-renderer";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { listToolDefinitions } from "@/definitions";
 
-type ToolField = {
-  name: string;
-  label: string;
-  type: "textarea" | "text" | "select";
-  placeholder?: string;
-  required?: boolean;
-  options?: Array<{ label: string; value: string }>;
-};
+const CATEGORY_ORDER = ["LinkedIn", "Sales", "SEO", "Conversion", "Brand", "General"];
 
-type ToolItem = {
-  id: string;
-  creditCost: number;
-  metadata: {
-    name: string;
-    description: string;
-    category: string;
-    icon: string;
-  };
-  fields: ToolField[];
-};
+function resolveCategory(raw: string) {
+  const c = raw.toLowerCase();
+  if (c.includes("linkedin")) return "LinkedIn";
+  if (c.includes("sales")) return "Sales";
+  if (c.includes("seo")) return "SEO";
+  if (c.includes("conversion") || c.includes("copy")) return "Conversion";
+  if (c.includes("brand")) return "Brand";
+  return "General";
+}
 
-type UsageHistoryItem = {
-  id: string;
-  tool_id: string;
-  tool_name: string;
-  output: Record<string, unknown>;
-  created_at: string;
-  credits_consumed: number;
-};
-
-const GROUP_ORDER = [
-  "LinkedIn Authority OS",
-  "Sales Outreach OS",
-  "SEO Engine",
-  "Conversion Copy OS",
-  "Brand Studio",
-];
-
-const HISTORY_REOPEN_STORAGE_KEY = "zenovee_history_reopen_item";
-
-const mapCategoryToGroup = (category: string) => {
-  const c = category.toLowerCase();
-  if (c.includes("linkedin")) return "LinkedIn Authority OS";
-  if (c.includes("sales")) return "Sales Outreach OS";
-  if (c.includes("seo")) return "SEO Engine";
-  if (c.includes("conversion") || c.includes("copy")) return "Conversion Copy OS";
-  return "Brand Studio";
-};
-
-const toReadable = (value: unknown): string => {
-  if (value == null) return "";
-  if (typeof value === "string") return value;
-  return JSON.stringify(value, null, 2);
-};
+function getBenefit(description: string) {
+  const clean = description.trim();
+  if (!clean) return "Solve workflow bottlenecks faster.";
+  return clean.length > 88 ? `${clean.slice(0, 88)}…` : clean;
+}
 
 export function ToolsWorkspace() {
-  const [tools, setTools] = useState<ToolItem[]>([]);
-  const [historyRows, setHistoryRows] = useState<UsageHistoryItem[]>([]);
-  const [activeToolId, setActiveToolId] = useState("");
-  const [activeTab, setActiveTab] = useState<"result" | "history" | "saved">("result");
   const [query, setQuery] = useState("");
-  const [formData, setFormData] = useState<Record<string, string>>({});
-  const [result, setResult] = useState<Record<string, unknown> | null>(null);
-  const [resultExecutionId, setResultExecutionId] = useState<string | null>(null);
-  const [credits, setCredits] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [running, setRunning] = useState(false);
-  const [savedIds, setSavedIds] = useState<string[]>([]);
-  const [copied, setCopied] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [activeCategory, setActiveCategory] = useState<string>("All");
 
-  const activeTool = useMemo(() => tools.find((t) => t.id === activeToolId) ?? null, [tools, activeToolId]);
+  const tools = useMemo(
+    () =>
+      listToolDefinitions()
+        .filter((tool) => tool.metadata.availability === "active" && (tool.metadata.visibility ?? "public") === "public")
+        .map((tool) => ({
+          id: tool.id,
+          name: tool.metadata.name,
+          description: tool.metadata.description,
+          creditCost: tool.creditCost,
+          category: resolveCategory(tool.metadata.category),
+        })),
+    []
+  );
 
-  const groupedTools = useMemo(() => {
-    const filtered = tools.filter((t) => {
-      const hay = `${t.metadata.name} ${t.metadata.category}`.toLowerCase();
-      return hay.includes(query.toLowerCase());
-    });
-    return GROUP_ORDER.map((group) => ({
-      group,
-      items: filtered.filter((t) => mapCategoryToGroup(t.metadata.category) === group),
-    })).filter((g) => g.items.length);
-  }, [tools, query]);
-
-  const preview = useMemo(() => (result ? toReadable(result) : ""), [result]);
-  const savedRows = useMemo(() => historyRows.filter((r) => savedIds.includes(r.id)), [historyRows, savedIds]);
-
-  useEffect(() => {
-    const boot = async () => {
-      setLoading(true);
-      const res = await fetch("/api/tools");
-      const json = await res.json();
-      if (res.ok) {
-        setTools(json.data.tools ?? []);
-        setCredits(json.data.credits ?? 0);
-        const first = (json.data.tools ?? [])[0];
-        if (first) setActiveToolId(first.id);
-      }
-      const savedRaw = localStorage.getItem("zenovee_workspace_saved_outputs");
-      if (savedRaw) setSavedIds(JSON.parse(savedRaw));
-      setLoading(false);
-    };
-    void boot();
-  }, []);
-
-  useEffect(() => {
-    if (!activeToolId) return;
-    const loadHistory = async () => {
-      const res = await fetch(`/api/tools?mode=history&toolId=${encodeURIComponent(activeToolId)}&limit=20`);
-      const json = await res.json();
-      if (res.ok) setHistoryRows(json.data ?? []);
-    };
-    void loadHistory();
-  }, [activeToolId]);
-
-  useEffect(() => {
-    localStorage.setItem("zenovee_workspace_saved_outputs", JSON.stringify(savedIds));
-  }, [savedIds]);
-
-  useEffect(() => {
-    if (!tools.length) return;
-    const raw = localStorage.getItem(HISTORY_REOPEN_STORAGE_KEY);
-    if (!raw) return;
-    try {
-      const parsed = JSON.parse(raw) as { id?: string; tool_id?: string; output?: Record<string, unknown> };
-      if (parsed.tool_id) setActiveToolId(parsed.tool_id);
-      if (parsed.output) setResult(parsed.output);
-      if (parsed.id) setResultExecutionId(parsed.id);
-      setActiveTab("result");
-    } finally {
-      localStorage.removeItem(HISTORY_REOPEN_STORAGE_KEY);
-    }
+  const categories = useMemo(() => {
+    const set = new Set(tools.map((tool) => tool.category));
+    return ["All", ...CATEGORY_ORDER.filter((c) => set.has(c))];
   }, [tools]);
 
-  const runTool = async () => {
-    if (!activeTool) return;
-    const missing: Record<string, string> = {};
-    for (const field of activeTool.fields) {
-      if (!field.required) continue;
-      const value = (formData[field.name] ?? "").trim();
-      if (!value) missing[field.name] = `${field.label} is required.`;
-    }
-    setValidationErrors(missing);
-    if (Object.keys(missing).length > 0) {
-      setErrorMessage("Please complete the required fields before generating.");
-      return;
-    }
-
-    setRunning(true);
-    setErrorMessage(null);
-    try {
-      const res = await fetch("/api/tools", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-idempotency-key": crypto.randomUUID(),
-        },
-        body: JSON.stringify({ toolId: activeTool.id, input: formData }),
-      });
-      const json = await res.json();
-      if (res.ok) {
-        setResult(json.data);
-        setResultExecutionId(json.executionId ?? null);
-        setCredits(json.metrics?.creditsAfter ?? credits);
-        setActiveTab("result");
-      } else {
-        setErrorMessage(json?.error ?? "Generation failed. Please try again.");
-      }
-    } catch {
-      setErrorMessage("Network issue detected. Please check your connection and retry.");
-    } finally {
-      setRunning(false);
-    }
-  };
-
-  const copyResult = async () => {
-    if (!preview) return;
-    await navigator.clipboard.writeText(preview);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1200);
-  };
-
-  const exportResult = () => {
-    if (!resultExecutionId) return;
-    window.open(`/outputs/${resultExecutionId}`, "_blank", "noopener,noreferrer");
-  };
-
-  if (loading) {
-    return <div className="loading-skeleton h-[70vh] rounded-3xl" />;
-  }
+  const filtered = useMemo(() => {
+    const q = query.toLowerCase().trim();
+    return tools.filter((tool) => {
+      const passCategory = activeCategory === "All" || tool.category === activeCategory;
+      const hay = `${tool.name} ${tool.description} ${tool.category}`.toLowerCase();
+      const passQuery = !q || hay.includes(q);
+      return passCategory && passQuery;
+    });
+  }, [tools, query, activeCategory]);
 
   return (
-    <div className="grid min-h-[72vh] gap-4 xl:grid-cols-[280px_minmax(0,1fr)_420px]">
-      <aside className="rounded-2xl border border-border bg-card p-3">
-        <div className="relative mb-3">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search tools" className="pl-10" />
-        </div>
-        <div className="space-y-4 overflow-y-auto pr-1 max-h-[66vh]">
-          {groupedTools.map((group) => (
-            <div key={group.group}>
-              <p className="mb-2 px-1 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">{group.group}</p>
-              <div className="space-y-1.5">
-                {group.items.map((tool) => {
-                  const active = tool.id === activeToolId;
-                  return (
-                    <button
-                      key={tool.id}
-                      onClick={() => setActiveToolId(tool.id)}
-                      className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left transition ${active ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
-                    >
-                      <span className="truncate text-sm">{tool.metadata.icon} {tool.metadata.name}</span>
-                      <span className="text-xs text-muted-foreground">{tool.creditCost}</span>
-                    </button>
-                  );
-                })}
+    <div className="space-y-5">
+      <div className="relative max-w-xl">
+        <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+        <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search tools" className="h-11 border-slate-200 bg-white pl-10" />
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {categories.map((category) => (
+          <button
+            key={category}
+            type="button"
+            onClick={() => setActiveCategory(category)}
+            className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+              activeCategory === category
+                ? "border-slate-900 bg-slate-900 text-white"
+                : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+            }`}
+          >
+            {category}
+          </button>
+        ))}
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {filtered.map((tool) => (
+          <Card key={tool.id} className="border-slate-200 bg-white">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">{tool.name}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-slate-600">{getBenefit(tool.description)}</p>
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-medium text-slate-500">{tool.creditCost} credits</p>
+                <Link href={`/tools/${tool.id}`} className="rounded-md bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800">
+                  Open Tool
+                </Link>
               </div>
-            </div>
-          ))}
-        </div>
-      </aside>
-
-      <section className="rounded-2xl border border-border bg-card p-5">
-        <div className="mb-5">
-          <p className="text-xs uppercase tracking-[0.15em] text-muted-foreground">Input Workspace</p>
-          <h2 className="mt-1 text-xl font-semibold">{activeTool?.metadata.name ?? "Select a tool"}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{activeTool?.metadata.description ?? "Choose a tool to begin."}</p>
-        </div>
-
-        <div className="space-y-4">
-          {activeTool?.fields.map((field) => (
-            <div key={field.name} className="space-y-1.5">
-              <Label>{field.label}</Label>
-              {field.type === "textarea" ? (
-                <Textarea value={formData[field.name] ?? ""} onChange={(e) => setFormData((p) => ({ ...p, [field.name]: e.target.value }))} placeholder={field.placeholder} className="min-h-28" />
-              ) : field.type === "select" ? (
-                <select className="flex h-10 w-full rounded-lg border border-white/10 bg-background px-3 text-sm" value={formData[field.name] ?? ""} onChange={(e) => setFormData((p) => ({ ...p, [field.name]: e.target.value }))}>
-                  <option value="">Select</option>
-                  {field.options?.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-                </select>
-              ) : (
-                <Input value={formData[field.name] ?? ""} onChange={(e) => setFormData((p) => ({ ...p, [field.name]: e.target.value }))} placeholder={field.placeholder} />
-              )}
-              {validationErrors[field.name] ? <p className="text-xs text-red-500">{validationErrors[field.name]}</p> : null}
-            </div>
-          ))}
-
-          {errorMessage ? <div className="rounded-lg border border-red-300/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">{errorMessage}</div> : null}
-
-          <Button className="w-full" onClick={() => void runTool()} disabled={running || !activeTool}>
-            {running ? <><Loader2 className="size-4 animate-spin" /> Generating...</> : <><Sparkles className="size-4" /> Generate</>}
-          </Button>
-        </div>
-      </section>
-
-      <aside className="sticky top-20 h-fit rounded-2xl border border-border bg-card p-4">
-        <div className="mb-3 flex items-center justify-between">
-          <div className="flex gap-1 rounded-lg bg-muted/60 p-1 text-xs">
-            {(["result", "history", "saved"] as const).map((tab) => (
-              <button key={tab} onClick={() => setActiveTab(tab)} className={`rounded-md px-2 py-1 ${activeTab === tab ? "bg-primary/25" : ""}`}>{tab[0].toUpperCase() + tab.slice(1)}</button>
-            ))}
-          </div>
-          <p className="text-xs text-muted-foreground">{credits} credits</p>
-        </div>
-
-        <div className="mb-3 flex flex-wrap gap-1.5">
-          <Button size="sm" variant="outline" onClick={() => void copyResult()} disabled={!preview}><Copy className="size-3.5" /> {copied ? "Copied" : "Copy"}</Button>
-          <Button size="sm" variant="outline" onClick={exportResult} disabled={!resultExecutionId} title={!resultExecutionId ? "Generate output first" : "Open published output"}><Download className="size-3.5" /> Export</Button>
-          <Button size="sm" variant="outline" onClick={() => resultExecutionId && setSavedIds((p) => (p.includes(resultExecutionId) ? p : [resultExecutionId, ...p]))} disabled={!resultExecutionId} title={!resultExecutionId ? "Generate output first" : "Save current output"}><Save className="size-3.5" /> Save</Button>
-          <Button size="sm" variant="outline" onClick={() => void runTool()} disabled={running || !activeTool}><RefreshCcw className="size-3.5" /> Regenerate</Button>
-        </div>
-
-        <div className="max-h-[58vh] overflow-y-auto rounded-xl border border-border bg-muted/20 p-3">
-          {activeTab === "result" ? (
-            <OutputRenderer value={result} className="text-xs" />
-          ) : activeTab === "history" ? (
-            <div className="space-y-2">
-              {historyRows.length ? historyRows.map((row) => (
-                 <button key={row.id} className="w-full rounded-lg border border-border/70 bg-muted/20 p-2 text-left transition hover:bg-muted/40" onClick={() => { setResult(row.output); setResultExecutionId(row.id); setActiveTab("result"); }}>
-                  <p className="text-xs font-medium">{row.tool_name}</p>
-                  <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{toReadable(row.output)}</p>
-                  <p className="mt-1 text-[11px] text-muted-foreground"><History className="mr-1 inline size-3" />{row.credits_consumed} credits</p>
-                 </button>
-              )) : <p className="text-sm text-muted-foreground">No history yet.</p>}
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {savedRows.length ? savedRows.map((row) => (
-                 <button key={row.id} className="w-full rounded-lg border border-border/70 bg-muted/20 p-2 text-left transition hover:bg-muted/40" onClick={() => { setResult(row.output); setResultExecutionId(row.id); setActiveTab("result"); }}>
-                  <p className="text-xs font-medium">{row.tool_name}</p>
-                  <p className="mt-1 text-[11px] text-muted-foreground">Saved output</p>
-                </button>
-               )) : <p className="text-sm text-muted-foreground">No saved outputs yet.</p>}
-            </div>
-          )}
-        </div>
-        {resultExecutionId ? (
-          <a href={`/outputs/${resultExecutionId}`} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1 text-xs text-primary hover:text-primary/80">
-            View output page <ExternalLink className="size-3.5" />
-          </a>
-        ) : null}
-      </aside>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
     </div>
   );
 }

@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useMemo, useState } from "react";
-import { Bolt, CreditCard, Grid3X3, History, Menu, Search, Settings2, Sparkles, X } from "lucide-react";
+import { Bolt, CreditCard, FolderHeart, History, LogOut, Menu, Settings2, TerminalSquare, Wrench, Upload, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LogoutButton } from "@/components/auth/logout-button";
 
@@ -14,52 +14,40 @@ type WorkspaceShellProps = {
 };
 
 const primaryNav = [
-  { label: "Dashboard", href: "/dashboard", icon: Grid3X3 },
-  { label: "Workspaces", href: "/dashboard/tools", icon: Sparkles },
+  { label: "Console", href: "/dashboard", icon: TerminalSquare },
+  { label: "Tools", href: "/dashboard/tools", icon: Wrench },
   { label: "History", href: "/history", icon: History },
+  { label: "Saved Outputs", href: "/outputs", icon: FolderHeart },
+  { label: "Exports", href: "/exports", icon: Upload },
   { label: "Billing", href: "/billing", icon: CreditCard },
   { label: "Settings", href: "/settings", icon: Settings2 },
 ];
 
-const workspaceLabelById: Record<string, string> = {
-  "linkedin-authority-os": "LinkedIn Authority OS",
-  "sales-outreach-os": "Sales Outreach OS",
-  "conversion-copy-os": "Conversion Copy OS",
-  "seo-growth-os": "SEO Growth OS",
-  "ai-brand-studio": "AI Brand Studio",
-};
-
 export function WorkspaceShell({ children, title, subtitle }: WorkspaceShellProps) {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [activeWorkspaceLabel] = useState("Workspace");
-  const [headerSearch, setHeaderSearch] = useState("");
-
-  const workspaceFromRoute = searchParams.get("workspace") ?? "";
-  const resolvedWorkspaceLabel = workspaceLabelById[workspaceFromRoute] ?? activeWorkspaceLabel;
 
   const activeTitle = useMemo(() => {
     const active = primaryNav.find((item) => pathname === item.href || pathname.startsWith(`${item.href}/`));
-    return title ?? active?.label ?? "Workspace";
+    return title ?? active?.label ?? "Console";
   }, [pathname, title]);
 
   const breadcrumb = pathname.split("/").filter(Boolean);
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <div className={cn("fixed inset-y-0 left-0 z-40 hidden border-r border-border bg-card text-foreground transition-all duration-300 lg:block", collapsed ? "w-[92px]" : "w-[284px]")}>
+    <div className="min-h-screen bg-slate-50 text-slate-900">
+      <div className={cn("fixed inset-y-0 left-0 z-40 hidden border-r border-slate-800/80 bg-slate-950 text-slate-100 transition-all duration-300 lg:block", collapsed ? "w-[92px]" : "w-[284px]")}>
         <aside className="flex h-full flex-col p-4">
           <div className="mb-2 flex items-center justify-between gap-3 pb-4">
             <Link href="/dashboard" className="group flex items-center gap-3 overflow-hidden">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent text-background">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/10 text-white">
                 <Bolt size={16} />
               </div>
               {!collapsed ? (
                 <div>
                   <p className="text-sm font-semibold tracking-tight">Zenovee</p>
-                  <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Workspace OS</p>
+                  <p className="text-[11px] uppercase tracking-[0.16em] text-slate-400">Workspace</p>
                 </div>
               ) : null}
             </Link>
@@ -68,7 +56,7 @@ export function WorkspaceShell({ children, title, subtitle }: WorkspaceShellProp
             </button>
           </div>
 
-          <div className="mb-4 h-px bg-gradient-to-r from-white/0 via-white/20 to-white/0" />
+          <div className="mb-4 h-px bg-white/15" />
 
           <nav className="flex-1 space-y-1.5">
             {primaryNav.map((item) => {
@@ -81,8 +69,8 @@ export function WorkspaceShell({ children, title, subtitle }: WorkspaceShellProp
                   className={cn(
                     "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200",
                     active
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      ? "bg-white text-slate-900"
+                      : "text-slate-300 hover:bg-white/10 hover:text-white"
                   )}
                 >
                   <Icon size={16} className="shrink-0" />
@@ -94,49 +82,37 @@ export function WorkspaceShell({ children, title, subtitle }: WorkspaceShellProp
 
           {!collapsed ? (
             <div className="mt-auto space-y-3 border-t border-white/15 pt-4">
-              <p className="px-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Active workspace</p>
-              <div className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs text-foreground">
-                {resolvedWorkspaceLabel || activeWorkspaceLabel}
+              <div className="rounded-lg border border-white/15 bg-white/5 px-3 py-2">
+                <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Credits remaining</p>
+                <p className="mt-1 text-sm font-semibold text-white">Live in Console</p>
               </div>
+              <div className="rounded-lg border border-white/15 bg-white/5 px-3 py-2">
+                <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Current plan</p>
+                <p className="mt-1 text-sm font-semibold text-white">Manage in Billing</p>
+              </div>
+              <LogoutButton className="w-full justify-start border-white/20 bg-transparent text-slate-100 hover:bg-white/10">
+                <LogOut className="size-4" />
+              </LogoutButton>
             </div>
           ) : null}
-
-          {!collapsed ? <LogoutButton className="mt-3 w-full border-white/20 bg-transparent text-slate-100 hover:bg-white/10" /> : null}
         </aside>
       </div>
 
       <div className={cn("transition-all duration-300", collapsed ? "lg:pl-[92px]" : "lg:pl-[284px]")}>
-        <header className="sticky top-0 z-30 border-b border-border/70 bg-background/92 backdrop-blur-xl">
+        <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur-xl">
           <div className="flex h-16 items-center justify-between gap-4 px-4 md:px-6 lg:px-8">
             <div className="flex items-center gap-3">
-              <button onClick={() => setMobileOpen(true)} className="rounded-lg border border-border/60 bg-card p-2 hover:bg-muted/60 lg:hidden">
+              <button onClick={() => setMobileOpen(true)} className="rounded-lg border border-slate-300 bg-white p-2 hover:bg-slate-50 lg:hidden">
                 <Menu size={18} />
               </button>
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold tracking-tight">{activeTitle}</p>
-                {subtitle ? <p className="truncate text-xs text-muted-foreground">{subtitle}</p> : null}
+                {subtitle ? <p className="truncate text-xs text-slate-500">{subtitle}</p> : null}
               </div>
             </div>
-
-            <div className="hidden flex-1 items-center justify-end gap-3 md:flex">
-              <div className="relative w-full max-w-sm">
-                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <input
-                  value={headerSearch}
-                  onChange={(e) => setHeaderSearch(e.target.value)}
-                  placeholder="Search workspace"
-                  className="h-9 w-full rounded-xl border border-border/80 bg-card pl-9 pr-3 text-sm outline-none ring-primary/20 transition focus:ring-2"
-                />
-              </div>
-              <div className="rounded-xl border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground">
-                Workspace navigation
-              </div>
-              <div className="flex size-9 items-center justify-center rounded-full border border-border bg-muted/50 text-xs font-semibold">
-                Z
-              </div>
-            </div>
+            <div className="text-xs text-slate-500">Zenovee Workspace</div>
           </div>
-          <div className="px-4 pb-3 text-xs text-muted-foreground md:px-6 lg:px-8">{resolvedWorkspaceLabel} · {breadcrumb.length ? breadcrumb.join(" / ") : "dashboard"}</div>
+          <div className="px-4 pb-3 text-xs text-slate-500 md:px-6 lg:px-8">{breadcrumb.length ? breadcrumb.join(" / ") : "dashboard"}</div>
         </header>
 
         <main className="p-4 md:p-6 lg:p-8 overflow-x-hidden">{children}</main>
@@ -162,7 +138,7 @@ export function WorkspaceShell({ children, title, subtitle }: WorkspaceShellProp
                     onClick={() => setMobileOpen(false)}
                     className={cn(
                       "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200",
-                      active ? "bg-gradient-to-r from-primary to-accent text-primary-foreground" : "text-slate-300 hover:bg-white/10 hover:text-white"
+                      active ? "bg-white text-slate-900" : "text-slate-300 hover:bg-white/10 hover:text-white"
                     )}
                   >
                     <Icon size={16} />
@@ -171,6 +147,7 @@ export function WorkspaceShell({ children, title, subtitle }: WorkspaceShellProp
                 );
               })}
             </nav>
+            <LogoutButton className="mt-4 w-full justify-start border-white/20 bg-transparent text-slate-100 hover:bg-white/10" />
           </div>
         </div>
       ) : null}
