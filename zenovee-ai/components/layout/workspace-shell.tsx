@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useMemo, useState } from "react";
-import { Bolt, CreditCard, FolderHeart, History, LogOut, Menu, Settings2, TerminalSquare, Wrench, Upload, X } from "lucide-react";
+import { Bolt, CreditCard, FolderHeart, History, Menu, Settings2, TerminalSquare, Wrench, Upload, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LogoutButton } from "@/components/auth/logout-button";
 
@@ -90,9 +90,7 @@ export function WorkspaceShell({ children, title, subtitle }: WorkspaceShellProp
                 <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Current plan</p>
                 <p className="mt-1 text-sm font-semibold text-white">Manage in Billing</p>
               </div>
-              <LogoutButton className="w-full justify-start border-white/20 bg-transparent text-slate-100 hover:bg-white/10">
-                <LogOut className="size-4" />
-              </LogoutButton>
+              <LogoutButton className="w-full justify-start border-white/20 bg-transparent text-slate-100 hover:bg-white/10" />
             </div>
           ) : null}
         </aside>
