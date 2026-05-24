@@ -158,6 +158,7 @@ export async function POST(request: Request) {
     if (!subscription) return NextResponse.json({ error: "Subscription not found" }, { status: 404 });
     const plan = getPlanById(subscription.plan_name);
     if (!plan) return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
+    const rupeeAmount = Number((plan.amountInPaise / 100).toFixed(2));
 
     const nowIso = new Date().toISOString();
     const nextRenewal = computeNextRenewalDate();
@@ -195,13 +196,18 @@ export async function POST(request: Request) {
       pendingSubscriptionPayment?.id
         ? markPendingPaymentAsProcessed(supabaseAdmin, pendingSubscriptionPayment.id, {
             status: "SUCCESS",
+            payment_amount: rupeeAmount,
+            amount: rupeeAmount,
+            plan: plan.id,
+            currency: plan.currency,
             razorpay_transaction_id: body.razorpay_payment_id,
             updated_at: nowIso,
           })
         : supabaseAdmin.from("payments").upsert(
             {
               user_id: user.id,
-              payment_amount: Number((plan.amountInPaise / 100).toFixed(2)),
+              payment_amount: rupeeAmount,
+              amount: rupeeAmount,
               plan: plan.id,
               currency: plan.currency,
               status: "SUCCESS",
@@ -222,6 +228,8 @@ export async function POST(request: Request) {
         userId: user.id,
         subscriptionId,
         planId: plan.id,
+        rupeeAmount,
+        paiseAmount: plan.amountInPaise,
         razorpay_payment_id: body.razorpay_payment_id,
       },
     });

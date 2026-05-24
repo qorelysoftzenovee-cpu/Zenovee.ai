@@ -24,24 +24,6 @@ const checkoutRequestSchema = z
 
 const IDEMPOTENCY_HEADER = "x-idempotency-key";
 
-const PLAN_MAP = {
-  starter: {
-    amount: 299,
-    credits: 40,
-    name: "Starter",
-  },
-  growth: {
-    amount: 799,
-    credits: 150,
-    name: "Growth",
-  },
-  scale: {
-    amount: 1999,
-    credits: 500,
-    name: "Scale",
-  },
-} as const;
-
 function buildValidationError(message: string, details?: Record<string, unknown>) {
   return NextResponse.json(
     {
@@ -185,18 +167,7 @@ export async function POST(request: Request) {
     }
 
     const normalizedPlanId = planId?.toLowerCase();
-    const selectedPlan = normalizedPlanId ? PLAN_MAP[normalizedPlanId as keyof typeof PLAN_MAP] : undefined;
-    if (!selectedPlan) {
-      return NextResponse.json(
-        {
-          error: "Invalid plan",
-        },
-        { status: 400 }
-      );
-    }
-
-    const amount = selectedPlan.amount;
-    const plan = planId ? getPlanById(planId) : undefined;
+    const plan = normalizedPlanId ? getPlanById(normalizedPlanId) : undefined;
 
     if (!plan) {
       return NextResponse.json({ error: "Plan not found." }, { status: 404 });
@@ -232,8 +203,20 @@ export async function POST(request: Request) {
       return buildValidationError("Plan currency mismatch", { planId: plan.id, expectedCurrency: plan.currency, receivedCurrency: currency });
     }
 
-    if (credits !== undefined && credits !== selectedPlan.credits) {
-      return buildValidationError("Plan credits mismatch", { planId: plan.id, expectedCredits: selectedPlan.credits, receivedCredits: credits });
+    if (credits !== undefined && credits !== plan.credits) {
+      return buildValidationError("Plan credits mismatch", { planId: plan.id, expectedCredits: plan.credits, receivedCredits: credits });
+    }
+
+    const rupeeAmount = plan.price;
+    const paiseAmount = plan.amountInPaise;
+    const computedPaise = Math.round(rupeeAmount * 100);
+    if (computedPaise !== paiseAmount) {
+      return buildValidationError("Plan paise conversion mismatch", {
+        planId: plan.id,
+        rupeeAmount,
+        paiseAmount,
+        computedPaise,
+      });
     }
 
     if (!env.RAZORPAY_KEY_ID || !env.RAZORPAY_KEY_SECRET) {
@@ -268,7 +251,7 @@ export async function POST(request: Request) {
 
     const razorpayPlanId = await getOrCreateRazorpayPlanId(plan.id);
 
-    const subscription = await razorpay.subscriptions.create({
+    const razorpayPayload = {
       plan_id: razorpayPlanId,
       total_count: 120,
       quantity: 1,
@@ -278,7 +261,21 @@ export async function POST(request: Request) {
         planId: plan.id,
         app: "zenovee",
       },
+    };
+
+    serverLog({
+      level: "info",
+      route: "api/billing/checkout",
+      message: "Razorpay amount pipeline debug",
+      metadata: {
+        planId: plan.id,
+        rupeeAmount,
+        paiseAmount,
+        razorpayPayload,
+      },
     });
+
+    const subscription = await razorpay.subscriptions.create(razorpayPayload);
 
     serverLog({
       level: "info",
@@ -302,18 +299,11 @@ export async function POST(request: Request) {
       });
     }
 
-    console.log("PAYMENT INSERT DEBUG", {
-      planId,
-      selectedPlan,
-      amount,
-      insertPayload: null,
-    });
-
-    if (!amount || amount <= 0) {
+    if (!rupeeAmount || rupeeAmount <= 0) {
       console.error("INVALID AMOUNT", {
         planId,
-        selectedPlan,
-        amount,
+        rupeeAmount,
+        paiseAmount,
       });
 
       return NextResponse.json(
@@ -328,13 +318,13 @@ export async function POST(request: Request) {
       level: "info",
       route: "api/billing/checkout",
       message: "Amount before payments insert",
-      metadata: { userId: user.id, planId: plan.id, amount, currency: plan.currency, subscriptionId: subscription.id },
+      metadata: { userId: user.id, planId: plan.id, rupeeAmount, paiseAmount, currency: plan.currency, subscriptionId: subscription.id },
     });
 
     const insertPayload: Database["public"]["Tables"]["payments"]["Insert"] = {
       user_id: user.id,
-      payment_amount: selectedPlan.amount,
-      amount: selectedPlan.amount,
+      payment_amount: rupeeAmount,
+      amount: rupeeAmount,
       plan: plan.id,
       currency: plan.currency,
       status: "PENDING",
@@ -344,8 +334,8 @@ export async function POST(request: Request) {
 
     console.log("PAYMENT INSERT DEBUG", {
       planId,
-      selectedPlan,
-      amount: selectedPlan.amount,
+      rupeeAmount,
+      paiseAmount,
       insertPayload,
     });
 
