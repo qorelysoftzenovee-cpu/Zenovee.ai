@@ -355,22 +355,27 @@ export async function POST(request: Request) {
       throw new Error(paymentError.message);
     }
 
-    const { error: subscriptionError } = await supabaseAdmin.from("subscriptions").upsert(
-      {
-        user_id: user.id,
-        plan_name: plan.id,
-        status: "PENDING",
-        billing_cycle: "monthly",
-        renewal_date: null,
-        current_period_end: null,
-        razorpay_subscription_id: subscription.id,
-      },
-      { onConflict: "user_id" }
-    );
+    const subscriptionBasePayload = {
+      user_id: user.id,
+      status: "PENDING" as const,
+      billing_cycle: "monthly" as const,
+      renewal_date: null,
+      current_period_end: null,
+      razorpay_subscription_id: subscription.id,
+    };
 
-    if (subscriptionError) {
-      throw new Error(subscriptionError.message);
+    let { error: subscriptionError } = await supabaseAdmin
+      .from("subscriptions")
+      .upsert({ ...subscriptionBasePayload, plan_name: plan.id }, { onConflict: "user_id" });
+
+    if (subscriptionError?.message?.includes("plan_name")) {
+      const retry = await supabaseAdmin
+        .from("subscriptions")
+        .upsert({ ...subscriptionBasePayload, plan: plan.id }, { onConflict: "user_id" });
+      subscriptionError = retry.error;
     }
+
+    if (subscriptionError) throw new Error(subscriptionError.message);
 
     return NextResponse.json({
       success: true,
