@@ -369,9 +369,13 @@ export async function POST(request: Request) {
       .upsert({ ...subscriptionBasePayload, plan_name: plan.id }, { onConflict: "user_id" });
 
     if (subscriptionError?.message?.includes("plan_name")) {
-      const retry = await supabaseAdmin
-        .from("subscriptions")
-        .upsert({ ...subscriptionBasePayload, plan: plan.id }, { onConflict: "user_id" });
+      const fallbackPayload = {
+        ...subscriptionBasePayload,
+        plan: plan.id,
+      };
+      const retry = await (supabaseAdmin.from("subscriptions") as any).upsert(fallbackPayload, {
+        onConflict: "user_id",
+      });
       subscriptionError = retry.error;
     }
 
