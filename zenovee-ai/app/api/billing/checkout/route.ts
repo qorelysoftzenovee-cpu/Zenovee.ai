@@ -362,11 +362,12 @@ export async function POST(request: Request) {
       renewal_date: null,
       current_period_end: null,
       razorpay_subscription_id: subscription.id,
+      plan_id: plan.id,
     };
 
     const { error: subscriptionError } = await supabaseAdmin
       .from("subscriptions")
-      .upsert({ ...subscriptionBasePayload, plan_name: plan.id }, { onConflict: "user_id" });
+      .upsert(subscriptionBasePayload as never, { onConflict: "user_id" });
 
     if (subscriptionError) throw new Error(subscriptionError.message);
 
