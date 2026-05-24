@@ -10,21 +10,14 @@ import { JsonLd } from "@/components/seo/json-ld";
 import { createBreadcrumbSchema, createFAQSchema, createMetadata, createSoftwareSchema } from "@/lib/seo/site";
 import { getToolSeoEntry, getToolsBySlugs, toolSeoPages } from "@/lib/seo/content";
 
-const launchToolSlugs = new Set([
-  "seo-article-generator",
-  "ad-copy-generator",
-  "customer-persona-builder",
-  "landing-page-copy-generator",
-]);
-
 export async function generateStaticParams() {
-  return toolSeoPages.filter((tool) => launchToolSlugs.has(tool.slug)).map((tool) => ({ slug: tool.slug }));
+  return toolSeoPages.map((tool) => ({ slug: tool.slug }));
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const tool = getToolSeoEntry(slug);
-  if (!tool || !launchToolSlugs.has(tool.slug)) return {};
+  if (!tool) return {};
 
   return createMetadata({
     title: tool.heroTitle,
@@ -37,7 +30,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 export default async function ToolSeoPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const tool = getToolSeoEntry(slug);
-  if (!tool || !launchToolSlugs.has(tool.slug)) notFound();
+  if (!tool) notFound();
 
   const relatedTools = getToolsBySlugs(tool.relatedToolSlugs);
 

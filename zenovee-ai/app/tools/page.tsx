@@ -8,20 +8,13 @@ import { PublicToolsDirectory } from "@/components/tools/public-tools-directory"
 
 export const metadata: Metadata = createMetadata({
   title: "Tools",
-  description: "Four premium AI tools for marketing and content execution.",
+  description: "Explore 50 enterprise-grade premium AI tools across branding, sales, conversion, SEO, and brand assets.",
   path: "/tools",
-  keywords: ["AI tools", "SEO", "ad copy", "persona", "landing page copy"],
+  keywords: ["premium AI tools", "enterprise AI platform", "B2B sales AI", "SEO authority AI", "conversion copy AI"],
 });
 
 export default function ToolsDirectoryPage() {
-  const launchToolSlugs = new Set([
-    "seo-article-generator",
-    "ad-copy-generator",
-    "customer-persona-builder",
-    "landing-page-copy-generator",
-  ]);
-
-  const launchTools = toolSeoPages.filter((tool) => launchToolSlugs.has(tool.slug));
+  const tools = toolSeoPages;
 
   return (
     <div className="min-h-screen bg-background">
@@ -30,13 +23,13 @@ export default function ToolsDirectoryPage() {
       <main className="section-shell py-14 md:py-16">
         <div className="mb-8 max-w-3xl space-y-3">
           <p className="premium-label">Tools</p>
-          <h1 className="text-4xl font-semibold tracking-tight md:text-5xl">Focused AI tools</h1>
+          <h1 className="text-4xl font-semibold tracking-tight md:text-5xl">Enterprise AI tools ecosystem</h1>
           <p className="text-base text-muted-foreground md:text-lg">
-            Use exactly what you need: SEO article generation, ad copy, personas, and landing page copy.
+            Discover all premium tools with category filters, featured picks, and trending systems.
           </p>
         </div>
 
-        <PublicToolsDirectory tools={launchTools} />
+        <PublicToolsDirectory tools={tools} />
       </main>
       <Footer />
     </div>

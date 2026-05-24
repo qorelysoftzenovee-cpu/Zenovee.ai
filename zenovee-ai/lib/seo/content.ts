@@ -14,6 +14,7 @@ export type ToolSeoEntry = {
   tags: string[];
   featured: boolean;
   trending: boolean;
+  creditCost: number;
   estimatedTimeSeconds?: number;
   outputType?: ToolOutputType;
   heroTitle: string;
@@ -29,7 +30,7 @@ export type ToolSeoEntry = {
 
 type ToolSeoNarrative = Omit<
   ToolSeoEntry,
-  "slug" | "name" | "shortName" | "description" | "category" | "icon" | "tagline" | "tags" | "featured" | "trending" | "estimatedTimeSeconds" | "outputType"
+  "slug" | "name" | "shortName" | "description" | "category" | "icon" | "tagline" | "tags" | "featured" | "trending" | "creditCost" | "estimatedTimeSeconds" | "outputType"
 >;
 
 const toolSpecificCopy: Record<string, ToolSeoNarrative> = {
@@ -146,6 +147,7 @@ export const toolSeoPages: ToolSeoEntry[] = listToolDefinitions()
       tags: tool.metadata.tags ?? [tool.metadata.category],
       featured: Boolean(tool.metadata.featured),
       trending: Boolean(tool.metadata.trending),
+      creditCost: tool.creditCost,
       estimatedTimeSeconds: tool.metadata.estimatedTimeSeconds,
       outputType: tool.metadata.outputType,
     };
@@ -157,21 +159,21 @@ export const toolCategoryPages = [
     title: "AI SEO Tools",
     description: "Discover AI SEO tools for article generation, optimization workflows, content planning, and long-term organic traffic systems.",
     intro: "Use Zenovee AI SEO tools to build topic coverage, generate optimized content, and scale discoverable assets.",
-    toolSlugs: ["seo-article-generator", "landing-page-copy-generator"],
+    toolSlugs: ["semantic-keyword-clusterer", "topical-authority-engine", "pillar-page-strategist"],
   },
   {
     slug: "marketing",
     title: "AI Marketing Tools",
     description: "Explore AI marketing tools for ad copy, positioning, personas, landing pages, and campaign production.",
     intro: "Build faster marketing workflows with tools designed for campaign planning, content, and conversion copy.",
-    toolSlugs: ["ad-copy-generator", "customer-persona-builder", "landing-page-copy-generator", "seo-article-generator"],
+    toolSlugs: ["enterprise-objection-crusher", "vsl-script-architect", "executive-thought-leader-ghostwriter", "semantic-keyword-clusterer"],
   },
   {
     slug: "copywriting",
     title: "AI Copywriting Tools",
     description: "Compare AI copywriting tools for landing pages, ads, blogs, and conversion messaging.",
     intro: "Create persuasive marketing copy with purpose-built generators for channels across the funnel.",
-    toolSlugs: ["ad-copy-generator", "landing-page-copy-generator", "seo-article-generator"],
+    toolSlugs: ["vsl-script-architect", "headline-ctr-dominator", "landing-page-conversion-maximizer"],
   },
 ];
 

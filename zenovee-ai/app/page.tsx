@@ -12,11 +12,15 @@ import { toolSeoPages } from "@/lib/seo/content";
 import { subscriptionPlans } from "@/app/subscription-plans";
 import { HeroSlider } from "@/components/marketing/hero-slider";
 
-const launchToolSlugs = new Set([
-  "seo-article-generator",
-  "ad-copy-generator",
-  "customer-persona-builder",
-  "landing-page-copy-generator",
+const premiumShowcaseSlugs = new Set([
+  "executive-thought-leader-ghostwriter",
+  "viral-carousel-architect",
+  "enterprise-objection-crusher",
+  "semantic-keyword-clusterer",
+  "vsl-script-architect",
+  "high-end-thumbnail-designer",
+  "studio-product-placer",
+  "topical-authority-engine",
 ]);
 
 export const metadata: Metadata = createMetadata({
@@ -34,7 +38,7 @@ const steps = [
 
 export default async function LandingPage() {
   const user = await getCurrentUser();
-  const topTools = toolSeoPages.filter((tool) => launchToolSlugs.has(tool.slug));
+  const topTools = toolSeoPages.filter((tool) => premiumShowcaseSlugs.has(tool.slug));
 
   return (
     <div className="min-h-screen bg-background">
@@ -47,8 +51,8 @@ export default async function LandingPage() {
             <div className="grid items-center gap-10 lg:grid-cols-[1fr_1.08fr] lg:gap-12">
               <div className="space-y-6">
                 <p className="premium-label border-white/15 bg-white/5 text-slate-200">AI Workspace</p>
-                <h1 className="text-balance text-4xl font-semibold tracking-tight text-white md:text-5xl lg:text-6xl">Plan, generate, and ship growth content from one focused workspace</h1>
-                <p className="max-w-2xl text-base text-slate-300 md:text-lg">Zenovee brings LinkedIn, SEO, outreach, conversion copy, and brand workflows into one secure product with clear billing and export-ready outputs.</p>
+                <h1 className="text-balance text-4xl font-semibold tracking-tight text-white md:text-5xl lg:text-6xl">Enterprise-grade AI platform for premium growth execution</h1>
+                <p className="max-w-2xl text-base text-slate-300 md:text-lg">Access a massive premium toolkit across executive branding, B2B sales, conversion copywriting, SEO authority, and premium brand assets.</p>
                 <div className="flex flex-wrap gap-3">
                   <Button asChild size="lg" className="bg-white text-slate-900 hover:bg-slate-100"><Link href={user ? "/dashboard" : "/register"}>{user ? "Open dashboard" : "Create account"}</Link></Button>
                   <Button asChild size="lg" variant="secondary" className="border-white/20 bg-white/10 text-white hover:bg-white/20"><Link href="/pricing">View Pricing</Link></Button>
