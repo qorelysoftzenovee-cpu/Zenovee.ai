@@ -175,6 +175,7 @@ export type Database = {
         Insert: {
           user_id: string;
           payment_amount: number;
+          amount: number;
           plan: string;
           status: "PENDING" | "SUCCESS" | "FAILED" | "REFUNDED" | "CREDIT_TOPUP";
           currency?: string;

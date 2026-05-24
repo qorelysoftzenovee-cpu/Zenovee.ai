@@ -150,6 +150,7 @@ export async function POST(request: Request) {
       const insertPayload: Database["public"]["Tables"]["payments"]["Insert"] = {
         user_id: user.id,
         payment_amount: topupAmount,
+        amount: topupAmount,
         plan: `topup:${topup.id}`,
         currency: "INR",
         status: "PENDING",
@@ -333,6 +334,7 @@ export async function POST(request: Request) {
     const insertPayload: Database["public"]["Tables"]["payments"]["Insert"] = {
       user_id: user.id,
       payment_amount: selectedPlan.amount,
+      amount: selectedPlan.amount,
       plan: plan.id,
       currency: plan.currency,
       status: "PENDING",
