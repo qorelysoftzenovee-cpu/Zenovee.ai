@@ -16,6 +16,20 @@ function formatMoney(amount: number, currency = "INR") {
   return new Intl.NumberFormat("en-IN", { style: "currency", currency }).format(amount);
 }
 
+function paymentStatusBadge(status: string) {
+  const normalized = status.toUpperCase();
+  if (normalized === "SUCCESS" || normalized === "CREDIT_TOPUP") {
+    return "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30";
+  }
+  if (normalized === "FAILED") {
+    return "bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30";
+  }
+  if (normalized === "CANCELLED") {
+    return "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30";
+  }
+  return "bg-muted text-muted-foreground border-border";
+}
+
 export default async function BillingPage() {
   const user = await requireStandardUser();
   const supabase = await createSupabaseServerClient();
@@ -126,7 +140,11 @@ export default async function BillingPage() {
                     <td className="py-3">{formatDate(payment.created_at)}</td>
                     <td className="py-3">{formatMoney(Number(payment.payment_amount ?? 0), payment.currency ?? "INR")}</td>
                     <td className="py-3">{payment.plan}</td>
-                    <td className="py-3 uppercase">{payment.status}</td>
+                    <td className="py-3">
+                      <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${paymentStatusBadge(payment.status)}`}>
+                        {payment.status}
+                      </span>
+                    </td>
                     <td className="py-3 text-muted-foreground">Available in Razorpay records</td>
                   </tr>
                 ))}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import Script from "next/script";
@@ -14,12 +14,13 @@ type RazorpayVerifyPayload = {
 
 type RazorpayInstance = {
   open: () => void;
+  on?: (event: "payment.failed", handler: (response: { error?: { description?: string; reason?: string; code?: string; source?: string } }) => void) => void;
 };
 
 type RazorpayOptions = {
   key: string;
   order_id?: string;
-  subscription_id: string;
+  subscription_id?: string;
   name: string;
   description: string;
   handler: (response: RazorpayVerifyPayload) => Promise<void>;
@@ -73,6 +74,18 @@ export function PricingActions({
   const [statusTone, setStatusTone] = useState<"default" | "success" | "error">("default");
   const [isScriptReady, setIsScriptReady] = useState(false);
   const requestCounterRef = useRef(0);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearCheckoutTimeout = () => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+  };
+
+  useEffect(() => {
+    return () => clearCheckoutTimeout();
+  }, []);
 
   const handleCheckout = async () => {
     if (loading) return;
@@ -127,6 +140,7 @@ export function PricingActions({
             body: JSON.stringify(response),
           });
           if (verify.ok) {
+            clearCheckoutTimeout();
             setStatusTone("success");
             setStatus("Payment successful. Your subscription is active and your workspace is updating.");
             setLoading(false);
@@ -134,6 +148,7 @@ export function PricingActions({
             router.refresh();
             return;
           }
+          clearCheckoutTimeout();
           setStatusTone("error");
           setStatus(await resolveCheckoutError(verify, "Payment captured but verification failed"));
           setLoading(false);
@@ -147,7 +162,13 @@ export function PricingActions({
         },
         modal: {
           ondismiss: function () {
-            setStatus("Checkout closed. You can resume whenever you're ready.");
+            void fetch("/api/billing/checkout-state", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ subscriptionId: data.subscription?.id, state: "cancelled", reason: "CHECKOUT_CANCELLED" }),
+            });
+            clearCheckoutTimeout();
+            setStatus("Checkout cancelled.");
             setStatusTone("default");
             setLoading(false);
           },
@@ -155,8 +176,37 @@ export function PricingActions({
       };
 
       const razorpay = new window.Razorpay(options);
+      razorpay.on?.("payment.failed", (payload) => {
+        void fetch("/api/billing/checkout-state", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            subscriptionId: data.subscription?.id,
+            state: "failed",
+            reason: payload.error?.description ?? payload.error?.reason ?? "PAYMENT_FAILED",
+          }),
+        });
+        clearCheckoutTimeout();
+        setStatusTone("error");
+        setStatus(payload.error?.description ?? "Payment failed. Please try again.");
+        setLoading(false);
+      });
+
+      clearCheckoutTimeout();
+      timeoutRef.current = setTimeout(() => {
+        void fetch("/api/billing/checkout-state", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ subscriptionId: data.subscription?.id, state: "abandoned", reason: "CHECKOUT_TIMEOUT" }),
+        });
+        setStatusTone("default");
+        setStatus("Checkout cancelled.");
+        setLoading(false);
+      }, 8 * 60 * 1000);
+
       razorpay.open();
     } catch (error) {
+      clearCheckoutTimeout();
       setStatusTone("error");
       setStatus(`Unable to start checkout. ${error instanceof Error ? error.message : "Unknown client error"}`);
       setLoading(false);
@@ -186,6 +236,18 @@ export function TopupActions({ topupId, label }: { topupId: string; label: strin
   const [statusTone, setStatusTone] = useState<"default" | "success" | "error">("default");
   const [isScriptReady, setIsScriptReady] = useState(false);
   const requestCounterRef = useRef(0);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearCheckoutTimeout = () => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+  };
+
+  useEffect(() => {
+    return () => clearCheckoutTimeout();
+  }, []);
 
   const handleTopupCheckout = async () => {
     if (loading) return;
@@ -238,6 +300,7 @@ export function TopupActions({ topupId, label }: { topupId: string; label: strin
             body: JSON.stringify(payload),
           });
           if (verify.ok) {
+            clearCheckoutTimeout();
             setStatusTone("success");
             setStatus("Top-up successful. Your credits have been added and your workspace is updating.");
             setLoading(false);
@@ -245,6 +308,7 @@ export function TopupActions({ topupId, label }: { topupId: string; label: strin
             router.refresh();
             return;
           }
+          clearCheckoutTimeout();
           setStatusTone("error");
           setStatus(await resolveCheckoutError(verify, "Payment captured but top-up verification failed"));
           setLoading(false);
@@ -253,7 +317,13 @@ export function TopupActions({ topupId, label }: { topupId: string; label: strin
         theme: { color: "#6366f1" },
         modal: {
           ondismiss: function () {
-            setStatus("Checkout closed. You can resume whenever you're ready.");
+            void fetch("/api/billing/checkout-state", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ orderId: data.order?.id, state: "cancelled", reason: "CHECKOUT_CANCELLED" }),
+            });
+            clearCheckoutTimeout();
+            setStatus("Checkout cancelled.");
             setStatusTone("default");
             setLoading(false);
           },
@@ -261,8 +331,37 @@ export function TopupActions({ topupId, label }: { topupId: string; label: strin
       };
 
       const razorpay = new window.Razorpay(options as unknown as RazorpayOptions);
+      razorpay.on?.("payment.failed", (payload) => {
+        void fetch("/api/billing/checkout-state", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            orderId: data.order?.id,
+            state: "failed",
+            reason: payload.error?.description ?? payload.error?.reason ?? "PAYMENT_FAILED",
+          }),
+        });
+        clearCheckoutTimeout();
+        setStatusTone("error");
+        setStatus(payload.error?.description ?? "Payment failed. Please try again.");
+        setLoading(false);
+      });
+
+      clearCheckoutTimeout();
+      timeoutRef.current = setTimeout(() => {
+        void fetch("/api/billing/checkout-state", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ orderId: data.order?.id, state: "abandoned", reason: "CHECKOUT_TIMEOUT" }),
+        });
+        setStatusTone("default");
+        setStatus("Checkout cancelled.");
+        setLoading(false);
+      }, 8 * 60 * 1000);
+
       razorpay.open();
     } catch (error) {
+      clearCheckoutTimeout();
       setStatusTone("error");
       setStatus(`Unable to start top-up checkout. ${error instanceof Error ? error.message : "Unknown client error"}`);
       setLoading(false);

@@ -161,7 +161,7 @@ export type Database = {
           payment_amount: number;
           amount: number;
           plan: string;
-          status: "PENDING" | "SUCCESS" | "FAILED" | "REFUNDED" | "CREDIT_TOPUP";
+          status: "PENDING" | "SUCCESS" | "FAILED" | "CANCELLED" | "REFUNDED" | "CREDIT_TOPUP";
           currency: string;
           invoice_id: string | null;
           razorpay_transaction_id: string | null;
@@ -177,7 +177,7 @@ export type Database = {
           payment_amount: number;
           amount: number;
           plan: string;
-          status: "PENDING" | "SUCCESS" | "FAILED" | "REFUNDED" | "CREDIT_TOPUP";
+          status: "PENDING" | "SUCCESS" | "FAILED" | "CANCELLED" | "REFUNDED" | "CREDIT_TOPUP";
           currency?: string;
           invoice_id?: string | null;
           razorpay_transaction_id?: string | null;
