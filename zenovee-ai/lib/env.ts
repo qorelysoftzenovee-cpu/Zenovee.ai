@@ -65,7 +65,6 @@ export const env = safeEnv;
 
 const billingEnvSchema = envSchema.pick({
   NEXT_PUBLIC_SUPABASE_URL: true,
-  NEXT_PUBLIC_RAZORPAY_KEY_ID: true,
   SUPABASE_SERVICE_ROLE_KEY: true,
   RAZORPAY_KEY_ID: true,
   RAZORPAY_KEY_SECRET: true,
