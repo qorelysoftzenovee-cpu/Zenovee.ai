@@ -1,8 +1,18 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getPlanById } from "@/lib/billing/plans";
 import { getRazorpayClient } from "@/lib/razorpay/client";
+
+const subscriptionActionSchema = z.object({
+  action: z.enum(["cancel", "upgrade"]),
+  planId: z.string().min(1).optional(),
+});
+
+function jsonError(message: string, status: number, code: string) {
+  return NextResponse.json({ error: message, code }, { status });
+}
 
 export async function GET() {
   const user = await getCurrentUser();
@@ -27,42 +37,54 @@ export async function GET() {
 }
 
 export async function PATCH(request: Request) {
-  const user = await getCurrentUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    const user = await getCurrentUser();
+    if (!user) return jsonError("Unauthorized", 401, "AUTH_REQUIRED");
 
-  const body = (await request.json()) as { action?: "cancel" | "upgrade"; planId?: string };
-  const supabaseAdmin = getSupabaseAdmin();
+    const body = subscriptionActionSchema.parse(await request.json());
+    const supabaseAdmin = getSupabaseAdmin();
 
-  const { data: sub } = await supabaseAdmin
-    .from("subscriptions")
-    .select("razorpay_subscription_id")
-    .eq("user_id", user.id)
-    .maybeSingle<{ razorpay_subscription_id: string | null }>();
-
-  if (!sub?.razorpay_subscription_id) {
-    return NextResponse.json({ error: "No active subscription" }, { status: 404 });
-  }
-
-  if (body.action === "cancel") {
-    await getRazorpayClient().subscriptions.cancel(sub.razorpay_subscription_id, true);
-    await supabaseAdmin
+    const { data: sub } = await supabaseAdmin
       .from("subscriptions")
-      .update({ cancel_at_period_end: true, updated_at: new Date().toISOString() } as never)
-      .eq("user_id", user.id);
-    return NextResponse.json({ success: true });
+      .select("status,plan_name,razorpay_subscription_id")
+      .eq("user_id", user.id)
+      .maybeSingle<{ status: string; plan_name: string; razorpay_subscription_id: string | null }>();
+
+    if (!sub || !["ACTIVE", "PAST_DUE", "PENDING"].includes(sub.status)) {
+      return jsonError("No active subscription", 404, "SUBSCRIPTION_NOT_FOUND");
+    }
+
+    if (body.action === "cancel") {
+      if (sub.razorpay_subscription_id) {
+        await getRazorpayClient().subscriptions.cancel(sub.razorpay_subscription_id, true);
+      }
+
+      await supabaseAdmin
+        .from("subscriptions")
+        .update({ cancel_at_period_end: true, status: "CANCELLED", updated_at: new Date().toISOString() } as never)
+        .eq("user_id", user.id);
+      return NextResponse.json({ success: true, message: "Subscription cancellation scheduled." });
+    }
+
+    if (body.action === "upgrade") {
+      const plan = body.planId ? getPlanById(body.planId) : undefined;
+      if (!plan || !plan.active) return jsonError("Invalid plan", 400, "INVALID_PLAN");
+      if (plan.id === sub.plan_name) return jsonError("You are already on this plan", 409, "PLAN_UNCHANGED");
+
+      await supabaseAdmin
+        .from("subscriptions")
+        .update({ pending_plan_id: plan.id, updated_at: new Date().toISOString() } as never)
+        .eq("user_id", user.id);
+
+      return NextResponse.json({ success: true, message: "Plan change scheduled for next cycle." });
+    }
+
+    return jsonError("Invalid action", 400, "INVALID_ACTION");
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return jsonError(error.issues[0]?.message ?? "Invalid request", 400, "INVALID_SUBSCRIPTION_ACTION");
+    }
+
+    return jsonError("Unable to update subscription right now", 500, "SUBSCRIPTION_UPDATE_FAILED");
   }
-
-  if (body.action === "upgrade") {
-    const plan = body.planId ? getPlanById(body.planId) : undefined;
-    if (!plan) return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
-
-    await supabaseAdmin
-      .from("subscriptions")
-      .update({ pending_plan_id: plan.id, updated_at: new Date().toISOString() } as never)
-      .eq("user_id", user.id);
-
-    return NextResponse.json({ success: true, message: "Upgrade scheduled for next cycle" });
-  }
-
-  return NextResponse.json({ error: "Invalid action" }, { status: 400 });
 }

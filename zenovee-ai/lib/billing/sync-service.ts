@@ -96,6 +96,25 @@ export class BillingSyncService {
     return { userId: data?.user_id ?? null, planName: data?.plan_name ?? null };
   }
 
+  private async findOrderPaymentContext(orderId: string | null, paymentId: string | null) {
+    if (!orderId && !paymentId) return { userId: null as string | null, planName: null as string | null, paymentRowId: null as string | null };
+
+    let query = this.supabase
+      .from("payments")
+      .select("id,user_id,plan")
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    if (orderId) {
+      query = query.eq("order_id", orderId);
+    } else if (paymentId) {
+      query = query.eq("razorpay_transaction_id", paymentId);
+    }
+
+    const { data } = await query.maybeSingle<{ id: string; user_id: string; plan: string }>();
+    return { userId: data?.user_id ?? null, planName: data?.plan ?? null, paymentRowId: data?.id ?? null };
+  }
+
   private async paymentAlreadySuccessful(razorpayPaymentId: string | null) {
     if (!razorpayPaymentId) return false;
     const { data } = await this.supabase
@@ -114,6 +133,7 @@ export class BillingSyncService {
     const subscriptionEntity = objectValue(objectValue(payload.subscription).entity);
 
     const razorpayPaymentId = (paymentEntity.id as string | undefined) ?? null;
+    const razorpayOrderId = (paymentEntity.order_id as string | undefined) ?? null;
     const razorpaySubscriptionId =
       (subscriptionEntity.id as string | undefined) ?? (paymentEntity.subscription_id as string | undefined) ?? null;
 
@@ -137,7 +157,12 @@ export class BillingSyncService {
         return { status: "ignored", userId: null, subscriptionId: razorpaySubscriptionId, paymentId: razorpayPaymentId };
       }
 
-      const { userId, planName } = await this.findSubscriptionContext(razorpaySubscriptionId);
+      const subscriptionContext = await this.findSubscriptionContext(razorpaySubscriptionId);
+      const orderPaymentContext = !subscriptionContext.userId
+        ? await this.findOrderPaymentContext(razorpayOrderId, razorpayPaymentId)
+        : { userId: null, planName: null, paymentRowId: null };
+      const userId = subscriptionContext.userId ?? orderPaymentContext.userId;
+      const planName = subscriptionContext.planName ?? orderPaymentContext.planName;
       const nowIso = new Date().toISOString();
 
       if (!userId || !planName) {
@@ -153,20 +178,22 @@ export class BillingSyncService {
           const nextRenewal =
             isoFromUnix((subscriptionEntity.current_end as number | undefined) ?? undefined) ?? computeNextRenewalDate();
 
-          const { error: paymentErr } = await this.supabase.from("payments").upsert(
-            {
-              user_id: userId,
-              payment_amount: Number(paymentEntity.amount ? Number(paymentEntity.amount) / 100 : 0),
-              plan: planName,
-              currency: (paymentEntity.currency as string | undefined) ?? "INR",
-              status: "SUCCESS",
-              razorpay_transaction_id: razorpayPaymentId,
-              subscription_id: razorpaySubscriptionId,
-              invoice_id: (paymentEntity.invoice_id as string | undefined) ?? null,
-              updated_at: nowIso,
-            } as never,
-            { onConflict: "razorpay_transaction_id" }
-          );
+          const paymentRecord = {
+            user_id: userId,
+            payment_amount: Number(paymentEntity.amount ? Number(paymentEntity.amount) / 100 : 0),
+            plan: planName,
+            currency: (paymentEntity.currency as string | undefined) ?? "INR",
+            status: "SUCCESS",
+            razorpay_transaction_id: razorpayPaymentId,
+            order_id: razorpayOrderId,
+            subscription_id: razorpaySubscriptionId,
+            invoice_id: (paymentEntity.invoice_id as string | undefined) ?? null,
+            updated_at: nowIso,
+          } as never;
+
+          const { error: paymentErr } = orderPaymentContext.paymentRowId
+            ? await this.supabase.from("payments").update(paymentRecord).eq("id", orderPaymentContext.paymentRowId)
+            : await this.supabase.from("payments").upsert(paymentRecord, { onConflict: "razorpay_transaction_id" });
           if (paymentErr) throw new Error(`Payment upsert failed: ${paymentErr.message}`);
 
           await this.supabase
@@ -194,24 +221,41 @@ export class BillingSyncService {
             .from("subscriptions")
             .update({ status: "PAST_DUE", grace_until: graceUntil, updated_at: nowIso } as never)
             .eq("user_id", userId),
-          this.supabase.from("payments").upsert(
-            {
-              user_id: userId,
-              payment_amount: Number(paymentEntity.amount ? Number(paymentEntity.amount) / 100 : 0),
-              plan: planName,
-              currency: (paymentEntity.currency as string | undefined) ?? "INR",
-              status: "FAILED",
-              razorpay_transaction_id: razorpayPaymentId,
-              subscription_id: razorpaySubscriptionId,
-              invoice_id: (paymentEntity.invoice_id as string | undefined) ?? null,
-              failure_reason:
-                (paymentEntity.error_description as string | undefined) ??
-                (paymentEntity.error_reason as string | undefined) ??
-                "PAYMENT_FAILED",
-              updated_at: nowIso,
-            } as never,
-            { onConflict: "razorpay_transaction_id" }
-          ),
+          orderPaymentContext.paymentRowId
+            ? this.supabase
+                .from("payments")
+                .update({
+                  status: "FAILED",
+                  razorpay_transaction_id: razorpayPaymentId,
+                  order_id: razorpayOrderId,
+                  subscription_id: razorpaySubscriptionId,
+                  invoice_id: (paymentEntity.invoice_id as string | undefined) ?? null,
+                  failure_reason:
+                    (paymentEntity.error_description as string | undefined) ??
+                    (paymentEntity.error_reason as string | undefined) ??
+                    "PAYMENT_FAILED",
+                  updated_at: nowIso,
+                } as never)
+                .eq("id", orderPaymentContext.paymentRowId)
+            : this.supabase.from("payments").upsert(
+                {
+                  user_id: userId,
+                  payment_amount: Number(paymentEntity.amount ? Number(paymentEntity.amount) / 100 : 0),
+                  plan: planName,
+                  currency: (paymentEntity.currency as string | undefined) ?? "INR",
+                  status: "FAILED",
+                  razorpay_transaction_id: razorpayPaymentId,
+                  order_id: razorpayOrderId,
+                  subscription_id: razorpaySubscriptionId,
+                  invoice_id: (paymentEntity.invoice_id as string | undefined) ?? null,
+                  failure_reason:
+                    (paymentEntity.error_description as string | undefined) ??
+                    (paymentEntity.error_reason as string | undefined) ??
+                    "PAYMENT_FAILED",
+                  updated_at: nowIso,
+                } as never,
+                { onConflict: "razorpay_transaction_id" }
+              ),
         ]);
       }
 

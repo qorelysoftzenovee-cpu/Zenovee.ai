@@ -7,7 +7,12 @@
     "build": "npm --prefix zenovee-ai run build",
     "start": "npm --prefix zenovee-ai run start",
     "lint": "npm --prefix zenovee-ai run lint",
-    "typecheck": "npm --prefix zenovee-ai run typecheck"
+    "typecheck": "npm --prefix zenovee-ai run typecheck",
+    "qa:tool-audit": "npm --prefix zenovee-ai run qa:tool-audit",
+    "qa:api-contract": "npm --prefix zenovee-ai run qa:api-contract",
+    "qa:e2e": "npm --prefix zenovee-ai run qa:e2e",
+    "qa:stabilization": "npm --prefix zenovee-ai run qa:stabilization",
+    "qa:production-hardening": "npm --prefix zenovee-ai run qa:production-hardening"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",

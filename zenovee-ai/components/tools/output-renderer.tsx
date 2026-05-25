@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
-import { ChevronDown } from "lucide-react";
+import { CheckCircle2, ChevronDown, Clipboard, FileText, Sparkles } from "lucide-react";
 
 type OutputRendererProps = {
   value: unknown;
@@ -41,6 +41,27 @@ function isMarkdownLike(content: string): boolean {
   return /(^|\n)#{1,4}\s|(^|\n)-\s|\*\*.+\*\*|(^|\n)\d+\.\s|```/m.test(content);
 }
 
+function formatOutputLabel(key: string) {
+  return key.replace(/([A-Z])/g, " $1").replace(/[_-]/g, " ").trim();
+}
+
+function CopyButton({ value, copied, onCopied, label = "Copy" }: { value: string; copied: boolean; onCopied: () => void; label?: string }) {
+  return (
+    <Button
+      size="sm"
+      variant={copied ? "secondary" : "outline"}
+      className="h-8 rounded-full px-3 text-xs"
+      onClick={async () => {
+        await navigator.clipboard.writeText(value);
+        onCopied();
+      }}
+    >
+      {copied ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Clipboard className="h-3.5 w-3.5" />}
+      {copied ? "Copied" : label}
+    </Button>
+  );
+}
+
 function renderMarkdownLike(content: string) {
   const lines = content.split("\n");
   let inCodeBlock = false;
@@ -50,7 +71,7 @@ function renderMarkdownLike(content: string) {
   const flushCodeBlock = (key: string) => {
     if (codeBuffer.length === 0) return;
     blocks.push(
-      <pre key={key} className="overflow-x-auto rounded-lg border border-border/70 bg-muted/30 p-3 text-xs leading-6 text-foreground">
+      <pre key={key} className="overflow-x-auto rounded-2xl border border-slate-200/80 bg-slate-950 p-4 text-xs leading-6 text-slate-100 shadow-inner">
         {codeBuffer.join("\n")}
       </pre>
     );
@@ -74,26 +95,31 @@ function renderMarkdownLike(content: string) {
     }
 
     if (/^###\s+/.test(line)) {
-      blocks.push(<h3 key={index} className="text-base font-semibold">{line.replace(/^###\s+/, "")}</h3>);
+      blocks.push(<h3 key={index} className="pt-2 text-base font-semibold tracking-tight text-slate-950 dark:text-white">{line.replace(/^###\s+/, "")}</h3>);
       return;
     }
     if (/^##\s+/.test(line)) {
-      blocks.push(<h2 key={index} className="text-lg font-semibold">{line.replace(/^##\s+/, "")}</h2>);
+      blocks.push(<h2 key={index} className="pt-3 text-lg font-semibold tracking-tight text-slate-950 dark:text-white">{line.replace(/^##\s+/, "")}</h2>);
       return;
     }
     if (/^#\s+/.test(line)) {
-      blocks.push(<h1 key={index} className="text-xl font-semibold">{line.replace(/^#\s+/, "")}</h1>);
+      blocks.push(<h1 key={index} className="pt-3 text-xl font-semibold tracking-tight text-slate-950 dark:text-white">{line.replace(/^#\s+/, "")}</h1>);
       return;
     }
     if (/^-\s+/.test(line)) {
-      blocks.push(<p key={index} className="pl-4">• {line.replace(/^-\s+/, "")}</p>);
+      blocks.push(
+        <div key={index} className="flex gap-3 rounded-2xl border border-slate-200/70 bg-white/70 px-4 py-3 text-slate-700 shadow-sm dark:border-white/10 dark:bg-white/5 dark:text-slate-200">
+          <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+          <p>{line.replace(/^-\s+/, "")}</p>
+        </div>
+      );
       return;
     }
     if (/^\d+\.\s+/.test(line)) {
-      blocks.push(<p key={index} className="pl-4">{line}</p>);
+      blocks.push(<p key={index} className="rounded-2xl bg-slate-50 px-4 py-2 text-slate-700 dark:bg-white/5 dark:text-slate-200">{line}</p>);
       return;
     }
-    blocks.push(<p key={index}>{line || "\u00A0"}</p>);
+    blocks.push(<p key={index} className="text-slate-700 dark:text-slate-200">{line || "\u00A0"}</p>);
   });
 
   if (inCodeBlock) {
@@ -101,7 +127,7 @@ function renderMarkdownLike(content: string) {
   }
 
   return (
-    <div className="space-y-2 text-sm leading-7 text-foreground">
+    <div className="space-y-3 text-sm leading-7">
       {blocks}
     </div>
   );
@@ -110,65 +136,74 @@ function renderMarkdownLike(content: string) {
 export function OutputRenderer({ value, className }: OutputRendererProps) {
   const [copied, setCopied] = useState<string | null>(null);
   const content = toDisplayString(value);
+  const markCopied = (id: string) => {
+    setCopied(id);
+    setTimeout(() => setCopied(null), 1200);
+  };
+
   if (!content) {
-    return <p className="text-sm text-muted-foreground">No output yet.</p>;
+    return (
+      <div className="flex min-h-[320px] flex-col items-center justify-center rounded-[1.75rem] border border-dashed border-white/15 bg-white/[0.03] p-8 text-center">
+        <div className="mb-4 flex size-14 items-center justify-center rounded-2xl border border-white/10 bg-white/10 text-primary shadow-2xl shadow-primary/20">
+          <Sparkles className="h-6 w-6" />
+        </div>
+        <p className="text-base font-semibold text-white">Your premium output will appear here</p>
+        <p className="mt-2 max-w-sm text-sm leading-6 text-slate-400">
+          Fill the builder, run the tool, and review a polished, copy-ready response with export options.
+        </p>
+      </div>
+    );
   }
 
   if (isPremiumEnvelope(value)) {
     return (
       <div className={className}>
-        <div className="mb-3 rounded-xl border bg-card p-3">
-          <div className="mb-1 flex items-center justify-between gap-2">
-            <h3 className="text-base font-semibold">{value.title}</h3>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={async () => {
-                await navigator.clipboard.writeText(JSON.stringify(value.raw, null, 2));
-                setCopied("all");
-                setTimeout(() => setCopied(null), 1200);
-              }}
-            >
-              {copied === "all" ? "Copied" : "Copy all"}
-            </Button>
+        <div className="mb-4 overflow-hidden rounded-[1.75rem] border border-white/10 bg-gradient-to-br from-white/12 via-white/8 to-white/5 shadow-2xl shadow-black/20 backdrop-blur">
+          <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:justify-between">
+            <div className="space-y-2">
+              <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/15 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">
+                <Sparkles className="h-3.5 w-3.5" />
+                Premium result
+              </div>
+              <h3 className="text-xl font-semibold tracking-tight text-white">{value.title}</h3>
+              <p className="max-w-2xl text-sm leading-6 text-slate-300">{value.summary}</p>
+            </div>
+            <CopyButton value={JSON.stringify(value.raw, null, 2)} copied={copied === "all"} onCopied={() => markCopied("all")} label="Copy all" />
           </div>
-          <p className="text-sm text-muted-foreground">{value.summary}</p>
         </div>
 
-        <div className="grid gap-3">
-          {value.sections.map((section) => (
-            <details key={section.id} className="group rounded-xl border border-border bg-card p-0 transition-shadow hover:shadow-lg">
-              <summary className="flex items-center justify-between gap-3 rounded-t-xl px-4 py-3 text-sm font-semibold text-foreground outline-none cursor-pointer bg-background/80 transition">
-                <span>{section.heading}</span>
-                <ChevronDown className="h-4 w-4 text-muted-foreground transition duration-300 group-open:-rotate-180" />
+        <div className="grid gap-4">
+          {value.sections.map((section, index) => (
+            <details key={section.id} open={index === 0} className="group overflow-hidden rounded-[1.5rem] border border-white/10 bg-white/[0.04] shadow-xl shadow-black/10 transition hover:border-primary/40 hover:bg-white/[0.06]">
+              <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-white outline-none transition">
+                <span className="flex items-center gap-3">
+                  <span className="flex size-7 items-center justify-center rounded-full bg-primary/20 text-xs text-primary">{index + 1}</span>
+                  {section.heading}
+                </span>
+                <ChevronDown className="h-4 w-4 text-slate-400 transition duration-300 group-open:-rotate-180" />
               </summary>
-              <div className="space-y-4 border-t border-border/70 px-4 py-4">
+              <div className="space-y-4 border-t border-white/10 bg-white/[0.03] px-5 py-5">
                 <div className="flex items-center justify-between gap-3">
                   {section.bullets && section.bullets.length > 0 ? (
-                    <span className="rounded-full bg-primary/10 px-2 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+                    <span className="rounded-full border border-primary/30 bg-primary/15 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
                       {section.bullets.length} key points
                     </span>
                   ) : null}
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={async () => {
-                      await navigator.clipboard.writeText(section.body);
-                      setCopied(section.id);
-                      setTimeout(() => setCopied(null), 1200);
-                    }}
-                  >
-                    {copied === section.id ? "Copied" : "Copy"}
-                  </Button>
+                  <CopyButton value={section.body} copied={copied === section.id} onCopied={() => markCopied(section.id)} />
                 </div>
                 {section.bullets && section.bullets.length > 0 ? (
-                  <ul className="space-y-2 text-sm leading-7 text-foreground pl-5 list-disc">
+                  <ul className="grid gap-2 text-sm leading-7 text-slate-200">
                     {section.bullets.map((bullet, idx) => (
-                      <li key={`${section.id}-${idx}`}>{bullet}</li>
+                      <li key={`${section.id}-${idx}`} className="flex gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3">
+                        <CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-primary" />
+                        <span>{bullet}</span>
+                      </li>
                     ))}
                   </ul>
                 ) : null}
-                {isMarkdownLike(section.body) ? renderMarkdownLike(section.body) : <pre className="whitespace-pre-wrap rounded-2xl bg-muted/10 p-4 text-sm leading-7 text-foreground">{section.body}</pre>}
+                <div className="rounded-[1.25rem] border border-white/10 bg-white/[0.96] p-4 text-slate-900 shadow-inner dark:bg-slate-950/70 dark:text-slate-100">
+                  {isMarkdownLike(section.body) ? renderMarkdownLike(section.body) : <pre className="whitespace-pre-wrap text-sm leading-7">{section.body}</pre>}
+                </div>
               </div>
             </details>
           ))}
@@ -181,26 +216,23 @@ export function OutputRenderer({ value, className }: OutputRendererProps) {
     const entries = Object.entries(value as Record<string, unknown>);
     return (
       <div className={className}>
-        <div className="grid gap-3">
+        <div className="grid gap-4">
           {entries.map(([key, section]) => {
             const sectionText = toDisplayString(section);
             return (
-              <div key={key} className="rounded-xl border bg-card p-3">
-                <div className="mb-2 flex items-center justify-between gap-2">
-                  <h4 className="text-sm font-semibold capitalize">{key.replace(/([A-Z])/g, " $1")}</h4>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={async () => {
-                      await navigator.clipboard.writeText(sectionText);
-                      setCopied(key);
-                      setTimeout(() => setCopied(null), 1200);
-                    }}
-                  >
-                    {copied === key ? "Copied" : "Copy"}
-                  </Button>
+              <div key={key} className="overflow-hidden rounded-[1.5rem] border border-white/10 bg-white/[0.04] shadow-xl shadow-black/10">
+                <div className="flex items-center justify-between gap-3 border-b border-white/10 px-5 py-4">
+                  <div className="flex items-center gap-3">
+                    <span className="flex size-8 items-center justify-center rounded-2xl bg-primary/15 text-primary">
+                      <FileText className="h-4 w-4" />
+                    </span>
+                    <h4 className="text-sm font-semibold capitalize text-white">{formatOutputLabel(key)}</h4>
+                  </div>
+                  <CopyButton value={sectionText} copied={copied === key} onCopied={() => markCopied(key)} />
                 </div>
-                {isMarkdownLike(sectionText) ? renderMarkdownLike(sectionText) : <pre className="whitespace-pre-wrap text-sm leading-7 text-foreground">{sectionText}</pre>}
+                <div className="bg-white/[0.96] p-5 text-slate-900 dark:bg-slate-950/70 dark:text-slate-100">
+                  {isMarkdownLike(sectionText) ? renderMarkdownLike(sectionText) : <pre className="whitespace-pre-wrap text-sm leading-7">{sectionText}</pre>}
+                </div>
               </div>
             );
           })}
@@ -211,11 +243,20 @@ export function OutputRenderer({ value, className }: OutputRendererProps) {
 
   return (
     <div className={className}>
-      {isMarkdownLike(content) ? (
-        renderMarkdownLike(content)
-      ) : (
-        <pre className="whitespace-pre-wrap text-sm leading-7 text-foreground">{content}</pre>
-      )}
+      <div className="overflow-hidden rounded-[1.5rem] border border-white/10 bg-white/[0.04] shadow-xl shadow-black/10">
+        <div className="flex items-center justify-between gap-3 border-b border-white/10 px-5 py-4">
+          <div className="flex items-center gap-3 text-sm font-semibold text-white">
+            <span className="flex size-8 items-center justify-center rounded-2xl bg-primary/15 text-primary">
+              <FileText className="h-4 w-4" />
+            </span>
+            Generated response
+          </div>
+          <CopyButton value={content} copied={copied === "content"} onCopied={() => markCopied("content")} />
+        </div>
+        <div className="bg-white/[0.96] p-5 text-slate-900 dark:bg-slate-950/70 dark:text-slate-100">
+          {isMarkdownLike(content) ? renderMarkdownLike(content) : <pre className="whitespace-pre-wrap text-sm leading-7">{content}</pre>}
+        </div>
+      </div>
     </div>
   );
 }
