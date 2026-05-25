@@ -118,7 +118,7 @@ export async function POST(request: Request) {
     const { error: subscriptionError } = await supabaseAdmin
       .from("subscriptions")
       .update({
-        status: "active",
+        status: "ACTIVE",
         plan_name: plan.id,
         renewal_date: nextRenewal,
         current_period_end: nextRenewal,
@@ -154,7 +154,7 @@ export async function POST(request: Request) {
       billing: {
         subscription: {
           planId: plan.id,
-          status: "active",
+          status: "ACTIVE",
           renewalAt: nextRenewal,
         },
       },

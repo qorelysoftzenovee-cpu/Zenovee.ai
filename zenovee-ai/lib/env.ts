@@ -64,15 +64,11 @@ export const safeEnv = parsedEnv.success
 export const env = safeEnv;
 
 const billingEnvSchema = envSchema.pick({
-  NEXT_PUBLIC_APP_URL: true,
-  NEXT_PUBLIC_APP_NAME: true,
   NEXT_PUBLIC_SUPABASE_URL: true,
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: true,
   NEXT_PUBLIC_RAZORPAY_KEY_ID: true,
   SUPABASE_SERVICE_ROLE_KEY: true,
   RAZORPAY_KEY_ID: true,
   RAZORPAY_KEY_SECRET: true,
-  RAZORPAY_WEBHOOK_SECRET: true,
 });
 
 const aiEnvSchema = envSchema.pick({

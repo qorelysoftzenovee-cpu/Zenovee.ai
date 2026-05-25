@@ -119,7 +119,6 @@ export async function POST(request: Request) {
     const paymentInsert: Database["public"]["Tables"]["payments"]["Insert"] = {
       user_id: user.id,
       payment_amount: Number((amountPaise / 100).toFixed(2)),
-      amount: Number((amountPaise / 100).toFixed(2)),
       plan: plan.id,
       currency: "INR",
       status: "PENDING",
@@ -137,7 +136,7 @@ export async function POST(request: Request) {
         {
           user_id: user.id,
           plan_name: plan.id,
-          status: "inactive",
+          status: "PENDING",
           billing_cycle: "monthly",
           cancel_at_period_end: false,
           updated_at: nowIso,
