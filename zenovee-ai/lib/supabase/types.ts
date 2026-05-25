@@ -159,7 +159,6 @@ export type Database = {
           id: string;
           user_id: string;
           payment_amount: number;
-          amount: number;
           plan: string;
           status: "PENDING" | "SUCCESS" | "FAILED" | "CANCELLED" | "REFUNDED" | "CREDIT_TOPUP";
           currency: string;
@@ -175,7 +174,6 @@ export type Database = {
         Insert: {
           user_id: string;
           payment_amount: number;
-          amount: number;
           plan: string;
           status: "PENDING" | "SUCCESS" | "FAILED" | "CANCELLED" | "REFUNDED" | "CREDIT_TOPUP";
           currency?: string;
