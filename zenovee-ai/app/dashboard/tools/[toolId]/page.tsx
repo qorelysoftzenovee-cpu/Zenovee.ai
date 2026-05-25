@@ -9,27 +9,43 @@ export default async function DashboardToolRunnerPage({ params }: { params: Prom
   try {
     await requireStandardUser();
     const { toolId } = await params;
+    serverLog({
+      level: "info",
+      route: "app/dashboard/tools/[toolId]/page",
+      message: "Incoming dashboard tool route request",
+      metadata: { toolId },
+    });
+
     const tool = getToolDefinition(toolId);
+    const isPublic = (tool?.metadata.visibility ?? "public") === "public";
+    const isActive = (tool?.metadata.availability ?? "active") === "active";
 
     serverLog({
       level: "info",
       route: "app/dashboard/tools/[toolId]/page",
-      message: "Resolved dashboard tool route",
+      message: "Resolved dashboard tool lookup",
       metadata: {
         toolId,
         hasTool: Boolean(tool),
+        toolName: tool?.metadata.name ?? null,
         visibility: tool?.metadata.visibility ?? null,
         availability: tool?.metadata.availability ?? null,
+        fields: tool?.fields.length ?? 0,
       },
     });
 
-    const isPublic = (tool?.metadata.visibility ?? "public") === "public";
-    const isActive = (tool?.metadata.availability ?? "active") === "active";
     if (!tool || !isPublic || !isActive) {
       notFound();
     }
 
-    return <ToolRunner tool={tool} />;
+    const clientTool = {
+      id: tool.id,
+      metadata: tool.metadata,
+      fields: tool.fields,
+      creditCost: tool.creditCost,
+    };
+
+    return <ToolRunner tool={clientTool} />;
   } catch (error) {
     serverLog({
       level: "error",

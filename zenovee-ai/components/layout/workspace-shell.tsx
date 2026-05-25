@@ -118,7 +118,7 @@ export function WorkspaceShell({ children, title, subtitle }: WorkspaceShellProp
             <div className="mt-auto space-y-3 border-t border-white/10 pt-4">
               <div className="rounded-xl border border-white/15 bg-white/5 px-3 py-2.5">
                 <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Usage & Credits</p>
-                <Link href="/billing" className="mt-1 inline-flex items-center gap-1.5 text-sm font-medium text-white/90 hover:text-white">
+                <Link href="/dashboard" className="mt-1 inline-flex items-center gap-1.5 text-sm font-medium text-white/90 hover:text-white">
                   View usage dashboard <Sparkles size={13} />
                 </Link>
               </div>

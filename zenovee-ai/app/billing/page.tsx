@@ -35,8 +35,10 @@ export default async function BillingPage() {
 
   const normalizedStatus = String(subscription?.status ?? "").toLowerCase();
   const hasActiveSubscription = normalizedStatus === "active";
-  const activePlanId = hasActiveSubscription ? String(subscription?.plan_name ?? "").toLowerCase() : null;
-  const currentPlan = activePlanId ? subscriptionPlans.find((plan) => plan.id === activePlanId) : null;
+  const activePlanId = hasActiveSubscription ? String(subscription?.plan_name ?? "").trim().toLowerCase() : null;
+  const currentPlan = activePlanId
+    ? subscriptionPlans.find((plan) => plan.id === activePlanId || plan.name.toLowerCase() === activePlanId)
+    : null;
 
   return (
     <WorkspaceShell title="Billing">
@@ -55,7 +57,7 @@ export default async function BillingPage() {
           <h2 className="mb-3 text-lg font-semibold">Subscription Plans</h2>
           <div className="grid gap-4 lg:grid-cols-3">
           {subscriptionPlans.map((plan) => {
-            const active = Boolean(activePlanId) && plan.id === activePlanId;
+            const active = Boolean(activePlanId) && (plan.id === activePlanId || plan.name.toLowerCase() === activePlanId);
             return (
               <Card key={plan.id} className={active ? "premium-surface border-primary" : "premium-surface"}>
                 <CardHeader>

@@ -9,8 +9,10 @@ import { OutputRenderer } from "@/components/tools/output-renderer";
 import type { ToolDefinition } from "@/types/tools";
 import { AlertDialog } from "@/components/ui/dialogs";
 
+type ToolRunnerTool = Pick<ToolDefinition, "id" | "metadata" | "fields" | "creditCost">;
+
 type Props = {
-  tool: ToolDefinition;
+  tool: ToolRunnerTool;
 };
 
 export function ToolRunner({ tool }: Props) {
