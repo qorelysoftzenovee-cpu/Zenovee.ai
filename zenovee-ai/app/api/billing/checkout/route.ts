@@ -215,13 +215,31 @@ export async function POST(request: Request) {
     if (error instanceof z.ZodError) {
       return jsonError(error.issues[0]?.message ?? "Please choose a valid plan before starting checkout.", 400, { code: "INVALID_CHECKOUT_REQUEST" });
     }
+    // Provide more actionable errors for common failure modes so the client
+    // surface is clearer and we can avoid the generic message in many cases.
+    const msg = error instanceof Error ? error.message : String(error);
 
-    serverLog({
-      level: "error",
-      route: "api/billing/checkout",
-      message: "Checkout creation failed",
-      error,
-    });
+    // Config / missing secret errors
+    if (msg.includes("Invalid billing environment configuration") || msg.includes("Razorpay is not configured")) {
+      serverLog({ level: "error", route: "api/billing/checkout", message: "Billing configuration error", error });
+      return jsonError("Payments are temporarily unavailable because billing is not configured. Please contact support or try again later.", 503, {
+        code: "CHECKOUT_CONFIG_ERROR",
+        retryable: false,
+      });
+    }
+
+    // Transient external errors (Razorpay / network / Supabase). Mark retryable.
+    if (msg.includes("ECONNREFUSED") || msg.includes("timeout") || msg.includes("Failed to fetch") || msg.includes("Razorpay")) {
+      serverLog({ level: "error", route: "api/billing/checkout", message: "External service error during checkout", error });
+      return jsonError("We couldn’t start secure checkout right now due to a temporary service issue. Please retry in a moment.", 502, {
+        code: "CHECKOUT_EXTERNAL_ERROR",
+        retryable: true,
+        retryAfterSeconds: 10,
+      });
+    }
+
+    // Fallback: log and return a generic retryable error
+    serverLog({ level: "error", route: "api/billing/checkout", message: "Checkout creation failed", error });
 
     return jsonError("We couldn’t start secure checkout right now. Please retry in a moment. If this keeps happening, refresh the page and try again.", 500, {
       code: "CHECKOUT_INITIALIZATION_FAILED",

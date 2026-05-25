@@ -32,27 +32,20 @@ export function BillingProvider({ children }: { children: ReactNode }) {
       } = await supabase.auth.getSession();
 
       if (!session?.user) {
-        console.log("[BillingProvider] No session, clearing subscription");
         setSubscription(null);
         setIsLoading(false);
         return;
       }
 
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("subscriptions")
         .select("plan_name,status")
         .eq("user_id", session.user.id)
         .maybeSingle<Subscription>();
 
-      if (error) {
-        console.warn("[BillingProvider] Subscription fetch error:", error);
-        setSubscription(null);
-      } else {
-        console.log("[BillingProvider] Loaded subscription:", data ? `Plan: ${data.plan_name}, Status: ${data.status}` : "null");
-        setSubscription(data);
-      }
-    } catch (err) {
-      console.error("[BillingProvider] loadSubscription exception:", err);
+      setSubscription(data ?? null);
+    } catch {
+      // Subscription load error; continue with null subscription
       setSubscription(null);
     } finally {
       setIsLoading(false);
@@ -60,18 +53,21 @@ export function BillingProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    void loadSubscription();
+    // Defer subscription load so state updates don't run synchronously within the effect
+    const t = setTimeout(() => {
+      void loadSubscription();
+    }, 0);
 
     const supabase = createSupabaseBrowserClient();
     const channel = supabase
       .channel("billing-sync")
       .on("postgres_changes", { event: "*", schema: "public", table: "subscriptions" }, () => {
-        console.log("[BillingProvider] Subscription changed, refreshing...");
-        void loadSubscription();
+        setTimeout(() => void loadSubscription(), 0);
       })
       .subscribe();
 
     return () => {
+      clearTimeout(t);
       void supabase.removeChannel(channel);
     };
   }, []);

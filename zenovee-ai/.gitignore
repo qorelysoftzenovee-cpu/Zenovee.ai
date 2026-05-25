@@ -12,9 +12,17 @@
 
 # testing
 /coverage
+/playwright-report/
+/test-results/
+
+# qa reports
+/qa-reports/
 
 # next.js
 /.next/
+/.next-build/
+/.next-rc-verify/
+/.next-rc-verify-2/
 /out/
 
 # production

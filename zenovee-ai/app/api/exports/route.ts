@@ -8,10 +8,6 @@ import {
 } from "@/services/export-system";
 import { safeErrorMessage } from "@/lib/runtime";
 
-function getErrorMessage(error: unknown) {
-  return error instanceof Error ? error.message : "Unexpected error occurred.";
-}
-
 function classifyExportError(error: unknown) {
   const message = safeErrorMessage(error, "Unable to process export request.");
   const normalized = message.toLowerCase();

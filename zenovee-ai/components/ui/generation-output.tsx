@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { cn } from "@/lib/utils";
-import { Check, ChevronDown, Copy, Download, Sparkles } from "lucide-react";
+import { Check, ChevronDown, Copy, Sparkles } from "lucide-react";
 
 /* === GENERATION OUTPUT PANEL === */
 export function GenerationOutputPanel({

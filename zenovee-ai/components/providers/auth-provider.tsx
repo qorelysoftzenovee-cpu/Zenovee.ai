@@ -20,15 +20,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const loadSession = async () => {
       try {
-        const { data, error } = await supabase.auth.getSession();
-        if (error) {
-          console.warn("[AuthProvider] getSession error:", error);
-        }
+        const { data } = await supabase.auth.getSession();
         const newSession = data.session ?? null;
         setSession(newSession);
-        console.log("[AuthProvider] Loaded session:", newSession ? `User: ${newSession.user.email}` : "null");
-      } catch (err) {
-        console.error("[AuthProvider] loadSession exception:", err);
+      } catch {
+        // Session load error; continue with null session
       } finally {
         setIsLoading(false);
       }
@@ -39,13 +35,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, nextSession) => {
-      console.log("[AuthProvider] onAuthStateChange:", event, nextSession ? `User: ${nextSession.user.email}` : "null");
       setSession(nextSession ?? null);
       setIsLoading(false);
     });
 
     return () => {
-      console.log("[AuthProvider] Cleaning up auth subscription");
       subscription.unsubscribe();
     };
   }, []);

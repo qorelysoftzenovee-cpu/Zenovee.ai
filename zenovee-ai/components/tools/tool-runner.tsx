@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { OutputRenderer } from "@/components/tools/output-renderer";
-import type { ToolDefinition, ToolExample, ToolPreset } from "@/types/tools";
+import type { ToolDefinition, ToolPreset } from "@/types/tools";
 import { AlertDialog } from "@/components/ui/dialogs";
 import { ArrowRight, Clock3, Sparkles, RefreshCcw, ShieldCheck } from "lucide-react";
 

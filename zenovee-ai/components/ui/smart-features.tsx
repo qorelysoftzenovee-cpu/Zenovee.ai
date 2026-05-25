@@ -2,7 +2,7 @@
 
 import React from "react";
 import { cn } from "@/lib/utils";
-import { Sparkles, Lightbulb, TrendingUp, Clock, Target, Zap, ChevronRight } from "lucide-react";
+import { Sparkles, Lightbulb, ChevronRight } from "lucide-react";
 
 /* === SMART SUGGESTION === */
 export function SmartSuggestion({

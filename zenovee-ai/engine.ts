@@ -1,4 +1,4 @@
-import { getToolDefinition, listToolDefinitions } from "@/definitions";
+import { listToolDefinitions } from "@/definitions";
 import { ToolExecutionService } from "@/services/tool-execution-service";
 
 export class ToolEngine {

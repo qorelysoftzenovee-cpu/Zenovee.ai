@@ -2,10 +2,12 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { requireStandardUser } from "@/lib/auth";
 import { getToolDefinition } from "@/definitions";
+import type { ToolDefinition } from "@/types/tools";
 import { ToolRunner } from "@/components/tools/tool-runner";
 import { serverLog } from "@/lib/logger";
 
 export default async function DashboardToolRunnerPage({ params }: { params: Promise<{ toolId: string }> }) {
+  let clientTool: Pick<ToolDefinition, "id" | "metadata" | "fields" | "creditCost" | "presets" | "examples"> | null = null;
   try {
     await requireStandardUser();
     const { toolId } = await params;
@@ -38,7 +40,7 @@ export default async function DashboardToolRunnerPage({ params }: { params: Prom
       notFound();
     }
 
-    const clientTool = {
+    clientTool = {
       id: tool.id,
       metadata: tool.metadata,
       fields: tool.fields,
@@ -46,8 +48,6 @@ export default async function DashboardToolRunnerPage({ params }: { params: Prom
       presets: tool.presets ?? [],
       examples: tool.examples ?? [],
     };
-
-    return <ToolRunner tool={clientTool} />;
   } catch (error) {
     serverLog({
       level: "error",
@@ -58,7 +58,9 @@ export default async function DashboardToolRunnerPage({ params }: { params: Prom
         paramsType: typeof params,
       },
     });
+  }
 
+  if (!clientTool) {
     return (
       <main className="min-h-[60vh] flex items-center justify-center p-6">
         <div className="max-w-xl w-full rounded-2xl border bg-card p-6 text-center space-y-3">
@@ -76,4 +78,6 @@ export default async function DashboardToolRunnerPage({ params }: { params: Prom
       </main>
     );
   }
+
+  return <ToolRunner tool={clientTool} />;
 }
