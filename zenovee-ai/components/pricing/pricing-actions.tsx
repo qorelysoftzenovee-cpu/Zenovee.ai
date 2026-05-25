@@ -64,7 +64,13 @@ export function PricingActions({
   const [status, setStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [statusTone, setStatusTone] = useState<"default" | "success" | "error">("default");
-  const [isScriptReady, setIsScriptReady] = useState(false);
+  const [isScriptReady, setIsScriptReady] = useState<boolean | "checking">(() => {
+    // On initial render, check if Razorpay is already loaded
+    if (typeof window !== "undefined" && (window as any).Razorpay) {
+      return true;
+    }
+    return "checking";
+  });
   const requestCounterRef = useRef(0);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -79,15 +85,37 @@ export function PricingActions({
     return () => clearCheckoutTimeout();
   }, []);
 
+  useEffect(() => {
+    // Verify script is ready and available
+    const checkScriptReady = () => {
+      if (typeof window !== "undefined" && (window as any).Razorpay) {
+        setIsScriptReady(true);
+      }
+    };
+
+    // Check immediately
+    checkScriptReady();
+
+    // Also check after a short delay for script loading
+    if (isScriptReady === "checking") {
+      const timer = setTimeout(checkScriptReady, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isScriptReady]);
+
   const handleCheckout = async () => {
     if (loading) return;
     setLoading(true);
     setStatus(null);
     setStatusTone("default");
-    if (!isScriptReady || !window.Razorpay) {
+    
+    // Verify Razorpay is available
+    if (isScriptReady !== true || !window.Razorpay) {
       setStatusTone("error");
-      setStatus("Payments are still initializing. Please try again in a moment.");
+      setStatus("Payment system is initializing. Please try again in a moment.");
       setLoading(false);
+      // Try to reload the script or force a check
+      setIsScriptReady("checking");
       return;
     }
 
@@ -186,8 +214,8 @@ export function PricingActions({
 
   return (
     <div className="space-y-2">
-      <Script src="https://checkout.razorpay.com/v1/checkout.js" onLoad={() => setIsScriptReady(true)} />
-      <Button className="w-full min-h-11" onClick={handleCheckout} disabled={loading || !isScriptReady} aria-label={`Checkout ${planName} plan`}>
+      <Script src="https://checkout.razorpay.com/v1/checkout.js" onLoad={() => setIsScriptReady(true)} onError={() => setIsScriptReady(false)} />
+      <Button className="w-full min-h-11" onClick={handleCheckout} disabled={loading} aria-label={`Checkout ${planName} plan`}>
         {loading ? "Preparing..." : `Choose ${planName}`}
       </Button>
       <p className="text-xs text-muted-foreground">Secure payments via Razorpay. Your subscription updates automatically after payment.</p>

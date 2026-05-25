@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/components/providers/auth-provider";
+import { BillingProvider } from "@/components/providers/billing-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { PageViewTracker } from "@/components/analytics/page-view-tracker";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL, buildOgImageUrl } from "@/lib/seo/site";
@@ -48,8 +49,10 @@ export default function RootLayout({
       <body className="min-h-screen bg-background font-sans text-foreground">
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
           <AuthProvider>
-            <PageViewTracker />
-            {children}
+            <BillingProvider>
+              <PageViewTracker />
+              {children}
+            </BillingProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>

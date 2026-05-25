@@ -19,23 +19,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const supabase = createSupabaseBrowserClient();
 
     const loadSession = async () => {
-      const { data, error } = await supabase.auth.getSession();
-      if (!error) {
-        setSession(data.session ?? null);
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        if (error) {
+          console.warn("[AuthProvider] getSession error:", error);
+        }
+        const newSession = data.session ?? null;
+        setSession(newSession);
+        console.log("[AuthProvider] Loaded session:", newSession ? `User: ${newSession.user.email}` : "null");
+      } catch (err) {
+        console.error("[AuthProvider] loadSession exception:", err);
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     };
 
     void loadSession();
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      console.log("[AuthProvider] onAuthStateChange:", event, nextSession ? `User: ${nextSession.user.email}` : "null");
       setSession(nextSession ?? null);
       setIsLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      console.log("[AuthProvider] Cleaning up auth subscription");
+      subscription.unsubscribe();
+    };
   }, []);
 
   const value = useMemo(() => ({ session, isLoading }), [session, isLoading]);
