@@ -30,7 +30,8 @@ export function serverLog({ level, route, message, error, metadata }: LogInput) 
     metadata,
   };
 
-  if (process.env.NODE_ENV === "production") {
+  const runtimeLoggingEnabled = process.env.ENABLE_RUNTIME_LOGS === "true";
+  if (process.env.NODE_ENV === "production" && !runtimeLoggingEnabled) {
     return;
   }
 

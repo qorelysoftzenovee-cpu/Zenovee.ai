@@ -33,7 +33,10 @@ export default async function BillingPage() {
       .limit(10),
   ]);
 
-  const currentPlan = subscriptionPlans.find((plan) => plan.id === subscription?.plan_name) ?? subscriptionPlans[0];
+  const normalizedStatus = String(subscription?.status ?? "").toLowerCase();
+  const hasActiveSubscription = normalizedStatus === "active";
+  const activePlanId = hasActiveSubscription ? String(subscription?.plan_name ?? "").toLowerCase() : null;
+  const currentPlan = activePlanId ? subscriptionPlans.find((plan) => plan.id === activePlanId) : null;
 
   return (
     <WorkspaceShell title="Billing">
@@ -43,8 +46,8 @@ export default async function BillingPage() {
           <h2 className="mt-2 text-2xl font-semibold tracking-tight">Plans, renewals, and payment history</h2>
           <p className="mt-1 text-sm text-muted-foreground">Your active plan, billing status, and transaction ledger are centralized here.</p>
           <div className="mt-3 flex flex-wrap gap-2 text-xs">
-            <span className="stat-chip">Active plan: {currentPlan.name}</span>
-            <span className="stat-chip">Subscription: {subscription?.status ?? "inactive"}</span>
+            <span className="stat-chip">Active plan: {currentPlan?.name ?? "None"}</span>
+            <span className="stat-chip">Subscription: {normalizedStatus || "inactive"}</span>
             <span className="stat-chip">Payments: {(payments ?? []).length}</span>
           </div>
         </section>
@@ -52,7 +55,7 @@ export default async function BillingPage() {
           <h2 className="mb-3 text-lg font-semibold">Subscription Plans</h2>
           <div className="grid gap-4 lg:grid-cols-3">
           {subscriptionPlans.map((plan) => {
-            const active = plan.id === currentPlan.id;
+            const active = Boolean(activePlanId) && plan.id === activePlanId;
             return (
               <Card key={plan.id} className={active ? "premium-surface border-primary" : "premium-surface"}>
                 <CardHeader>

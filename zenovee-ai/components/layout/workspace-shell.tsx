@@ -60,6 +60,8 @@ export function WorkspaceShell({ children, title, subtitle }: WorkspaceShellProp
 
   const breadcrumb = pathname.split("/").filter(Boolean);
 
+  const isFavoritesActive = pathname === "/history";
+
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,hsl(var(--primary)/0.08),transparent_35%),hsl(var(--background))] text-foreground">
       <div className={cn("fixed inset-y-0 left-0 z-40 hidden border-r border-border/70 bg-slate-950/95 text-slate-100 backdrop-blur-xl transition-all duration-300 lg:block", collapsed ? "w-[94px]" : "w-[288px]")}>
@@ -144,7 +146,10 @@ export function WorkspaceShell({ children, title, subtitle }: WorkspaceShellProp
             <div className="no-scrollbar flex gap-2 overflow-x-auto">
               {workspaceTabs.map((tab) => {
                 const Icon = tab.icon;
-                const active = pathname === tab.href || pathname.startsWith(`${tab.href}/`) || (tab.href.includes("history?view=favorites") && pathname === "/history");
+                const active =
+                  tab.label === "Favorites"
+                    ? isFavoritesActive
+                    : pathname === tab.href || pathname.startsWith(`${tab.href}/`);
                 return (
                   <Link
                     key={tab.label}
