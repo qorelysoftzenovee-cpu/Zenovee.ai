@@ -22,6 +22,14 @@ function resolveIdempotencyKey(request: Request, userId: string, planId: string)
   return `${userId}:plan:${planId}`;
 }
 
+function buildSafeReceipt(planId: string, userId: string) {
+  const compactUserId = userId.replace(/[^a-zA-Z0-9]/g, "").slice(0, 12) || "user";
+  const compactPlanId = planId.replace(/[^a-zA-Z0-9]/g, "").slice(0, 10) || "plan";
+  const suffix = Date.now().toString(36);
+  // Razorpay receipt supports a short identifier (commonly <= 40 chars).
+  return `pl${compactPlanId}_u${compactUserId}_${suffix}`.slice(0, 40);
+}
+
 export async function POST(request: Request) {
   try {
     validateBillingEnv();
@@ -93,7 +101,7 @@ export async function POST(request: Request) {
     const order = await razorpay.orders.create({
       amount: amountPaise,
       currency: "INR",
-      receipt: `plan_${plan.id}_${user.id}_${Date.now()}`,
+      receipt: buildSafeReceipt(plan.id, user.id),
       notes: {
         userId: user.id,
         planId: plan.id,
