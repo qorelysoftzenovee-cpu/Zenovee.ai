@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
+import { ChevronDown } from "lucide-react";
 
 type OutputRendererProps = {
   value: unknown;
@@ -136,30 +137,40 @@ export function OutputRenderer({ value, className }: OutputRendererProps) {
 
         <div className="grid gap-3">
           {value.sections.map((section) => (
-            <div key={section.id} className="rounded-xl border bg-card p-3">
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <h4 className="text-sm font-semibold">{section.heading}</h4>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={async () => {
-                    await navigator.clipboard.writeText(section.body);
-                    setCopied(section.id);
-                    setTimeout(() => setCopied(null), 1200);
-                  }}
-                >
-                  {copied === section.id ? "Copied" : "Copy"}
-                </Button>
+            <details key={section.id} className="group rounded-xl border border-border bg-card p-0 transition-shadow hover:shadow-lg">
+              <summary className="flex items-center justify-between gap-3 rounded-t-xl px-4 py-3 text-sm font-semibold text-foreground outline-none cursor-pointer bg-background/80 transition">
+                <span>{section.heading}</span>
+                <ChevronDown className="h-4 w-4 text-muted-foreground transition duration-300 group-open:-rotate-180" />
+              </summary>
+              <div className="space-y-4 border-t border-border/70 px-4 py-4">
+                <div className="flex items-center justify-between gap-3">
+                  {section.bullets && section.bullets.length > 0 ? (
+                    <span className="rounded-full bg-primary/10 px-2 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+                      {section.bullets.length} key points
+                    </span>
+                  ) : null}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={async () => {
+                      await navigator.clipboard.writeText(section.body);
+                      setCopied(section.id);
+                      setTimeout(() => setCopied(null), 1200);
+                    }}
+                  >
+                    {copied === section.id ? "Copied" : "Copy"}
+                  </Button>
+                </div>
+                {section.bullets && section.bullets.length > 0 ? (
+                  <ul className="space-y-2 text-sm leading-7 text-foreground pl-5 list-disc">
+                    {section.bullets.map((bullet, idx) => (
+                      <li key={`${section.id}-${idx}`}>{bullet}</li>
+                    ))}
+                  </ul>
+                ) : null}
+                {isMarkdownLike(section.body) ? renderMarkdownLike(section.body) : <pre className="whitespace-pre-wrap rounded-2xl bg-muted/10 p-4 text-sm leading-7 text-foreground">{section.body}</pre>}
               </div>
-              {section.bullets && section.bullets.length > 0 ? (
-                <ul className="mb-2 list-disc space-y-1 pl-5 text-sm">
-                  {section.bullets.map((bullet, idx) => (
-                    <li key={`${section.id}-${idx}`}>{bullet}</li>
-                  ))}
-                </ul>
-              ) : null}
-              {isMarkdownLike(section.body) ? renderMarkdownLike(section.body) : <pre className="whitespace-pre-wrap text-sm leading-7 text-foreground">{section.body}</pre>}
-            </div>
+            </details>
           ))}
         </div>
       </div>

@@ -6,10 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { OutputRenderer } from "@/components/tools/output-renderer";
-import type { ToolDefinition } from "@/types/tools";
+import type { ToolDefinition, ToolExample, ToolPreset } from "@/types/tools";
 import { AlertDialog } from "@/components/ui/dialogs";
+import { ArrowRight, Clock3, Sparkles, RefreshCcw, ShieldCheck } from "lucide-react";
 
-type ToolRunnerTool = Pick<ToolDefinition, "id" | "metadata" | "fields" | "creditCost">;
+type ToolRunnerTool = Pick<ToolDefinition, "id" | "metadata" | "fields" | "creditCost" | "presets" | "examples">;
 
 type Props = {
   tool: ToolRunnerTool;
@@ -25,11 +26,17 @@ export function ToolRunner({ tool }: Props) {
   const [lastPayload, setLastPayload] = useState<Record<string, unknown> | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
   const [exporting, setExporting] = useState<"txt" | "md" | "pdf" | "json" | null>(null);
+  const [activePreset, setActivePreset] = useState<ToolPreset | null>(null);
   const [upgradeModal, setUpgradeModal] = useState<{ open: boolean; title: string; description: string }>({
     open: false,
     title: "Premium access required",
     description: "Upgrade your plan to continue.",
   });
+
+  const toolTagline = tool.metadata.tagline ?? tool.metadata.description;
+  const toolOutputType = tool.metadata.outputType ?? "text";
+  const estimatedTime = tool.metadata.estimatedTimeSeconds ? `${tool.metadata.estimatedTimeSeconds}s` : null;
+  const activePresetId = activePreset?.label ?? "";
 
   const validationError = useMemo(() => {
     const missing = tool.fields.find((field) => field.required && String(input[field.name] ?? "").trim().length === 0);
@@ -38,6 +45,12 @@ export function ToolRunner({ tool }: Props) {
   }, [tool.fields, input]);
 
   const canRun = !validationError;
+
+  const applyPreset = (preset: ToolPreset) => {
+    setInput(preset.values);
+    setActivePreset(preset);
+    setError(null);
+  };
 
   const run = async (nextInput?: Record<string, unknown>) => {
     const payloadInput = nextInput ?? input;
@@ -142,86 +155,243 @@ export function ToolRunner({ tool }: Props) {
         }}
         variant="warning"
       />
-      <Card>
-        <CardHeader>
-          <CardTitle>{tool.metadata.name}</CardTitle>
-          <p className="text-sm text-muted-foreground">{tool.metadata.description}</p>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {tool.fields.map((field) => {
-            const value = String(input[field.name] ?? "");
-            return (
-              <div key={field.name} className="space-y-1.5">
-                <p className="text-xs font-medium text-muted-foreground">{field.label}</p>
-                {field.type === "select" ? (
-                  <select
-                    className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-                    value={value}
-                    onChange={(e) => setInput((prev) => ({ ...prev, [field.name]: e.target.value }))}
-                  >
-                    <option value="">Select {field.label}</option>
-                    {(field.options ?? []).map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                ) : field.type === "textarea" ? (
-                  <Textarea
-                    value={value}
-                    onChange={(e) => setInput((prev) => ({ ...prev, [field.name]: e.target.value }))}
-                    placeholder={field.placeholder ?? `Enter ${field.label}`}
-                  />
-                ) : (
-                  <Input
-                    value={value}
-                    onChange={(e) => setInput((prev) => ({ ...prev, [field.name]: e.target.value }))}
-                    placeholder={field.placeholder ?? `Enter ${field.label}`}
-                  />
-                )}
+      <div className="space-y-6">
+      <Card className="overflow-hidden border-b-2 border-primary/20 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white shadow-2xl">
+        <CardHeader className="space-y-4">
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-2">
+              <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-white/80">
+                <Sparkles className="h-4 w-4" />
+                {tool.metadata.category}
               </div>
-            );
-          })}
-          {error ? <p className="text-sm text-destructive">{error}</p> : null}
-          {!error && validationError ? <p className="text-xs text-muted-foreground">{validationError}</p> : null}
-          <div className="flex flex-wrap gap-2">
-            <Button onClick={() => void run()} disabled={loading || !canRun}>{loading ? "Generating..." : "Run Tool"}</Button>
-            <Button variant="secondary" onClick={() => void run(lastPayload ?? undefined)} disabled={loading || !lastPayload}>Retry last</Button>
-            <Button variant="outline" onClick={() => void run()} disabled={loading || !canRun}>Improve output</Button>
+              <div className="space-y-1">
+                <h1 className="text-3xl font-semibold tracking-tight">{tool.metadata.name}</h1>
+                <p className="max-w-2xl text-sm leading-7 text-slate-300">{toolTagline}</p>
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="rounded-3xl bg-white/10 p-4 text-sm">
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-300">Estimated output</p>
+                <p className="mt-2 text-base font-semibold text-white">{toolOutputType.replace("-", " ")}</p>
+              </div>
+              <div className="rounded-3xl bg-white/10 p-4 text-sm">
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-300">Credits</p>
+                <p className="mt-2 text-base font-semibold text-white">{tool.creditCost} / run</p>
+              </div>
+              <div className="rounded-3xl bg-white/10 p-4 text-sm">
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-300">Speed</p>
+                <p className="mt-2 text-base font-semibold text-white">{estimatedTime ?? "Instant"}</p>
+              </div>
+            </div>
           </div>
-        </CardContent>
+        </CardHeader>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Premium Output</CardTitle>
+          <CardTitle>Tool Builder</CardTitle>
+          <p className="text-sm text-muted-foreground">Configure your input, use presets, and generate polished results with a single click.</p>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <OutputRenderer value={output} />
-          {exportError ? <p className="text-xs text-destructive">{exportError}</p> : null}
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" onClick={() => void exportOutput("txt")} disabled={!executionId || exporting !== null}>{exporting === "txt" ? "Exporting..." : "Export TXT"}</Button>
-            <Button variant="outline" onClick={() => void exportOutput("md")} disabled={!executionId || exporting !== null}>{exporting === "md" ? "Exporting..." : "Export MD"}</Button>
-            <Button variant="outline" onClick={() => void exportOutput("pdf")} disabled={!executionId || exporting !== null}>{exporting === "pdf" ? "Exporting..." : "Export PDF"}</Button>
-            <Button variant="outline" onClick={() => void exportOutput("json")} disabled={!executionId || exporting !== null}>{exporting === "json" ? "Exporting..." : "Export JSON"}</Button>
-          </div>
-          <div className="space-y-2">
-            <p className="text-xs font-semibold text-muted-foreground">Recent runs</p>
-            <div className="space-y-1">
-              {historyRows.length === 0 ? (
-                <p className="text-xs text-muted-foreground">No run history yet for this tool.</p>
-              ) : (
-                historyRows.map((row) => (
-                  <div key={row.id} className="flex items-center justify-between rounded-md border px-2 py-1 text-xs">
-                    <span>{new Date(row.created_at).toLocaleString()}</span>
-                    <span>{row.credits_consumed} credits</span>
+        <CardContent className="space-y-6">
+          <div className="grid gap-5">
+            {tool.fields.map((field) => {
+              const value = String(input[field.name] ?? "");
+              return (
+                <div key={field.name} className="rounded-3xl border border-border/70 bg-background p-5 shadow-sm transition-shadow hover:shadow-md">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">{field.label}</p>
+                      <p className="mt-1 text-sm text-muted-foreground">{field.helperText ?? `Provide a strong ${field.label.toLowerCase()} to guide your output.`}</p>
+                    </div>
+                    {field.required ? <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">Required</span> : null}
                   </div>
-                ))
-              )}
-            </div>
+                  <div className="mt-4">
+                    {field.type === "select" ? (
+                      <select
+                        className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                        value={value}
+                        onChange={(e) => setInput((prev) => ({ ...prev, [field.name]: e.target.value }))}
+                      >
+                        <option value="">Select {field.label}</option>
+                        {(field.options ?? []).map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    ) : field.type === "textarea" ? (
+                      <Textarea
+                        value={value}
+                        onChange={(e) => setInput((prev) => ({ ...prev, [field.name]: e.target.value }))}
+                        placeholder={field.placeholder ?? `Add your ${field.label.toLowerCase()} here...`}
+                        className="min-h-[140px] rounded-2xl border border-border bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                      />
+                    ) : (
+                      <Input
+                        value={value}
+                        onChange={(e) => setInput((prev) => ({ ...prev, [field.name]: e.target.value }))}
+                        placeholder={field.placeholder ?? `Type your ${field.label.toLowerCase()}...`}
+                        className="rounded-2xl border border-border bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                      />
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {error ? <p className="rounded-2xl border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive">{error}</p> : null}
+          {!error && validationError ? <p className="text-sm text-muted-foreground">{validationError}</p> : null}
+          <div className="flex flex-wrap gap-3">
+            <Button onClick={() => void run()} disabled={loading || !canRun} className="min-w-[180px]">
+              {loading ? "Generating…" : "Generate premium output"}
+            </Button>
+            <Button variant="secondary" onClick={() => void run(lastPayload ?? undefined)} disabled={loading || !lastPayload}>
+              Retry last
+            </Button>
+            <Button variant="outline" onClick={() => void run()} disabled={loading || !canRun}>
+              Improve output
+            </Button>
           </div>
         </CardContent>
       </Card>
+
+      {tool.presets?.length ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Presets</CardTitle>
+            <p className="text-sm text-muted-foreground">Quick-start templates for faster premium results.</p>
+          </CardHeader>
+          <CardContent className="grid gap-3">
+            {tool.presets.map((preset) => (
+              <button
+                key={preset.label}
+                type="button"
+                onClick={() => applyPreset(preset)}
+                className={`rounded-3xl border px-4 py-4 text-left transition ${activePresetId === preset.label ? "border-primary bg-primary/10" : "border-border bg-background hover:border-primary/80"}`}
+              >
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">{preset.label}</p>
+                    <p className="mt-1 text-sm leading-6 text-muted-foreground">{preset.description ?? "Ready-made values to get you started."}</p>
+                  </div>
+                  <ArrowRight className="h-4 w-4 text-primary" />
+                </div>
+              </button>
+            ))}
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {tool.examples?.length ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Example prompts</CardTitle>
+            <p className="text-sm text-muted-foreground">Use these examples to inspire your next request.</p>
+          </CardHeader>
+          <CardContent className="grid gap-3">
+            {tool.examples.map((example) => (
+              <div key={example.title} className="rounded-3xl border border-border/70 bg-background p-4 transition hover:border-primary/70 hover:shadow-sm">
+                <p className="text-sm font-semibold text-foreground">{example.title}</p>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">{example.description}</p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      ) : null}
+    </div>
+
+      <div className="space-y-6">
+        <Card className="border border-border/70 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white shadow-2xl">
+          <CardHeader>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm uppercase tracking-[0.2em] text-slate-400">Live workspace</p>
+                <h2 className="mt-2 text-2xl font-semibold">Generated output</h2>
+              </div>
+              <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-2 text-sm text-slate-200">
+                <Clock3 className="h-4 w-4" />
+                {loading ? "Generating…" : output ? "Ready to review" : "Awaiting input"}
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="min-h-[420px] rounded-[2rem] border border-white/10 bg-slate-950/80 p-5">
+              {loading ? (
+                <div className="flex h-full flex-col items-center justify-center gap-3 text-slate-300">
+                  <div className="h-3 w-48 rounded-full bg-white/10 animate-pulse" />
+                  <p className="text-sm text-slate-400">Your premium output is being crafted with precision.</p>
+                  <div className="flex h-2 w-full max-w-xs overflow-hidden rounded-full bg-white/10">
+                    <div className="h-full w-1/3 animate-pulse bg-primary" />
+                  </div>
+                </div>
+              ) : (
+                <OutputRenderer value={output} className="space-y-4" />
+              )}
+            </div>
+          </CardContent>
+          <div className="grid gap-3 border-t border-white/10 bg-slate-950/90 p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm text-slate-300">Need a tighter result? Regenerate or improve your current output.</p>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="secondary" onClick={() => void run(lastPayload ?? undefined)} disabled={loading || !lastPayload}>
+                  <RefreshCcw className="h-4 w-4" />
+                  Regenerate
+                </Button>
+                <Button variant="outline" onClick={() => void run()} disabled={loading || !canRun}>
+                  Improve result
+                </Button>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" onClick={() => void exportOutput("txt")} disabled={!executionId || exporting !== null}>
+                Export TXT
+              </Button>
+              <Button variant="outline" onClick={() => void exportOutput("md")} disabled={!executionId || exporting !== null}>
+                Export MD
+              </Button>
+              <Button variant="outline" onClick={() => void exportOutput("pdf")} disabled={!executionId || exporting !== null}>
+                Export PDF
+              </Button>
+              <Button variant="outline" onClick={() => void exportOutput("json")} disabled={!executionId || exporting !== null}>
+                Export JSON
+              </Button>
+            </div>
+            {exportError ? <p className="text-sm text-destructive">{exportError}</p> : null}
+          </div>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent activity</CardTitle>
+            <p className="text-sm text-muted-foreground">Track your last generated outputs and credit consumption.</p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {historyRows.length === 0 ? (
+              <div className="rounded-3xl border border-border/70 bg-background p-6 text-sm text-muted-foreground">
+                No recent runs yet. Your most recent outputs will appear here as soon as you generate them.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {historyRows.map((row) => (
+                  <div key={row.id} className="rounded-3xl border border-border/70 bg-background p-4">
+                    <div className="flex items-center justify-between gap-4 text-sm">
+                      <div>
+                        <p className="font-semibold text-foreground">{new Date(row.created_at).toLocaleString()}</p>
+                        <p className="text-xs text-muted-foreground">Credits used: {row.credits_consumed}</p>
+                      </div>
+                      <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+                        <ShieldCheck className="h-4 w-4" />
+                        Secure
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

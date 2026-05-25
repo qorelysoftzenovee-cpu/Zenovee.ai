@@ -43,6 +43,8 @@ export default async function DashboardToolRunnerPage({ params }: { params: Prom
       metadata: tool.metadata,
       fields: tool.fields,
       creditCost: tool.creditCost,
+      presets: tool.presets ?? [],
+      examples: tool.examples ?? [],
     };
 
     return <ToolRunner tool={clientTool} />;
