@@ -15,6 +15,13 @@ const checkoutRequestSchema = z.object({
 
 const REUSABLE_PENDING_WINDOW_MS = 15 * 60 * 1000;
 
+function resolveCheckoutKey() {
+  const publicKey = env.NEXT_PUBLIC_RAZORPAY_KEY_ID?.trim() ?? "";
+  const serverKey = env.RAZORPAY_KEY_ID?.trim() ?? "";
+
+  return publicKey || serverKey;
+}
+
 function resolveIdempotencyKey(request: Request, userId: string, planId: string) {
   const rawKey = request.headers.get("x-idempotency-key")?.trim();
   if (rawKey && rawKey.length >= 8 && rawKey.length <= 128) {
@@ -47,16 +54,17 @@ function jsonError(message: string, status: number, options?: { code?: string; r
 
 export async function POST(request: Request) {
   try {
-    const billingEnv = validateBillingEnv();
+    validateBillingEnv();
 
     const user = await getCurrentUser();
     if (!user) {
       return jsonError("Please sign in again to continue with checkout.", 401, { code: "AUTH_REQUIRED" });
     }
 
-    if (billingEnv.NEXT_PUBLIC_RAZORPAY_KEY_ID.trim() !== billingEnv.RAZORPAY_KEY_ID.trim()) {
-      return jsonError("Payments are temporarily unavailable because the checkout key is misconfigured. Please contact support or retry shortly.", 503, {
-        code: "CHECKOUT_KEY_MISMATCH",
+    const checkoutKey = resolveCheckoutKey();
+    if (!checkoutKey) {
+      return jsonError("Payments are temporarily unavailable because the checkout key is missing. Please contact support or retry shortly.", 503, {
+        code: "CHECKOUT_KEY_MISSING",
         retryable: true,
       });
     }
@@ -111,7 +119,7 @@ export async function POST(request: Request) {
         return NextResponse.json({
           success: true,
           checkout: {
-            key: env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+            key: checkoutKey,
             orderId: existingPayment.order_id,
             amountPaise,
             currency: "INR",
@@ -193,7 +201,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       checkout: {
-        key: env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        key: checkoutKey,
         orderId: order.id,
         amountPaise,
         currency: "INR",
