@@ -18,6 +18,8 @@ type RazorpayInstance = {
 
 type RazorpayOptions = {
   key: string;
+  amount?: number;
+  currency?: string;
   order_id?: string;
   name: string;
   description: string;
@@ -40,6 +42,29 @@ declare global {
   }
 }
 
+type ApiErrorPayload = {
+  error?: string;
+  reason?: string;
+  source?: string;
+  code?: string;
+  retryable?: boolean;
+  retryAfterSeconds?: number;
+};
+
+type CheckoutResponse = {
+  checkout?: {
+    key?: string;
+    orderId?: string;
+    amountPaise?: number;
+    currency?: string;
+    resumed?: boolean;
+    plan?: {
+      id?: string;
+      name?: string;
+    };
+  };
+};
+
 async function resolveCheckoutError(response: Response, fallback: string) {
   let payload: unknown = null;
   try {
@@ -48,9 +73,25 @@ async function resolveCheckoutError(response: Response, fallback: string) {
     // Non-JSON response; handled by fallback below.
   }
 
-  const data = payload as { error?: string; reason?: string; source?: string } | null;
+  const data = payload as ApiErrorPayload | null;
   const details = [data?.error, data?.reason, data?.source ? `source: ${data.source}` : null].filter(Boolean).join(" • ");
-  return details || `${fallback} (HTTP ${response.status})`;
+  const retryHint = data?.retryAfterSeconds ? ` Retry in ${data.retryAfterSeconds}s.` : data?.retryable ? " Please retry." : "";
+  return details ? `${details}${retryHint}` : `${fallback} (HTTP ${response.status})`;
+}
+
+async function reportCheckoutState(orderId: string | undefined, state: "cancelled" | "failed" | "abandoned", reason: string) {
+  if (!orderId) return;
+
+  try {
+    await fetch("/api/billing/checkout-state", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ orderId, state, reason }),
+      keepalive: true,
+    });
+  } catch {
+    // Best-effort cleanup only.
+  }
 }
 
 export function PricingActions({
@@ -66,13 +107,14 @@ export function PricingActions({
   const [statusTone, setStatusTone] = useState<"default" | "success" | "error">("default");
   const [isScriptReady, setIsScriptReady] = useState<boolean | "checking">(() => {
     // On initial render, check if Razorpay is already loaded
-    if (typeof window !== "undefined" && (window as any).Razorpay) {
+    if (typeof window !== "undefined" && window.Razorpay) {
       return true;
     }
     return "checking";
   });
   const requestCounterRef = useRef(0);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const activeOrderIdRef = useRef<string | null>(null);
 
   const clearCheckoutTimeout = () => {
     if (timeoutRef.current) {
@@ -88,7 +130,7 @@ export function PricingActions({
   useEffect(() => {
     // Verify script is ready and available
     const checkScriptReady = () => {
-      if (typeof window !== "undefined" && (window as any).Razorpay) {
+      if (typeof window !== "undefined" && window.Razorpay) {
         setIsScriptReady(true);
       }
     };
@@ -112,7 +154,7 @@ export function PricingActions({
     // Verify Razorpay is available
     if (isScriptReady !== true || !window.Razorpay) {
       setStatusTone("error");
-      setStatus("Payment system is initializing. Please try again in a moment.");
+      setStatus("Secure payments are still loading. Please wait a moment and try again.");
       setLoading(false);
       // Try to reload the script or force a check
       setIsScriptReady("checking");
@@ -122,11 +164,20 @@ export function PricingActions({
     try {
       requestCounterRef.current += 1;
       const requestKey = `plan:${planId}:${requestCounterRef.current}`;
-      const response = await fetch("/api/billing/checkout", {
+      let response = await fetch("/api/billing/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-idempotency-key": requestKey },
         body: JSON.stringify({ planId }),
       });
+
+      if (!response.ok && response.status >= 500) {
+        await new Promise((resolve) => setTimeout(resolve, 700));
+        response = await fetch("/api/billing/checkout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-idempotency-key": `${requestKey}:retry` },
+          body: JSON.stringify({ planId }),
+        });
+      }
 
       if (!response.ok) {
         setStatusTone("error");
@@ -135,19 +186,21 @@ export function PricingActions({
         return;
       }
 
-      const data = (await response.json()) as {
-        checkout?: { key?: string; orderId?: string };
-      };
+      const data = (await response.json()) as CheckoutResponse;
 
-      if (!data?.checkout?.key || !data?.checkout?.orderId) {
+      if (!data?.checkout?.key || !data?.checkout?.orderId || !data?.checkout?.amountPaise || !data?.checkout?.currency) {
         setStatusTone("error");
-        setStatus("Checkout initialized with incomplete payload. Missing Razorpay key or order id.");
+        setStatus("Checkout started with incomplete payment details. Please retry once from billing.");
         setLoading(false);
         return;
       }
 
+      activeOrderIdRef.current = data.checkout.orderId;
+
       const options = {
         key: data.checkout.key,
+        amount: data.checkout.amountPaise,
+        currency: data.checkout.currency,
         order_id: data.checkout.orderId,
         name: "Zenovee AI",
         description: `${planName} Plan`,
@@ -159,6 +212,7 @@ export function PricingActions({
           });
           if (verify.ok) {
             clearCheckoutTimeout();
+            activeOrderIdRef.current = null;
             setStatusTone("success");
             setStatus("Payment successful. Your subscription is active and your workspace is updating.");
             setLoading(false);
@@ -167,6 +221,7 @@ export function PricingActions({
             return;
           }
           clearCheckoutTimeout();
+          await reportCheckoutState(activeOrderIdRef.current ?? data.checkout?.orderId, "failed", "VERIFICATION_FAILED");
           setStatusTone("error");
           setStatus(await resolveCheckoutError(verify, "Payment captured but verification failed"));
           setLoading(false);
@@ -179,9 +234,11 @@ export function PricingActions({
           color: "#6366f1",
         },
         modal: {
-          ondismiss: function () {
+          ondismiss: async function () {
             clearCheckoutTimeout();
-            setStatus("Checkout cancelled.");
+            await reportCheckoutState(activeOrderIdRef.current ?? data.checkout?.orderId, "cancelled", "CHECKOUT_DISMISSED");
+            activeOrderIdRef.current = null;
+            setStatus("Checkout was closed before payment completed. You can safely try again.");
             setStatusTone("default");
             setLoading(false);
           },
@@ -189,25 +246,31 @@ export function PricingActions({
       };
 
       const razorpay = new window.Razorpay(options);
-      razorpay.on?.("payment.failed", (payload) => {
+      razorpay.on?.("payment.failed", async (payload) => {
         clearCheckoutTimeout();
+        await reportCheckoutState(activeOrderIdRef.current ?? data.checkout?.orderId, "failed", payload.error?.code ?? payload.error?.reason ?? "PAYMENT_FAILED");
+        activeOrderIdRef.current = null;
         setStatusTone("error");
-        setStatus(payload.error?.description ?? "Payment failed. Please try again.");
+        setStatus(payload.error?.description ?? "Payment failed before completion. Please verify your payment method and try again.");
         setLoading(false);
       });
 
       clearCheckoutTimeout();
       timeoutRef.current = setTimeout(() => {
+        void reportCheckoutState(activeOrderIdRef.current ?? data.checkout?.orderId, "abandoned", "CHECKOUT_TIMEOUT");
+        activeOrderIdRef.current = null;
         setStatusTone("default");
-        setStatus("Checkout cancelled.");
+        setStatus("Checkout timed out before completion. Please try again when you’re ready.");
         setLoading(false);
       }, 8 * 60 * 1000);
 
       razorpay.open();
     } catch (error) {
       clearCheckoutTimeout();
+      await reportCheckoutState(activeOrderIdRef.current ?? undefined, "failed", "CLIENT_CHECKOUT_EXCEPTION");
+      activeOrderIdRef.current = null;
       setStatusTone("error");
-      setStatus(`Unable to start checkout. ${error instanceof Error ? error.message : "Unknown client error"}`);
+      setStatus(`We couldn’t launch secure checkout. ${error instanceof Error ? error.message : "Please refresh and try again."}`);
       setLoading(false);
     }
   };

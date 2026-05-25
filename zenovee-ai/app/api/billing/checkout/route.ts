@@ -13,6 +13,8 @@ const checkoutRequestSchema = z.object({
   planId: z.string().min(1),
 });
 
+const REUSABLE_PENDING_WINDOW_MS = 15 * 60 * 1000;
+
 function resolveIdempotencyKey(request: Request, userId: string, planId: string) {
   const rawKey = request.headers.get("x-idempotency-key")?.trim();
   if (rawKey && rawKey.length >= 8 && rawKey.length <= 128) {
@@ -30,63 +32,103 @@ function buildSafeReceipt(planId: string, userId: string) {
   return `pl${compactPlanId}_u${compactUserId}_${suffix}`.slice(0, 40);
 }
 
+function jsonError(message: string, status: number, options?: { code?: string; retryable?: boolean; retryAfterSeconds?: number }) {
+  const headers = options?.retryAfterSeconds ? { "Retry-After": String(options.retryAfterSeconds) } : undefined;
+  return NextResponse.json(
+    {
+      error: message,
+      code: options?.code,
+      retryable: options?.retryable ?? false,
+      retryAfterSeconds: options?.retryAfterSeconds,
+    },
+    { status, headers }
+  );
+}
+
 export async function POST(request: Request) {
   try {
-    validateBillingEnv();
+    const billingEnv = validateBillingEnv();
 
     const user = await getCurrentUser();
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return jsonError("Please sign in again to continue with checkout.", 401, { code: "AUTH_REQUIRED" });
+    }
+
+    if (billingEnv.NEXT_PUBLIC_RAZORPAY_KEY_ID.trim() !== billingEnv.RAZORPAY_KEY_ID.trim()) {
+      return jsonError("Payments are temporarily unavailable because the checkout key is misconfigured. Please contact support or retry shortly.", 503, {
+        code: "CHECKOUT_KEY_MISMATCH",
+        retryable: true,
+      });
     }
 
     const ipAddress = resolveClientIp(request);
     const rateLimit = checkRateLimit(`billing:checkout:${user.id}:${ipAddress}`, 8, 60_000);
     if (!rateLimit.allowed) {
-      return NextResponse.json(
-        { error: `Too many checkout attempts. Retry in ${rateLimit.retryAfterSeconds}s.` },
-        { status: 429, headers: { "Retry-After": String(rateLimit.retryAfterSeconds) } }
-      );
+      return jsonError(`You’ve tried checkout too many times in a short period. Please retry in ${rateLimit.retryAfterSeconds}s.`, 429, {
+        code: "RATE_LIMITED",
+        retryable: true,
+        retryAfterSeconds: rateLimit.retryAfterSeconds,
+      });
     }
 
     const { planId } = checkoutRequestSchema.parse(await request.json());
-    const normalizedPlanId = planId.toLowerCase();
+    const normalizedPlanId = planId.trim().toLowerCase();
     const plan = getPlanById(normalizedPlanId);
 
     if (!plan || !plan.active) {
-      return NextResponse.json({ error: "Plan not found." }, { status: 404 });
+      return jsonError("The selected plan is no longer available. Refresh the page and choose an active plan.", 404, { code: "PLAN_NOT_FOUND" });
     }
 
     const amountPaise = plan.amountPaise;
     if (!Number.isFinite(amountPaise) || amountPaise <= 0) {
-      return NextResponse.json({ error: "Invalid plan amount." }, { status: 400 });
+      return jsonError("The selected plan has an invalid billing amount. Please refresh and try again.", 400, { code: "INVALID_PLAN_AMOUNT" });
     }
 
     const idempotencyKey = resolveIdempotencyKey(request, user.id, plan.id);
 
     const supabaseAdmin = getSupabaseAdmin();
 
-    const { data: existingPayment } = await supabaseAdmin
+    const { data: existingPayments, error: pendingLookupError } = await supabaseAdmin
       .from("payments")
-      .select("order_id, status")
+      .select("id, order_id, status, created_at")
       .eq("user_id", user.id)
       .eq("plan", plan.id)
       .eq("status", "PENDING")
-      .maybeSingle<{ order_id: string | null; status: string | null }>();
+      .order("created_at", { ascending: false })
+      .limit(5);
 
-    if (existingPayment?.order_id && existingPayment.status === "PENDING") {
-      return NextResponse.json({
-        success: true,
-        checkout: {
-          key: env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-          orderId: existingPayment.order_id,
-          amountPaise,
-          currency: "INR",
-          plan: {
-            id: plan.id,
-            name: plan.name,
+    if (pendingLookupError) {
+      throw new Error(pendingLookupError.message);
+    }
+
+    const existingPayment = (existingPayments ?? []).find((payment) => Boolean(payment.order_id));
+
+    if (existingPayment?.order_id) {
+      const createdAt = existingPayment.created_at ? new Date(existingPayment.created_at).getTime() : 0;
+      const isReusable = createdAt > 0 && Date.now() - createdAt < REUSABLE_PENDING_WINDOW_MS;
+
+      if (isReusable) {
+        return NextResponse.json({
+          success: true,
+          checkout: {
+            key: env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+            orderId: existingPayment.order_id,
+            amountPaise,
+            currency: "INR",
+            plan: {
+              id: plan.id,
+              name: plan.name,
+            },
+            resumed: true,
           },
-        },
-      });
+        });
+      }
+
+      await supabaseAdmin
+        .from("payments")
+        .update({ status: "CANCELLED", failure_reason: "CHECKOUT_EXPIRED", updated_at: new Date().toISOString() } as never)
+        .eq("id", existingPayment.id)
+        .eq("status", "PENDING");
     }
 
     const razorpay = getRazorpayClient();
@@ -163,7 +205,7 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: error.issues[0]?.message ?? "Invalid checkout request." }, { status: 400 });
+      return jsonError(error.issues[0]?.message ?? "Please choose a valid plan before starting checkout.", 400, { code: "INVALID_CHECKOUT_REQUEST" });
     }
 
     serverLog({
@@ -173,6 +215,9 @@ export async function POST(request: Request) {
       error,
     });
 
-    return NextResponse.json({ error: "Unable to initialize checkout right now." }, { status: 500 });
+    return jsonError("We couldn’t start secure checkout right now. Please retry in a moment. If this keeps happening, refresh the page and try again.", 500, {
+      code: "CHECKOUT_INITIALIZATION_FAILED",
+      retryable: true,
+    });
   }
 }

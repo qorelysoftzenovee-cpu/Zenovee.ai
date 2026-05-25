@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, Clock3, Flame, Search, Sparkles, Star, TrendingUp, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -57,7 +57,46 @@ type WorkspaceTool = {
   trending: boolean;
   estimatedTimeSeconds?: number;
   tags: string[];
+  searchIndex: string;
 };
+
+function useDebouncedValue<T>(value: T, delayMs: number) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setDebouncedValue(value), delayMs);
+    return () => window.clearTimeout(timeout);
+  }, [value, delayMs]);
+
+  return debouncedValue;
+}
+
+function normalizeSearchValue(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9\s-]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function buildSearchIndex(tool: {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  tags: string[];
+}) {
+  return normalizeSearchValue([tool.id.replace(/-/g, " "), tool.name, tool.description, tool.category, ...tool.tags].join(" "));
+}
+
+function getSearchScore(tool: WorkspaceTool, tokens: string[]) {
+  if (!tokens.length) return 0;
+
+  return tokens.reduce((score, token) => {
+    if (tool.name.toLowerCase().includes(token)) score += 6;
+    if (tool.category.toLowerCase().includes(token)) score += 4;
+    if (tool.tags.some((tag) => tag.toLowerCase().includes(token))) score += 3;
+    if (tool.description.toLowerCase().includes(token)) score += 2;
+    if (tool.id.replace(/-/g, " ").toLowerCase().includes(token)) score += 2;
+    return score;
+  }, 0);
+}
 
 function getBenefit(description: string) {
   const clean = description.trim();
@@ -223,31 +262,54 @@ function SpotlightRail({
 
 export function ToolsWorkspace() {
   const [query, setQuery] = useState("");
+  const debouncedQuery = useDebouncedValue(query, 180);
   const [activeCategory, setActiveCategory] = useState<string>("All");
   const [filterMode, setFilterMode] = useState<FilterMode>("all");
-  const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
-  const [recentIds, setRecentIds] = useState<string[]>([]);
+  const [favoriteIds, setFavoriteIds] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const parsedFavorites = JSON.parse(window.localStorage.getItem(FAVORITES_KEY) ?? "[]");
+      return Array.isArray(parsedFavorites) ? parsedFavorites : [];
+    } catch {
+      return [];
+    }
+  });
+  const [recentIds] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const parsedRecents = JSON.parse(window.localStorage.getItem(RECENTS_KEY) ?? "[]");
+      return Array.isArray(parsedRecents) ? parsedRecents : [];
+    } catch {
+      return [];
+    }
+  });
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(CATEGORY_ORDER.map((category, index) => [category, index < 2]))
   );
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const isTypingTarget = target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable);
 
-    try {
-      const parsedFavorites = JSON.parse(window.localStorage.getItem(FAVORITES_KEY) ?? "[]");
-      setFavoriteIds(Array.isArray(parsedFavorites) ? parsedFavorites : []);
-    } catch {
-      setFavoriteIds([]);
-    }
+      if (event.key === "/" && !event.metaKey && !event.ctrlKey && !event.altKey && !isTypingTarget) {
+        event.preventDefault();
+        searchInputRef.current?.focus();
+      }
 
-    try {
-      const parsedRecents = JSON.parse(window.localStorage.getItem(RECENTS_KEY) ?? "[]");
-      setRecentIds(Array.isArray(parsedRecents) ? parsedRecents : []);
-    } catch {
-      setRecentIds([]);
-    }
-  }, []);
+      if (event.key === "Escape" && document.activeElement === searchInputRef.current) {
+        if (query) {
+          setQuery("");
+        } else {
+          searchInputRef.current?.blur();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [query]);
 
   const tools = useMemo<WorkspaceTool[]>(
     () =>
@@ -265,6 +327,13 @@ export function ToolsWorkspace() {
           trending: Boolean(tool.metadata.trending),
           estimatedTimeSeconds: tool.metadata.estimatedTimeSeconds,
           tags: tool.metadata.tags ?? [],
+          searchIndex: buildSearchIndex({
+            id: tool.id,
+            name: tool.metadata.name,
+            description: tool.metadata.description,
+            category: tool.metadata.category,
+            tags: tool.metadata.tags ?? [],
+          }),
         })),
     []
   );
@@ -296,22 +365,30 @@ export function ToolsWorkspace() {
   const featuredTools = useMemo(() => tools.filter((tool) => tool.featured).slice(0, 6), [tools]);
   const trendingTools = useMemo(() => tools.filter((tool) => tool.trending).slice(0, 6), [tools]);
   const categories = useMemo(() => ["All", ...CATEGORY_ORDER.filter((category) => tools.some((tool) => tool.category === category))], [tools]);
+  const normalizedQuery = useMemo(() => normalizeSearchValue(debouncedQuery), [debouncedQuery]);
+  const queryTokens = useMemo(() => normalizedQuery.split(" ").filter(Boolean), [normalizedQuery]);
+  const isSearchActive = queryTokens.length > 0 || activeCategory !== "All" || filterMode !== "all";
 
   const filteredTools = useMemo(() => {
-    const q = query.toLowerCase().trim();
+    return tools
+      .filter((tool) => {
+        const passCategory = activeCategory === "All" || tool.category === activeCategory;
+        const passMode =
+          filterMode === "all" ||
+          (filterMode === "favorites" && favoriteIds.includes(tool.id)) ||
+          (filterMode === "recent" && recentIds.includes(tool.id));
+        const passQuery = !queryTokens.length || queryTokens.every((token) => tool.searchIndex.includes(token));
 
-    return tools.filter((tool) => {
-      const passCategory = activeCategory === "All" || tool.category === activeCategory;
-      const passMode =
-        filterMode === "all" ||
-        (filterMode === "favorites" && favoriteIds.includes(tool.id)) ||
-        (filterMode === "recent" && recentIds.includes(tool.id));
-      const haystack = `${tool.name} ${tool.description} ${tool.category} ${tool.tags.join(" ")}`.toLowerCase();
-      const passQuery = !q || haystack.includes(q);
-
-      return passCategory && passMode && passQuery;
-    });
-  }, [tools, query, activeCategory, filterMode, favoriteIds, recentIds]);
+        return passCategory && passMode && passQuery;
+      })
+      .sort((a, b) => {
+        const scoreDiff = getSearchScore(b, queryTokens) - getSearchScore(a, queryTokens);
+        if (scoreDiff !== 0) return scoreDiff;
+        if (a.featured !== b.featured) return Number(b.featured) - Number(a.featured);
+        if (a.trending !== b.trending) return Number(b.trending) - Number(a.trending);
+        return a.name.localeCompare(b.name);
+      });
+  }, [tools, activeCategory, filterMode, favoriteIds, recentIds, queryTokens]);
 
   const groupedCategories = useMemo(
     () => CATEGORY_ORDER.map((category) => ({ category, tools: filteredTools.filter((tool) => tool.category === category) })).filter((group) => group.tools.length > 0),
@@ -369,7 +446,17 @@ export function ToolsWorkspace() {
       <section className="grid gap-4 xl:grid-cols-3">
         <div className="relative xl:col-span-2">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-          <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search tools by workflow, outcome, or category" className="h-12 border-slate-200 bg-white pl-10" />
+          <Input
+            ref={searchInputRef}
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search tools by name, category, keyword, tag, or description"
+            aria-label="Search tools explorer"
+            className="h-12 border-slate-200 bg-white pl-10 pr-20"
+          />
+          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-medium uppercase tracking-[0.18em] text-slate-500">
+            /
+          </span>
         </div>
 
         <div className="flex flex-wrap gap-2 xl:justify-end">
@@ -469,7 +556,7 @@ export function ToolsWorkspace() {
         title="Featured tools"
         description="Best entry points into the Zenovee workspace for premium, high-confidence execution."
         icon={<Sparkles className="size-4 text-violet-500" />}
-        tools={featuredTools}
+        tools={isSearchActive ? featuredTools.filter((tool) => filteredTools.some((match) => match.id === tool.id)) : featuredTools}
         emptyMessage="No featured tools match your current filters. Try broadening search or switching back to all tools."
         favoriteIds={favoriteIds}
         onToggleFavorite={toggleFavorite}
@@ -479,7 +566,7 @@ export function ToolsWorkspace() {
         title="Most-used tools"
         description="Smartly prioritized from recent activity, favorites, and premium prominence signals."
         icon={<TrendingUp className="size-4 text-sky-500" />}
-        tools={mostUsedTools}
+        tools={isSearchActive ? mostUsedTools.filter((tool) => filteredTools.some((match) => match.id === tool.id)) : mostUsedTools}
         emptyMessage="Most-used tools will appear here as your workspace activity grows."
         favoriteIds={favoriteIds}
         onToggleFavorite={toggleFavorite}
@@ -489,7 +576,7 @@ export function ToolsWorkspace() {
         title="Recently used tools"
         description="Jump back into the exact systems you used most recently without rescanning the directory."
         icon={<Clock3 className="size-4 text-emerald-500" />}
-        tools={recentTools.slice(0, 6)}
+        tools={isSearchActive ? recentTools.filter((tool) => filteredTools.some((match) => match.id === tool.id)).slice(0, 6) : recentTools.slice(0, 6)}
         emptyMessage="Your recently used tools will appear here after you run tools from the workspace."
         favoriteIds={favoriteIds}
         onToggleFavorite={toggleFavorite}
@@ -499,11 +586,41 @@ export function ToolsWorkspace() {
         title="Trending tools"
         description="High-attention systems that are especially useful for current workspace demand."
         icon={<Flame className="size-4 text-rose-500" />}
-        tools={trendingTools}
+        tools={isSearchActive ? trendingTools.filter((tool) => filteredTools.some((match) => match.id === tool.id)) : trendingTools}
         emptyMessage="No trending tools match the current filter set."
         favoriteIds={favoriteIds}
         onToggleFavorite={toggleFavorite}
       />
+
+      {isSearchActive ? (
+        <section className="space-y-4">
+          <div className="flex items-end justify-between gap-4">
+            <div>
+              <p className="premium-label">Search results</p>
+              <h2 className="text-2xl font-semibold tracking-tight">Instant filtered tool matches</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Results update as you type and match tool names, categories, keywords, tags, descriptions, and tool identifiers.
+              </p>
+            </div>
+            <span className="stat-chip">{filteredTools.length} matches</span>
+          </div>
+
+          {filteredTools.length ? (
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {filteredTools.slice(0, 12).map((tool) => (
+                <ToolCard key={`search-${tool.id}`} tool={tool} isFavorite={favoriteIds.includes(tool.id)} onToggleFavorite={toggleFavorite} />
+              ))}
+            </div>
+          ) : (
+            <Card className="border-dashed border-slate-200 bg-white/70">
+              <CardContent className="space-y-2 p-8 text-sm text-muted-foreground">
+                <p className="font-medium text-slate-700">No tools matched your current search.</p>
+                <p>Try a broader keyword, clear category filters, or switch back to all tools.</p>
+              </CardContent>
+            </Card>
+          )}
+        </section>
+      ) : null}
 
       <section className="space-y-4">
         <div className="flex items-end justify-between gap-4">

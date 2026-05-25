@@ -14,18 +14,32 @@ const verifyPayloadSchema = z.object({
   razorpay_signature: z.string().min(1),
 });
 
+function jsonError(message: string, status: number, options?: { code?: string; retryable?: boolean; retryAfterSeconds?: number }) {
+  const headers = options?.retryAfterSeconds ? { "Retry-After": String(options.retryAfterSeconds) } : undefined;
+  return NextResponse.json(
+    {
+      error: message,
+      code: options?.code,
+      retryable: options?.retryable ?? false,
+      retryAfterSeconds: options?.retryAfterSeconds,
+    },
+    { status, headers }
+  );
+}
+
 export async function POST(request: Request) {
   try {
     const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user) return jsonError("Your session expired before payment verification completed. Please sign in again and verify the payment status from billing.", 401, { code: "AUTH_REQUIRED" });
 
     const ipAddress = resolveClientIp(request);
     const rateLimit = checkRateLimit(`billing:verify:${user.id}:${ipAddress}`, 12, 60_000);
     if (!rateLimit.allowed) {
-      return NextResponse.json(
-        { error: `Too many verification attempts. Retry in ${rateLimit.retryAfterSeconds}s.` },
-        { status: 429, headers: { "Retry-After": String(rateLimit.retryAfterSeconds) } }
-      );
+      return jsonError(`Payment verification is temporarily rate limited. Please retry in ${rateLimit.retryAfterSeconds}s.`, 429, {
+        code: "RATE_LIMITED",
+        retryable: true,
+        retryAfterSeconds: rateLimit.retryAfterSeconds,
+      });
     }
 
     const body = verifyPayloadSchema.parse(await request.json());
@@ -55,7 +69,7 @@ export async function POST(request: Request) {
         .eq("user_id", user.id)
         .eq("order_id", body.razorpay_order_id)
         .eq("status", "PENDING");
-      return NextResponse.json({ error: "Invalid payment signature" }, { status: 400 });
+      return jsonError("Payment validation failed because the secure signature did not match. Please retry the payment from billing.", 400, { code: "INVALID_SIGNATURE" });
     }
 
     const razorpay = getRazorpayClient();
@@ -69,7 +83,10 @@ export async function POST(request: Request) {
         .eq("user_id", user.id)
         .eq("order_id", body.razorpay_order_id)
         .eq("status", "PENDING");
-      return NextResponse.json({ error: "Payment authenticity check failed" }, { status: 400 });
+      return jsonError("We couldn’t confirm the captured payment with Razorpay. Please wait a moment and retry verification from billing.", 400, {
+        code: "PAYMENT_AUTHENTICITY_CHECK_FAILED",
+        retryable: true,
+      });
     }
 
     const { data: pendingPayment } = await supabaseAdmin
@@ -82,7 +99,9 @@ export async function POST(request: Request) {
       .maybeSingle<{ id: string; plan: string; status: string }>();
 
     if (!pendingPayment) {
-      return NextResponse.json({ error: "Pending payment not found" }, { status: 404 });
+      return jsonError("We couldn’t find the matching checkout record for this payment. Please contact support with your Razorpay payment ID if funds were debited.", 404, {
+        code: "PENDING_PAYMENT_NOT_FOUND",
+      });
     }
 
     if (pendingPayment.status === "SUCCESS") {
@@ -90,12 +109,12 @@ export async function POST(request: Request) {
     }
 
     if (pendingPayment.status !== "PENDING") {
-      return NextResponse.json({ error: "Payment is no longer pending." }, { status: 409 });
+      return jsonError("This checkout session is no longer pending. Please refresh billing before trying again.", 409, { code: "PAYMENT_NOT_PENDING" });
     }
 
     const plan = getPlanById(pendingPayment.plan);
     if (!plan) {
-      return NextResponse.json({ error: "Invalid plan on payment record" }, { status: 400 });
+      return jsonError("The payment record references an invalid plan. Please contact support before retrying checkout.", 400, { code: "INVALID_PAYMENT_PLAN" });
     }
 
     const nowIso = new Date().toISOString();
@@ -161,10 +180,13 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: error.issues[0]?.message ?? "Invalid verification payload" }, { status: 400 });
+      return jsonError(error.issues[0]?.message ?? "Payment verification payload is invalid.", 400, { code: "INVALID_VERIFICATION_PAYLOAD" });
     }
 
     serverLog({ level: "error", route: "api/billing/verify", message: "Billing verification failed", error });
-    return NextResponse.json({ error: "Billing verification failed" }, { status: 500 });
+    return jsonError("We couldn’t finalize the payment confirmation right now. Please retry once from billing in a few seconds.", 500, {
+      code: "BILLING_VERIFICATION_FAILED",
+      retryable: true,
+    });
   }
 }
