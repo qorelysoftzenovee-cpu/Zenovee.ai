@@ -1,2 +1,0 @@
-:HL["/_next/static/chunks/0qo.2s-_ij5mn.css","style"]
-0:{"tree":{"name":"","param":null,"prefetchHints":16,"slots":{"children":{"name":"blog","param":null,"prefetchHints":0,"slots":{"children":{"name":"slug","param":{"type":"d","key":"internal-linking-for-programmatic-seo-pages","siblings":null},"prefetchHints":0,"slots":{"children":{"name":"__PAGE__","param":null,"prefetchHints":0,"slots":null}}}}}}},"staleTime":300,"buildId":"k-fhanJSCWOJHKtFH7swT"}
