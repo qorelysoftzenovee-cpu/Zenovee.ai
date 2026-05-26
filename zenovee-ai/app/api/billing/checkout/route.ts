@@ -167,6 +167,7 @@ export async function POST(request: Request) {
     const { planId } = checkoutRequestSchema.parse(await request.json());
     const normalizedPlanId = planId.trim().toLowerCase();
     const plan = getPlanById(normalizedPlanId);
+    const isScalePlan = normalizedPlanId === "scale";
 
     if (!plan || !plan.active) {
       return jsonError("The selected plan is no longer available. Refresh the page and choose an active plan.", 404, { code: "PLAN_NOT_FOUND" });
@@ -232,6 +233,24 @@ export async function POST(request: Request) {
       message: "Checkout request validated",
       metadata: { userId: user.id, planId: plan.id, amountPaise, idempotencyKey },
     });
+
+    if (isScalePlan) {
+      serverLog({
+        level: "info",
+        route: "api/billing/checkout",
+        message: "Scale checkout request diagnostics",
+        metadata: {
+          requestedPlanId: planId,
+          normalizedPlanId,
+          resolvedPlanId: plan.id,
+          planName: plan.name,
+          credits: plan.credits,
+          monthlyPriceRupees: plan.monthlyPriceRupees,
+          amountPaise: plan.amountPaise,
+          idempotencyKey,
+        },
+      });
+    }
 
     const order = await razorpay.orders.create({
       amount: amountPaise,
@@ -313,6 +332,25 @@ export async function POST(request: Request) {
         status: paymentInsert.status,
       },
     });
+
+    if (isScalePlan) {
+      serverLog({
+        level: "info",
+        route: "api/billing/checkout",
+        message: "Scale checkout persistence payload",
+        metadata: {
+          user_id: paymentInsert.user_id,
+          plan: paymentInsert.plan,
+          credits: plan.credits,
+          amount: amountRupees,
+          amountPaise,
+          payment_amount: paymentInsert.payment_amount,
+          currency: paymentInsert.currency,
+          order_id: paymentInsert.order_id,
+          status: paymentInsert.status,
+        },
+      });
+    }
 
     await insertPaymentWithSchemaFallback(supabaseAdmin, paymentInsert, legacyPaymentInsert);
 

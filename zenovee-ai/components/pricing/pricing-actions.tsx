@@ -102,6 +102,8 @@ export function PricingActions({
   planName: string;
 }) {
   const router = useRouter();
+  const normalizedPlanId = planId.trim().toLowerCase();
+  const isScalePlan = normalizedPlanId === "scale";
   const [status, setStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [statusTone, setStatusTone] = useState<"default" | "success" | "error">("default");
@@ -121,6 +123,19 @@ export function PricingActions({
       clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
     }
+  };
+
+  const logScaleDiagnostics = (stage: string, metadata?: Record<string, unknown>) => {
+    if (!isScalePlan) return;
+
+    console.info("[billing][scale]", {
+      stage,
+      planId,
+      planName,
+      isScriptReady,
+      hasRazorpayGlobal: typeof window !== "undefined" && Boolean(window.Razorpay),
+      ...metadata,
+    });
   };
 
   useEffect(() => {
@@ -150,9 +165,13 @@ export function PricingActions({
     setLoading(true);
     setStatus(null);
     setStatusTone("default");
+
+    const razorpayConstructor = typeof window !== "undefined" ? window.Razorpay : undefined;
+    logScaleDiagnostics("checkout_click", { loading, normalizedPlanId });
     
     // Verify Razorpay is available
-    if (isScriptReady !== true || !window.Razorpay) {
+    if (!razorpayConstructor) {
+      logScaleDiagnostics("razorpay_not_ready");
       setStatusTone("error");
       setStatus("Secure payments are still loading. Please wait a moment and try again.");
       setLoading(false);
@@ -161,9 +180,14 @@ export function PricingActions({
       return;
     }
 
+    if (isScriptReady !== true) {
+      setIsScriptReady(true);
+    }
+
     try {
       requestCounterRef.current += 1;
       const requestKey = `plan:${planId}:${requestCounterRef.current}`;
+      logScaleDiagnostics("checkout_request_started", { requestKey });
       let response = await fetch("/api/billing/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-idempotency-key": requestKey },
@@ -187,8 +211,10 @@ export function PricingActions({
       }
 
       const data = (await response.json()) as CheckoutResponse;
+      logScaleDiagnostics("checkout_response_received", { checkout: data?.checkout ?? null });
 
       if (!data?.checkout?.key || !data?.checkout?.orderId || !data?.checkout?.amountPaise || !data?.checkout?.currency) {
+        logScaleDiagnostics("checkout_response_incomplete", { checkout: data?.checkout ?? null });
         setStatusTone("error");
         setStatus("Checkout started with incomplete payment details. Please retry once from billing.");
         setLoading(false);
@@ -245,7 +271,13 @@ export function PricingActions({
         },
       };
 
-      const razorpay = new window.Razorpay(options);
+      logScaleDiagnostics("razorpay_opening", {
+        orderId: data.checkout.orderId,
+        amountPaise: data.checkout.amountPaise,
+        currency: data.checkout.currency,
+      });
+
+      const razorpay = new razorpayConstructor(options);
       razorpay.on?.("payment.failed", async (payload) => {
         clearCheckoutTimeout();
         await reportCheckoutState(activeOrderIdRef.current ?? data.checkout?.orderId, "failed", payload.error?.code ?? payload.error?.reason ?? "PAYMENT_FAILED");
@@ -266,6 +298,7 @@ export function PricingActions({
 
       razorpay.open();
     } catch (error) {
+      logScaleDiagnostics("checkout_exception", { error: error instanceof Error ? error.message : String(error) });
       clearCheckoutTimeout();
       await reportCheckoutState(activeOrderIdRef.current ?? undefined, "failed", "CLIENT_CHECKOUT_EXCEPTION");
       activeOrderIdRef.current = null;
