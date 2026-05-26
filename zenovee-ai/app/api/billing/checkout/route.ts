@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
-import { getPlanById } from "@/lib/billing/plans";
+import { buildCheckoutPayload, getPlanById } from "@/lib/billing/plans";
 import { env, validateBillingEnv } from "@/lib/env";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getRazorpayClient } from "@/lib/razorpay/client";
@@ -167,13 +167,14 @@ export async function POST(request: Request) {
     const { planId } = checkoutRequestSchema.parse(await request.json());
     const normalizedPlanId = planId.trim().toLowerCase();
     const plan = getPlanById(normalizedPlanId);
+    const checkoutPlan = plan ? buildCheckoutPayload(plan.id) : null;
     const isScalePlan = normalizedPlanId === "scale";
 
     if (!plan || !plan.active) {
       return jsonError("The selected plan is no longer available. Refresh the page and choose an active plan.", 404, { code: "PLAN_NOT_FOUND" });
     }
 
-    const amountPaise = plan.amountPaise;
+    const amountPaise = checkoutPlan.amountPaise;
     if (!Number.isFinite(amountPaise) || amountPaise <= 0) {
       return jsonError("The selected plan has an invalid billing amount. Please refresh and try again.", 400, { code: "INVALID_PLAN_AMOUNT" });
     }
@@ -208,10 +209,10 @@ export async function POST(request: Request) {
             key: checkoutKey,
             orderId: existingPayment.order_id,
             amountPaise,
-            currency: "INR",
+            currency: checkoutPlan.currency,
             plan: {
-              id: plan.id,
-              name: plan.name,
+              id: checkoutPlan.planId,
+              name: checkoutPlan.displayName,
             },
             resumed: true,
           },
@@ -243,10 +244,10 @@ export async function POST(request: Request) {
           requestedPlanId: planId,
           normalizedPlanId,
           resolvedPlanId: plan.id,
-          planName: plan.name,
-          credits: plan.credits,
-          monthlyPriceRupees: plan.monthlyPriceRupees,
-          amountPaise: plan.amountPaise,
+          planName: checkoutPlan.displayName,
+          credits: checkoutPlan.credits,
+          monthlyPriceRupees: checkoutPlan.monthlyPriceRupees,
+          amountPaise: checkoutPlan.amountPaise,
           idempotencyKey,
         },
       });
@@ -378,10 +379,10 @@ export async function POST(request: Request) {
         key: checkoutKey,
         orderId: order.id,
         amountPaise,
-        currency: "INR",
+        currency: checkoutPlan.currency,
         plan: {
-          id: plan.id,
-          name: plan.name,
+          id: checkoutPlan.planId,
+          name: checkoutPlan.displayName,
         },
       },
     });

@@ -15,6 +15,10 @@ export type ToolSeoEntry = {
   featured: boolean;
   trending: boolean;
   creditCost: number;
+  premiumBadge?: string;
+  complexity?: "light" | "medium" | "heavy";
+  expectedOutputValue?: string;
+  creditTooltip?: string;
   estimatedTimeSeconds?: number;
   outputType?: ToolOutputType;
   heroTitle: string;
@@ -148,6 +152,10 @@ export const toolSeoPages: ToolSeoEntry[] = getPublicToolDefinitions()
       featured: Boolean(tool.metadata.featured),
       trending: Boolean(tool.metadata.trending),
       creditCost: tool.creditCost,
+      premiumBadge: tool.metadata.premiumBadge,
+      complexity: tool.metadata.complexity,
+      expectedOutputValue: tool.metadata.expectedOutputValue,
+      creditTooltip: tool.metadata.creditTooltip,
       estimatedTimeSeconds: tool.metadata.estimatedTimeSeconds,
       outputType: tool.metadata.outputType,
     };

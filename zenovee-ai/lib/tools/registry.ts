@@ -25,6 +25,7 @@ export type ToolAvailability = "active" | "coming_soon";
 export type ToolExecutionContext = Record<string, unknown>;
 export type ToolExecutionResult = Record<string, unknown>;
 export type ToolPricingInfo = { toolId: string; creditCost: number; usageClass?: "standard" | "heavy" };
+type ToolComplexity = "light" | "medium" | "heavy";
 
 function parseJsonResponse<T>(response: string): T {
   const normalized = response.trim().replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```$/i, "").trim();
@@ -123,7 +124,51 @@ const imageOutputSchema = z.object({
 const browserInputSchema = z.object({ pageTitle: z.string().optional().default(""), pageUrl: z.string().optional().default(""), selection: z.string().optional().default(""), instruction: z.string().min(2) });
 const browserOutputSchema = z.object({ result: z.string(), suggestions: z.array(z.string()).default([]) });
 
-type Item = { id: string; name: string; description: string; category: ToolCategory; icon: string; creditCost: number; featured?: boolean; trending?: boolean; usageClass?: "standard" | "heavy" };
+type Item = {
+  id: string;
+  name: string;
+  description: string;
+  category: ToolCategory;
+  icon: string;
+  creditCost: number;
+  featured?: boolean;
+  trending?: boolean;
+  usageClass?: "standard" | "heavy";
+  complexity: ToolComplexity;
+  premiumBadge: string;
+  expectedOutputValue: string;
+  creditTooltip: string;
+};
+
+const LIGHT_COSTS = [50, 75, 100];
+const MEDIUM_COSTS = [150, 225, 300, 400];
+const HEAVY_COSTS = [500, 750, 1000, 1500];
+
+function getComplexityByCategoryIndex(index: number): ToolComplexity {
+  if (index < 3) return "light";
+  if (index < 7) return "medium";
+  return "heavy";
+}
+
+function getCreditCostByComplexity(complexity: ToolComplexity, index: number) {
+  if (complexity === "light") return LIGHT_COSTS[index % LIGHT_COSTS.length];
+  if (complexity === "medium") return MEDIUM_COSTS[index % MEDIUM_COSTS.length];
+  return HEAVY_COSTS[index % HEAVY_COSTS.length];
+}
+
+function getPremiumBadge(complexity: ToolComplexity) {
+  if (complexity === "heavy") return "Premium Workflow";
+  if (complexity === "medium") return "Premium Builder";
+  return "Premium Quick Win";
+}
+
+function getExpectedOutputValue(complexity: ToolComplexity) {
+  if (complexity === "heavy") return "High-value multi-step strategy output";
+  if (complexity === "medium") return "Structured campaign-ready deliverable";
+  return "Fast premium execution asset";
+}
+
+const CREDIT_TOOLTIP = "Advanced AI workflows consume more credits due to larger generation complexity.";
 
 const idsByCategory: Record<ToolCategory, string[]> = {
   [TOOL_CATEGORIES.EXECUTIVE_BRANDING]: ["executive-thought-leader-ghostwriter","viral-carousel-architect","linkedin-authority-engine","influence-loop-designer","authority-content-calendar","personal-brand-positioning-matrix","signature-framework-forger","authority-story-bank-builder","podcast-guest-angle-crafter","founder-voice-calibrator"],
@@ -138,17 +183,27 @@ function titleFromId(id: string) { return id.split("-").map((s) => s.charAt(0).t
 
 const premiumItems: Item[] = (Object.entries(idsByCategory) as [ToolCategory, string[]][])
   .filter(([category]) => category !== TOOL_CATEGORIES.BROWSER_TOOLS)
-  .flatMap(([category, ids]) => ids.map((id, i) => ({
-    id,
-    name: titleFromId(id),
-    description: `${titleFromId(id)} specialized for ${category.toLowerCase()} outcomes.`,
-    category,
-    icon: category === TOOL_CATEGORIES.EXECUTIVE_BRANDING ? "🧠" : category === TOOL_CATEGORIES.B2B_SALES ? "🎯" : category === TOOL_CATEGORIES.CONVERSION_COPY ? "⚡" : category === TOOL_CATEGORIES.SEO_AUTHORITY ? "📈" : "🎨",
-    creditCost: 12 + (i % 6) * 2,
-    featured: i < 2,
-    trending: i < 3,
-    usageClass: i % 4 === 0 ? "heavy" : "standard",
-  })));
+  .flatMap(([category, ids]) =>
+    ids.map((id, i) => {
+      const complexity = getComplexityByCategoryIndex(i);
+
+      return {
+        id,
+        name: titleFromId(id),
+        description: `${titleFromId(id)} specialized for ${category.toLowerCase()} outcomes.`,
+        category,
+        icon: category === TOOL_CATEGORIES.EXECUTIVE_BRANDING ? "🧠" : category === TOOL_CATEGORIES.B2B_SALES ? "🎯" : category === TOOL_CATEGORIES.CONVERSION_COPY ? "⚡" : category === TOOL_CATEGORIES.SEO_AUTHORITY ? "📈" : "🎨",
+        creditCost: getCreditCostByComplexity(complexity, i),
+        featured: i < 2,
+        trending: i < 3,
+        usageClass: complexity === "heavy" ? "heavy" : "standard",
+        complexity,
+        premiumBadge: getPremiumBadge(complexity),
+        expectedOutputValue: getExpectedOutputValue(complexity),
+        creditTooltip: CREDIT_TOOLTIP,
+      };
+    })
+  );
 
 function buildPrompt(item: Item, input: Record<string, unknown>) {
   const base = `You are a top-tier ${item.category} specialist system named "${item.name}".\nOutput must be premium, domain-specific, non-generic, and structured JSON only.`;
@@ -203,6 +258,10 @@ function buildTool(item: Item): ToolDefinition {
       trending: Boolean(item.trending),
       availability: "active",
       visibility: "public",
+      premiumBadge: item.premiumBadge,
+      complexity: item.complexity,
+      expectedOutputValue: item.expectedOutputValue,
+      creditTooltip: item.creditTooltip,
     },
     fields,
     examples: [{ title: `${item.name} run`, description: item.description }],
@@ -222,7 +281,7 @@ export const premiumToolDefinitions: ToolDefinition[] = premiumItems.map(buildTo
 
 export const internalToolDefinitions: ToolDefinition[] = idsByCategory[TOOL_CATEGORIES.BROWSER_TOOLS].map((id) => ({
   id,
-  metadata: { name: titleFromId(id), description: `${titleFromId(id)} internal browser utility.`, category: TOOL_CATEGORIES.BROWSER_TOOLS, icon: "🧩", visibility: "internal", availability: "active", trending: true },
+  metadata: { name: titleFromId(id), description: `${titleFromId(id)} internal browser utility.`, category: TOOL_CATEGORIES.BROWSER_TOOLS, icon: "🧩", visibility: "internal", availability: "active", trending: true, complexity: "light", premiumBadge: "Internal Utility", expectedOutputValue: "Fast page-aware utility action", creditTooltip: CREDIT_TOOLTIP },
   fields: [],
   inputSchema: browserInputSchema,
   outputSchema: browserOutputSchema,

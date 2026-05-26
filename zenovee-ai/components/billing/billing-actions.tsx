@@ -3,12 +3,14 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { getUpgradeablePlans } from "@/lib/billing/plans";
 
 export function BillingActions() {
   const router = useRouter();
   const [loading, setLoading] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [messageTone, setMessageTone] = useState<"default" | "success" | "error">("default");
+  const upgradePlans = getUpgradeablePlans("starter");
 
   const updateSubscription = async (action: "cancel" | "upgrade", planId?: string) => {
     if (loading) return;
@@ -38,12 +40,11 @@ export function BillingActions() {
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap gap-2">
-        <Button size="sm" variant="outline" onClick={() => updateSubscription("upgrade", "growth")} disabled={Boolean(loading)}>
-          Move to Growth
-        </Button>
-        <Button size="sm" variant="outline" onClick={() => updateSubscription("upgrade", "scale")} disabled={Boolean(loading)}>
-          Move to Scale
-        </Button>
+        {upgradePlans.map((plan) => (
+          <Button key={plan.id} size="sm" variant="outline" onClick={() => updateSubscription("upgrade", plan.id)} disabled={Boolean(loading)}>
+            Move to {plan.displayName}
+          </Button>
+        ))}
         <Button size="sm" variant="ghost" onClick={() => updateSubscription("cancel")} disabled={Boolean(loading)}>
           Cancel at period end
         </Button>

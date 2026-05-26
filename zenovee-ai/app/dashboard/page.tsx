@@ -5,6 +5,7 @@ import { listToolDefinitions } from "@/definitions";
 import { requireStandardUser } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { getBillingSnapshot } from "@/lib/billing/credits";
+import { getActivePlans, getPlanById, getPlanDisplayName } from "@/lib/billing/plans";
 
 type UsageItem = {
   id: string;
@@ -40,6 +41,8 @@ export default async function DashboardPage() {
   const credits = billingSnapshot.availableCredits;
   const usage = (usageRes.data ?? []) as UsageItem[];
   const usageProgress = billingSnapshot.totalCredits > 0 ? Math.min(100, Math.round((billingSnapshot.usedCredits / billingSnapshot.totalCredits) * 100)) : 0;
+  const currentPlan = getPlanById(billingSnapshot.plan ?? "");
+  const nextPlan = getActivePlans().find((plan) => currentPlan && plan.monthlyPriceRupees > currentPlan.monthlyPriceRupees);
 
   const quickAccessTools = listToolDefinitions()
     .filter((tool) => tool.metadata.availability === "active" && (tool.metadata.visibility ?? "public") === "public")
@@ -60,11 +63,12 @@ export default async function DashboardPage() {
       <Card className="border-slate-200 bg-white">
         <CardHeader><CardTitle>Current Plan</CardTitle></CardHeader>
         <CardContent>
-          <p className="text-lg font-semibold">{billingSnapshot.plan ?? "No plan"}</p>
+          <p className="text-lg font-semibold">{getPlanDisplayName(billingSnapshot.plan)}</p>
           <p className="text-xs text-muted-foreground mt-1">{billingSnapshot.subscriptionStatus ?? "Inactive"}</p>
           <p className="text-xs text-muted-foreground mt-1">
             Renewal: {billingSnapshot.renewalAt ? formatDateTime(billingSnapshot.renewalAt) : "N/A"}
           </p>
+          {currentPlan ? <p className="mt-2 text-xs text-muted-foreground">Plan limits: {currentPlan.limits.hourly.toLocaleString()} hourly • {currentPlan.limits.daily.toLocaleString()} daily</p> : null}
         </CardContent>
       </Card>
 
@@ -96,6 +100,8 @@ export default async function DashboardPage() {
         <CardContent>
           <p className="text-2xl font-semibold">{credits.toLocaleString()}</p>
           <p className="mt-1 text-xs text-muted-foreground">Usage progress: {usageProgress}% ({billingSnapshot.usedCredits}/{billingSnapshot.totalCredits})</p>
+          <p className="mt-2 text-xs text-muted-foreground">Estimated usage runway: about {Math.max(1, Math.floor(credits / 300)).toLocaleString()} medium-tool runs remaining.</p>
+          {nextPlan ? <p className="mt-2 text-xs text-primary">Upgrade suggestion: {nextPlan.displayName} unlocks {nextPlan.credits.toLocaleString()} monthly credits.</p> : null}
         </CardContent>
       </Card>
     </div>

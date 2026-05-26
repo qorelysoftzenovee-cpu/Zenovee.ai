@@ -1,15 +1,10 @@
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { CreditService } from "@/lib/services/CreditService";
 import type { Json } from "@/lib/supabase/types";
+import { getPlanLimits, resolvePlanId } from "@/lib/billing/plans";
 
 type PlanId = "starter" | "growth" | "scale";
 type UsageClass = "standard" | "heavy";
-
-const PLAN_LIMITS: Record<PlanId, { hourly: number; daily: number }> = {
-  starter: { hourly: 10, daily: 50 },
-  growth: { hourly: 30, daily: 200 },
-  scale: { hourly: 100, daily: 1000 },
-};
 
 const HEAVY_MULTIPLIER = 0.35;
 const NEW_ACCOUNT_DAYS = 7;
@@ -51,12 +46,12 @@ export type ProtectionContext = {
 async function getPlan(userId: string): Promise<PlanId> {
   const { data } = await supabaseAdmin
     .from("subscriptions")
-    .select("plan_id,status")
+    .select("plan_id,plan_name,status")
     .eq("user_id", userId)
     .eq("status", "ACTIVE")
-    .maybeSingle<{ plan_id: string; status: string }>();
+    .maybeSingle<{ plan_id: string; plan_name: string; status: string }>();
 
-  const raw = data?.plan_id?.toLowerCase();
+  const raw = resolvePlanId(data?.plan_id ?? data?.plan_name);
   if (raw === "growth" || raw === "scale") return raw;
   return "starter";
 }
@@ -181,7 +176,7 @@ export class AIProtectionService {
       );
     }
 
-    const base = PLAN_LIMITS[planId];
+    const base = getPlanLimits(planId);
     const heavyFactor = context.usageClass === "heavy" ? HEAVY_MULTIPLIER : 1;
     const ageFactor = accountAgeDays < NEW_ACCOUNT_DAYS ? NEW_ACCOUNT_MULTIPLIER : 1;
     const hourlyLimit = Math.max(2, Math.floor(base.hourly * heavyFactor * ageFactor));

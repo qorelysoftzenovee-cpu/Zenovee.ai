@@ -21,6 +21,8 @@ export interface ToolExample {
   description: string;
 }
 
+export type ToolComplexity = "light" | "medium" | "heavy";
+
 export type ToolOutputType = "article" | "ad-copy" | "persona" | "landing-page" | "text" | "image";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -40,6 +42,10 @@ export interface ToolDefinition<TInput = any, TOutput = Record<string, unknown>>
     availability?: "active" | "coming_soon";
     visibility?: "public" | "internal";
     disabledReason?: string;
+    premiumBadge?: string;
+    complexity?: ToolComplexity;
+    expectedOutputValue?: string;
+    creditTooltip?: string;
   };
   fields: ToolField[];
   examples?: ToolExample[];

@@ -1,6 +1,7 @@
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { assignPlanCredits, computeGraceExpiryDate, computeNextRenewalDate } from "@/lib/billing/service";
 import { serverLog } from "@/lib/logger";
+import { buildActivationPayload, resolvePlanId } from "@/lib/billing/plans";
 
 type SyncResult = {
   status: "processed" | "duplicate" | "ignored";
@@ -164,8 +165,9 @@ export class BillingSyncService {
       const userId = subscriptionContext.userId ?? orderPaymentContext.userId;
       const planName = subscriptionContext.planName ?? orderPaymentContext.planName;
       const nowIso = new Date().toISOString();
+      const resolvedPlanId = resolvePlanId(planName);
 
-      if (!userId || !planName) {
+      if (!userId || !resolvedPlanId) {
         await this.markEventSuccess(eventId, null, "ignored");
         return { status: "ignored", userId: null, subscriptionId: razorpaySubscriptionId, paymentId: razorpayPaymentId };
       }
@@ -175,13 +177,14 @@ export class BillingSyncService {
 
         const duplicatePayment = await this.paymentAlreadySuccessful(razorpayPaymentId);
         if (!duplicatePayment) {
+          const activation = buildActivationPayload(resolvedPlanId);
           const nextRenewal =
             isoFromUnix((subscriptionEntity.current_end as number | undefined) ?? undefined) ?? computeNextRenewalDate();
 
           const paymentRecord = {
             user_id: userId,
             payment_amount: Number(paymentEntity.amount ? Number(paymentEntity.amount) / 100 : 0),
-            plan: planName,
+            plan: activation.planId,
             currency: (paymentEntity.currency as string | undefined) ?? "INR",
             status: "SUCCESS",
             razorpay_transaction_id: razorpayPaymentId,
@@ -210,7 +213,7 @@ export class BillingSyncService {
             } as never)
             .eq("user_id", userId);
 
-          await assignPlanCredits(userId, planName, `subscription:${razorpayPaymentId}`);
+          await assignPlanCredits(userId, activation.planId, `subscription:${razorpayPaymentId}`);
         }
       }
 
@@ -241,7 +244,7 @@ export class BillingSyncService {
                 {
                   user_id: userId,
                   payment_amount: Number(paymentEntity.amount ? Number(paymentEntity.amount) / 100 : 0),
-                  plan: planName,
+                  plan: resolvedPlanId,
                   currency: (paymentEntity.currency as string | undefined) ?? "INR",
                   status: "FAILED",
                   razorpay_transaction_id: razorpayPaymentId,

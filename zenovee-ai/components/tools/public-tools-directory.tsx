@@ -15,6 +15,10 @@ type ToolSeoItem = {
   featured?: boolean;
   trending?: boolean;
   creditCost?: number;
+  premiumBadge?: string;
+  complexity?: "light" | "medium" | "heavy";
+  expectedOutputValue?: string;
+  creditTooltip?: string;
 };
 
 export function PublicToolsDirectory({ tools }: { tools: ToolSeoItem[] }) {
@@ -58,7 +62,11 @@ export function PublicToolsDirectory({ tools }: { tools: ToolSeoItem[] }) {
             <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
               <span className="rounded-full border px-2 py-1">{tool.category}</span>
               <span className="rounded-full border px-2 py-1">{tool.creditCost ?? 0} credits</span>
+              {tool.complexity ? <span className="rounded-full border px-2 py-1 uppercase">{tool.complexity}</span> : null}
+              {tool.premiumBadge ? <span className="rounded-full border border-primary/30 bg-primary/5 px-2 py-1 text-primary">{tool.premiumBadge}</span> : null}
             </div>
+            {tool.expectedOutputValue ? <p className="text-xs text-foreground/80">{tool.expectedOutputValue}</p> : null}
+            {tool.creditTooltip ? <p className="text-xs text-muted-foreground">{tool.creditTooltip}</p> : null}
             <div className="flex items-center justify-end">
               <Button asChild>
                 <Link href={`/tools/${tool.slug}`}>Open Tool</Link>

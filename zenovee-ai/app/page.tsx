@@ -113,11 +113,15 @@ export default async function LandingPage() {
             {subscriptionPlans.map((plan) => (
               <Card key={plan.id} className="border-border bg-card">
                 <CardHeader>
-                  <CardTitle>{plan.name}</CardTitle>
+                  <div className="flex items-center gap-2">
+                    <CardTitle>{plan.displayName}</CardTitle>
+                    {plan.premiumLabel ? <span className="rounded-full border px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">{plan.premiumLabel}</span> : null}
+                  </div>
                   <CardDescription>{plan.credits.toLocaleString()} credits / month</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <p className="text-3xl font-semibold tracking-tight">{formatRupees(plan.monthlyPriceRupees)}<span className="ml-1 text-base font-normal text-muted-foreground">/month</span></p>
+                  <p className="mt-2 text-sm text-muted-foreground">{plan.premiumPositioning}</p>
                 </CardContent>
               </Card>
             ))}

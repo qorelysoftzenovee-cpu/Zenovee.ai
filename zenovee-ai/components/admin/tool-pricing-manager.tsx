@@ -24,6 +24,9 @@ type ToolPricingItem = {
   isActive: boolean;
   cooldownSeconds: number;
   metadata?: ToolPromptMetadata | null;
+  premiumBadge?: string | null;
+  complexity?: string | null;
+  expectedOutputValue?: string | null;
 };
 
 export function ToolPricingManager({ items }: { items: ToolPricingItem[] }) {
@@ -75,6 +78,11 @@ export function ToolPricingManager({ items }: { items: ToolPricingItem[] }) {
             <div>
               <p className="font-semibold">{row.toolName}</p>
               <p className="text-xs text-muted-foreground">{row.toolId} • {row.category}</p>
+              <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-muted-foreground">
+                {row.complexity ? <span className="rounded-full border px-2 py-1 uppercase">{row.complexity}</span> : null}
+                {row.premiumBadge ? <span className="rounded-full border border-primary/30 bg-primary/5 px-2 py-1 text-primary">{row.premiumBadge}</span> : null}
+                {row.expectedOutputValue ? <span className="rounded-full border px-2 py-1">{row.expectedOutputValue}</span> : null}
+              </div>
             </div>
 
             <div>

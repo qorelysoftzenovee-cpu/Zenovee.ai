@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PricingActions } from "@/components/pricing/pricing-actions";
-import { getActivePlans, formatRupees } from "@/lib/billing/plans";
+import { getActivePlans, formatRupees, getPlanSupportText } from "@/lib/billing/plans";
 import Navigation from "@/app/components/Navigation";
 import { Footer } from "@/components/layout/footer";
 import { getCurrentUser } from "@/lib/auth";
@@ -25,24 +25,30 @@ export default async function PricingPage() {
         </div>
         <div className="grid gap-5 md:grid-cols-3">
           {subscriptionPlans.map((plan) => (
-            <Card key={plan.name} className="border-border bg-card">
+            <Card key={plan.id} className={plan.highlighted ? "border-primary bg-card shadow-lg" : "border-border bg-card"}>
               <CardHeader>
-                <CardTitle>{plan.name}</CardTitle>
+                <div className="flex items-center justify-between gap-3">
+                  <CardTitle>{plan.displayName}</CardTitle>
+                  {plan.premiumLabel ? <span className="rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{plan.premiumLabel}</span> : null}
+                </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-3xl font-semibold tracking-tight">
                   {formatRupees(plan.monthlyPriceRupees)}
                   <span className="text-base font-normal text-muted-foreground">/month</span>
                 </p>
+                <p className="text-sm font-medium text-foreground">{plan.premiumPositioning}</p>
                 <ul className="space-y-2 text-sm text-muted-foreground">
                   <li>• {plan.credits.toLocaleString()} monthly credits</li>
+                  <li>• Up to {plan.limits.daily.toLocaleString()} credits of guided daily usage</li>
+                  <li>• {getPlanSupportText(plan.id)}</li>
                   {plan.features.slice(0, 3).map((point) => (
                     <li key={point}>• {point}</li>
                   ))}
                 </ul>
                 <PricingActions
                   planId={plan.id}
-                  planName={plan.id === "starter" ? "Starter" : plan.id === "growth" ? "Growth" : "Scale"}
+                  planName={plan.displayName}
                 />
               </CardContent>
             </Card>

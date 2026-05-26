@@ -37,6 +37,7 @@ export function ToolRunner({ tool }: Props) {
   const toolOutputType = tool.metadata.outputType ?? "text";
   const estimatedTime = tool.metadata.estimatedTimeSeconds ? `${tool.metadata.estimatedTimeSeconds}s` : null;
   const activePresetId = activePreset?.label ?? "";
+  const complexity = tool.metadata.complexity ? tool.metadata.complexity.toUpperCase() : null;
 
   const validationError = useMemo(() => {
     const missing = tool.fields.find((field) => field.required && String(input[field.name] ?? "").trim().length === 0);
@@ -156,37 +157,45 @@ export function ToolRunner({ tool }: Props) {
         variant="warning"
       />
       <div className="space-y-6">
-      <Card className="overflow-hidden border-b-2 border-primary/20 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white shadow-2xl">
-        <CardHeader className="space-y-4">
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-2">
-              <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-white/80">
-                <Sparkles className="h-4 w-4" />
-                {tool.metadata.category}
+        <Card className="overflow-hidden border-b-2 border-primary/20 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white shadow-2xl">
+          <CardHeader className="space-y-4">
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-2">
+                <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-white/80">
+                  <Sparkles className="h-4 w-4" />
+                  {tool.metadata.category}
+                </div>
+                <div className="space-y-1">
+                  <h1 className="text-3xl font-semibold tracking-tight">{tool.metadata.name}</h1>
+                  <p className="max-w-2xl text-sm leading-7 text-slate-300">{toolTagline}</p>
+                </div>
               </div>
-              <div className="space-y-1">
-                <h1 className="text-3xl font-semibold tracking-tight">{tool.metadata.name}</h1>
-                <p className="max-w-2xl text-sm leading-7 text-slate-300">{toolTagline}</p>
-              </div>
-            </div>
 
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div className="rounded-3xl bg-white/10 p-4 text-sm">
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-300">Estimated output</p>
-                <p className="mt-2 text-base font-semibold text-white">{toolOutputType.replace("-", " ")}</p>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="rounded-3xl bg-white/10 p-4 text-sm">
+                  <p className="text-xs uppercase tracking-[0.2em] text-slate-300">Estimated output</p>
+                  <p className="mt-2 text-base font-semibold text-white">{toolOutputType.replace("-", " ")}</p>
+                  {tool.metadata.expectedOutputValue ? <p className="mt-2 text-xs text-slate-300">{tool.metadata.expectedOutputValue}</p> : null}
+                </div>
+                <div className="rounded-3xl bg-white/10 p-4 text-sm">
+                  <p className="text-xs uppercase tracking-[0.2em] text-slate-300">Credits</p>
+                  <p className="mt-2 text-base font-semibold text-white">{tool.creditCost} / run</p>
+                  {tool.metadata.creditTooltip ? <p className="mt-2 text-xs text-slate-300">{tool.metadata.creditTooltip}</p> : null}
+                </div>
+                <div className="rounded-3xl bg-white/10 p-4 text-sm">
+                  <p className="text-xs uppercase tracking-[0.2em] text-slate-300">Complexity</p>
+                  <p className="mt-2 text-base font-semibold text-white">{complexity ?? "STANDARD"}</p>
+                  <p className="mt-2 text-xs text-slate-300">{estimatedTime ?? "Fast premium output"}</p>
+                </div>
               </div>
-              <div className="rounded-3xl bg-white/10 p-4 text-sm">
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-300">Credits</p>
-                <p className="mt-2 text-base font-semibold text-white">{tool.creditCost} / run</p>
-              </div>
-              <div className="rounded-3xl bg-white/10 p-4 text-sm">
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-300">Speed</p>
-                <p className="mt-2 text-base font-semibold text-white">{estimatedTime ?? "Instant"}</p>
+
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                {tool.metadata.premiumBadge ? <span className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1 font-semibold text-primary-foreground/90">{tool.metadata.premiumBadge}</span> : null}
+                {tool.metadata.expectedOutputValue ? <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-slate-200">{tool.metadata.expectedOutputValue}</span> : null}
               </div>
             </div>
-          </div>
-        </CardHeader>
-      </Card>
+          </CardHeader>
+        </Card>
 
       <Card>
         <CardHeader>
@@ -252,6 +261,10 @@ export function ToolRunner({ tool }: Props) {
             <Button variant="outline" onClick={() => void run()} disabled={loading || !canRun}>
               Improve output
             </Button>
+          </div>
+          <div className="rounded-2xl border border-border/70 bg-background/60 p-4 text-xs text-muted-foreground">
+            <p className="font-medium text-foreground">Why this tool costs {tool.creditCost} credits</p>
+            <p className="mt-1">{tool.metadata.creditTooltip ?? "Advanced AI workflows consume more credits due to larger generation complexity."}</p>
           </div>
         </CardContent>
       </Card>

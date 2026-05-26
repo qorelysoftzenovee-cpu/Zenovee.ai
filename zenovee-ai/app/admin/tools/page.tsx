@@ -45,6 +45,9 @@ export default async function AdminToolsPage() {
       isActive: row?.is_active ?? tool.metadata.availability !== "coming_soon",
       cooldownSeconds: Number(row?.cooldown_seconds ?? 0),
       metadata: row?.metadata ?? null,
+      premiumBadge: tool.metadata.premiumBadge ?? null,
+      complexity: tool.metadata.complexity ?? null,
+      expectedOutputValue: tool.metadata.expectedOutputValue ?? null,
     };
   });
 

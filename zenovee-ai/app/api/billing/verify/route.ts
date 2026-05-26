@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { getPlanById } from "@/lib/billing/plans";
+import { buildActivationPayload, getPlanById } from "@/lib/billing/plans";
 import { assignPlanCredits, computeNextRenewalDate } from "@/lib/billing/service";
 import { getRazorpayClient, verifyCheckoutSignature } from "@/lib/razorpay/client";
 import { serverLog } from "@/lib/logger";
@@ -116,6 +116,7 @@ export async function POST(request: Request) {
     if (!plan) {
       return jsonError("The payment record references an invalid plan. Please contact support before retrying checkout.", 400, { code: "INVALID_PAYMENT_PLAN" });
     }
+    const activation = buildActivationPayload(plan.id);
 
     const nowIso = new Date().toISOString();
     const nextRenewal = computeNextRenewalDate();
@@ -161,8 +162,10 @@ export async function POST(request: Request) {
       message: "Subscription activation result",
       metadata: {
         userId: user.id,
-        planId: plan.id,
+        planId: activation.planId,
         amountPaise: plan.amountPaise,
+        credits: activation.credits,
+        premiumLabel: activation.premiumLabel,
         paymentId: body.razorpay_payment_id,
         orderId: body.razorpay_order_id,
       },
@@ -172,9 +175,11 @@ export async function POST(request: Request) {
       success: true,
       billing: {
         subscription: {
-          planId: plan.id,
+          planId: activation.planId,
+          planName: activation.displayName,
           status: "ACTIVE",
           renewalAt: nextRenewal,
+          credits: activation.credits,
         },
       },
     });

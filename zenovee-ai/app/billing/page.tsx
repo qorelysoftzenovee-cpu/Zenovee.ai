@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PricingActions } from "@/components/pricing/pricing-actions";
 import { requireStandardUser } from "@/lib/auth";
 import { WorkspaceShell } from "@/components/layout/workspace-shell";
-import { getActivePlans, formatRupees } from "@/lib/billing/plans";
+import { getActivePlans, formatRupees, getPlanById, getPlanDisplayName, getPlanSupportText } from "@/lib/billing/plans";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { SUPPORT_EMAIL } from "@/lib/seo/site";
 
@@ -37,9 +37,7 @@ export default async function BillingPage() {
   const normalizedStatus = String(subscription?.status ?? "").toLowerCase();
   const hasActiveSubscription = normalizedStatus === "active";
   const activePlanId = hasActiveSubscription ? String(subscription?.plan_name ?? "").trim().toLowerCase() : null;
-  const currentPlan = activePlanId
-    ? subscriptionPlans.find((plan) => plan.id === activePlanId || plan.name.toLowerCase() === activePlanId)
-    : null;
+  const currentPlan = activePlanId ? getPlanById(activePlanId) ?? null : null;
 
   return (
     <WorkspaceShell title="Billing">
@@ -49,7 +47,7 @@ export default async function BillingPage() {
           <h2 className="mt-2 text-2xl font-semibold tracking-tight">Plans, renewals, and payment history</h2>
           <p className="mt-1 text-sm text-muted-foreground">Your active plan, billing status, and transaction ledger are centralized here with a protected, premium checkout experience.</p>
           <div className="mt-3 flex flex-wrap gap-2 text-xs">
-            <span className="stat-chip">Active plan: {currentPlan?.name ?? "None"}</span>
+            <span className="stat-chip">Active plan: {currentPlan?.displayName ?? "None"}</span>
             <span className="stat-chip">Subscription: {normalizedStatus || "inactive"}</span>
             <span className="stat-chip">Payments: {(payments ?? []).length}</span>
           </div>
@@ -63,23 +61,27 @@ export default async function BillingPage() {
           <h2 className="mb-3 text-lg font-semibold">Subscription Plans</h2>
           <div className="grid gap-4 lg:grid-cols-3">
           {subscriptionPlans.map((plan) => {
-            const active = Boolean(activePlanId) && (plan.id === activePlanId || plan.name.toLowerCase() === activePlanId);
+            const active = Boolean(activePlanId) && plan.id === activePlanId;
             return (
               <Card key={plan.id} className={active ? "premium-surface border-primary" : "premium-surface"}>
                 <CardHeader>
                   <div className="flex items-center justify-between">
-                    <CardTitle>{plan.name}</CardTitle>
+                    <div className="flex items-center gap-2">
+                      <CardTitle>{plan.displayName}</CardTitle>
+                      {plan.premiumLabel ? <span className="rounded-full border px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">{plan.premiumLabel}</span> : null}
+                    </div>
                     {active ? <span className="text-xs font-semibold text-slate-500">Current</span> : null}
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <p className="text-2xl font-semibold">{formatRupees(plan.monthlyPriceRupees)}<span className="text-sm text-muted-foreground">/month</span></p>
                   <p className="text-sm text-muted-foreground">{plan.credits} credits included</p>
+                  <p className="text-sm font-medium text-foreground/90">{plan.premiumPositioning}</p>
                   <ul className="space-y-1 text-sm text-muted-foreground">
                     {plan.features.map((feature) => <li key={feature}>• {feature}</li>)}
-                    <li>• {plan.id === "scale" ? "Priority support" : plan.id === "growth" ? "Business-hours support" : "Email support"}</li>
+                    <li>• {getPlanSupportText(plan.id)}</li>
                   </ul>
-                  <PricingActions planId={plan.id} planName={plan.name} />
+                  <PricingActions planId={plan.id} planName={plan.displayName} />
                 </CardContent>
               </Card>
             );
@@ -102,7 +104,7 @@ export default async function BillingPage() {
                   <tr key={payment.id} className="border-t border-border/60">
                     <td className="py-3">{formatDate(payment.created_at)}</td>
                     <td className="py-3">{formatMoney(Number(payment.payment_amount ?? 0), payment.currency ?? "INR")}</td>
-                    <td className="py-3">{payment.plan}</td>
+                    <td className="py-3">{getPlanDisplayName(payment.plan)}</td>
                     <td className="py-3">{payment.status}</td>
                   </tr>
                 ))}

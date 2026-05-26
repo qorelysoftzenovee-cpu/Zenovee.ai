@@ -1,7 +1,7 @@
 import Razorpay from "razorpay";
 import crypto from "crypto";
 import { env, validateBillingEnv } from "@/lib/env";
-import { getPlanById } from "@/lib/billing/plans";
+import { buildCheckoutPayload, getPlanById } from "@/lib/billing/plans";
 
 export function getRazorpayClient() {
   validateBillingEnv();
@@ -45,16 +45,17 @@ export function verifyWebhookSignature(rawBody: string, signature: string | null
 export async function createRazorpayPlanForAppPlan(planId: string) {
   const plan = getPlanById(planId);
   if (!plan) throw new Error("Invalid plan");
+  const checkout = buildCheckoutPayload(planId);
 
   const razorpay = getRazorpayClient();
   const created = await razorpay.plans.create({
     period: "monthly",
     interval: 1,
     item: {
-      name: `Zenovee ${plan.name}`,
-      amount: plan.amountPaise,
-      currency: "INR",
-      description: `${plan.credits} monthly credits`,
+      name: `Zenovee ${checkout.displayName}`,
+      amount: checkout.amountPaise,
+      currency: checkout.currency,
+      description: `${checkout.credits} monthly credits`,
     },
     notes: { app_plan_id: plan.id, app_name: "zenovee" },
   });

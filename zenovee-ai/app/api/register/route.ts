@@ -76,22 +76,21 @@ export async function POST(request: Request) {
 
     const creditsPayload: Record<string, unknown> = {
       user_id: userId,
-      credits_added: 0,
-      credits_consumed: 0,
-      remaining_balance: 0,
-      reason: "account_created",
-      reset_interval: "monthly",
+      total_credits: 0,
+      used_credits: 0,
+      available_credits: 0,
+      updated_at: new Date().toISOString(),
     };
 
     let creditError: { message: string } | null = null;
     for (let attempt = 0; attempt < 8; attempt += 1) {
-      const { error } = await supabaseAdmin.from("credits").insert(creditsPayload as never);
+      const { error } = await supabaseAdmin.from("user_credits").upsert(creditsPayload as never, { onConflict: "user_id" });
       if (!error) {
         creditError = null;
         break;
       }
 
-      const missingColumnMatch = error.message.match(/Could not find the '([^']+)' column of 'credits' in the schema cache/i);
+      const missingColumnMatch = error.message.match(/Could not find the '([^']+)' column of 'user_credits' in the schema cache/i);
       if (missingColumnMatch?.[1]) {
         delete creditsPayload[missingColumnMatch[1]];
         continue;

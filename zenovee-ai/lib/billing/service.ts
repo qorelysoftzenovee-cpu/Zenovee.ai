@@ -1,5 +1,5 @@
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { getPlanById } from "@/lib/billing/plans";
+import { buildActivationPayload, getPlanById } from "@/lib/billing/plans";
 import { createRazorpayPlanForAppPlan } from "@/lib/razorpay/client";
 import { serverLog } from "@/lib/logger";
 
@@ -11,19 +11,6 @@ type SupabaseRpcClient = {
 };
 
 const GRACE_DAYS = 3;
-
-async function hasLegacyCreditRecord(userId: string, reason: string) {
-  const supabaseAdmin = getSupabaseAdmin();
-  const { data } = await supabaseAdmin
-    .from("credits")
-    .select("id")
-    .eq("user_id", userId)
-    .eq("reason", reason)
-    .limit(1)
-    .maybeSingle<{ id: string }>();
-
-  return Boolean(data?.id);
-}
 
 export async function getOrCreateRazorpayPlanId(appPlanId: string) {
   const supabaseAdmin = getSupabaseAdmin();
@@ -52,6 +39,7 @@ export async function getOrCreateRazorpayPlanId(appPlanId: string) {
 export async function assignPlanCredits(userId: string, appPlanId: string, reference = `plan_allocation:${appPlanId}`) {
   const plan = getPlanById(appPlanId);
   if (!plan) throw new Error("Invalid plan");
+  const activation = buildActivationPayload(appPlanId);
 
   const supabaseAdmin = getSupabaseAdmin();
   const nowIso = new Date().toISOString();
@@ -60,11 +48,17 @@ export async function assignPlanCredits(userId: string, appPlanId: string, refer
 
   const { data: allocationData, error: allocationErr } = await supabaseRpc.rpc("allocate_subscription_credits", {
     p_user_id: userId,
-    p_credits: plan.credits,
+    p_credits: activation.credits,
     p_plan_id: appPlanId,
     p_reference: reference,
     p_reset_at: nextResetAt,
-    p_metadata: { source: "webhook", planName: plan.name },
+    p_metadata: {
+      source: "webhook",
+      planName: activation.displayName,
+      premiumLabel: activation.premiumLabel,
+      limits: activation.limits,
+      supportTier: activation.supportTier,
+    },
   });
 
   if (allocationErr) {
@@ -73,7 +67,7 @@ export async function assignPlanCredits(userId: string, appPlanId: string, refer
   }
 
   const allocation = (Array.isArray(allocationData) ? allocationData[0] : allocationData) as { balance_after?: number } | null;
-  const nextBalance = Number(allocation?.balance_after ?? plan.credits);
+  const nextBalance = Number(allocation?.balance_after ?? activation.credits);
   const { error: userErr } = await supabaseAdmin
     .from("users")
     .update({ credits_balance: nextBalance, plan: appPlanId, updated_at: nowIso } as never)
@@ -102,25 +96,7 @@ export async function addTopupCredits(userId: string, topupId: string, credits: 
 
   const row = (Array.isArray(data) ? data[0] : data) as { balance_after?: number } | null;
   const nextBalance = Number(row?.balance_after ?? credits);
-  const legacyReason = reference;
-  const shouldWriteLegacyCreditRow = !(await hasLegacyCreditRecord(userId, legacyReason));
-
-  const legacyWritePromise = shouldWriteLegacyCreditRow
-    ? supabaseAdmin.from("credits").insert({
-        user_id: userId,
-        credits_added: credits,
-        credits_consumed: 0,
-        remaining_balance: nextBalance,
-        reason: legacyReason,
-        reset_interval: "monthly",
-        updated_at: nowIso,
-      } as never)
-    : Promise.resolve({ error: null });
-
-  await Promise.all([
-    legacyWritePromise,
-    supabaseAdmin.from("users").update({ credits_balance: nextBalance, updated_at: nowIso } as never).eq("id", userId),
-  ]);
+  await supabaseAdmin.from("users").update({ credits_balance: nextBalance, updated_at: nowIso } as never).eq("id", userId);
 
   return nextBalance;
 }

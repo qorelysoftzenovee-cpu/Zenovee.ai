@@ -58,6 +58,13 @@ export default async function ToolSeoPage({ params }: { params: Promise<{ slug: 
                   <Link href="/pricing">View pricing</Link>
                 </Button>
               </div>
+              <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                <span className="rounded-full border px-3 py-1">{tool.creditCost} credits</span>
+                {tool.complexity ? <span className="rounded-full border px-3 py-1 uppercase">{tool.complexity}</span> : null}
+                {tool.premiumBadge ? <span className="rounded-full border border-primary/30 bg-primary/5 px-3 py-1 text-primary">{tool.premiumBadge}</span> : null}
+              </div>
+              {tool.expectedOutputValue ? <p className="text-sm text-muted-foreground">{tool.expectedOutputValue}</p> : null}
+              {tool.creditTooltip ? <p className="text-xs text-muted-foreground">{tool.creditTooltip}</p> : null}
             </div>
           </div>
         </section>
