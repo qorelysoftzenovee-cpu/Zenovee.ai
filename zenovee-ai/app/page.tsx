@@ -107,6 +107,7 @@ export default async function LandingPage() {
           <div className="mb-7 space-y-2">
             <p className="premium-label">Pricing preview</p>
             <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">Simple monthly plans</h2>
+            <p className="text-sm text-muted-foreground">Premium Zenovee billing with secure Razorpay checkout, encrypted payment handling, and support-backed activation reassurance.</p>
           </div>
           <div className="grid gap-4 md:grid-cols-3">
             {subscriptionPlans.map((plan) => (
@@ -120,6 +121,10 @@ export default async function LandingPage() {
                 </CardContent>
               </Card>
             ))}
+          </div>
+          <div className="mt-5 rounded-2xl border border-border/70 bg-card p-4 text-sm text-muted-foreground shadow-sm">
+            <p className="font-medium text-foreground">Trusted payment clarification</p>
+            <p className="mt-1">Secure payments are processed through Razorpay. Depending on your bank or UPI app, the payment receiver name may appear differently during checkout.</p>
           </div>
           <div className="mt-6"><Button asChild variant="secondary"><Link href="/pricing">View Pricing</Link></Button></div>
         </section>

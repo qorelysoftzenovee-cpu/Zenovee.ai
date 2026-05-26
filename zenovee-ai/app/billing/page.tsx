@@ -4,6 +4,7 @@ import { requireStandardUser } from "@/lib/auth";
 import { WorkspaceShell } from "@/components/layout/workspace-shell";
 import { getActivePlans, formatRupees } from "@/lib/billing/plans";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { SUPPORT_EMAIL } from "@/lib/seo/site";
 
 function formatDate(value?: string | null) {
   if (!value) return "—";
@@ -46,11 +47,16 @@ export default async function BillingPage() {
         <section className="premium-surface-elevated p-5 md:p-6">
           <p className="premium-label">Billing</p>
           <h2 className="mt-2 text-2xl font-semibold tracking-tight">Plans, renewals, and payment history</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Your active plan, billing status, and transaction ledger are centralized here.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Your active plan, billing status, and transaction ledger are centralized here with a protected, premium checkout experience.</p>
           <div className="mt-3 flex flex-wrap gap-2 text-xs">
             <span className="stat-chip">Active plan: {currentPlan?.name ?? "None"}</span>
             <span className="stat-chip">Subscription: {normalizedStatus || "inactive"}</span>
             <span className="stat-chip">Payments: {(payments ?? []).length}</span>
+          </div>
+          <div className="mt-4 rounded-2xl border border-border/70 bg-background/70 p-4 text-sm text-muted-foreground shadow-sm">
+            <p className="font-medium text-foreground">Secure checkout protected by Razorpay</p>
+            <p className="mt-1">Payments are encrypted and verified before access is activated. Depending on your bank or UPI app, the receiver name shown during checkout may vary.</p>
+            <p className="mt-2 text-xs">If a payment succeeds and your billing state does not refresh immediately, contact {SUPPORT_EMAIL} and Zenovee support will help verify and resolve eligible issues promptly.</p>
           </div>
         </section>
         <section>
@@ -84,6 +90,9 @@ export default async function BillingPage() {
         <Card className="premium-surface">
           <CardHeader><CardTitle>Payment History</CardTitle></CardHeader>
           <CardContent className="overflow-x-auto">
+            <div className="mb-4 rounded-xl border border-border/60 bg-background/60 p-3 text-xs text-muted-foreground">
+              Each successful payment is verified before credits and subscription access are updated, helping keep your billing history accurate and secure.
+            </div>
             <table className="w-full min-w-[700px] text-sm">
               <thead className="text-left text-xs text-muted-foreground">
                 <tr><th className="pb-3">Date</th><th className="pb-3">Amount</th><th className="pb-3">Plan</th><th className="pb-3">Status</th></tr>

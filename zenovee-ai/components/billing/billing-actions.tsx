@@ -48,7 +48,7 @@ export function BillingActions() {
           Cancel at period end
         </Button>
       </div>
-      <p className="text-xs text-muted-foreground">Secure payments via Razorpay. Your subscription updates automatically after payment.</p>
+      <p className="text-xs text-muted-foreground">Secure Razorpay billing with protected verification. Your Zenovee subscription updates automatically after successful payment confirmation.</p>
       {message ? (
         <p className={`text-xs ${messageTone === "error" ? "text-rose-500" : messageTone === "success" ? "text-emerald-600 dark:text-emerald-300" : "text-muted-foreground"}`}>
           {message}

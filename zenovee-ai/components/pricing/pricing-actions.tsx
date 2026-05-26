@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { BadgeCheck, Headphones, LockKeyhole, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Script from "next/script";
 
@@ -173,7 +174,7 @@ export function PricingActions({
     if (!razorpayConstructor) {
       logScaleDiagnostics("razorpay_not_ready");
       setStatusTone("error");
-      setStatus("Secure payments are still loading. Please wait a moment and try again.");
+      setStatus("Secure checkout is getting ready. Please wait a few seconds and try again.");
       setLoading(false);
       // Try to reload the script or force a check
       setIsScriptReady("checking");
@@ -216,7 +217,7 @@ export function PricingActions({
       if (!data?.checkout?.key || !data?.checkout?.orderId || !data?.checkout?.amountPaise || !data?.checkout?.currency) {
         logScaleDiagnostics("checkout_response_incomplete", { checkout: data?.checkout ?? null });
         setStatusTone("error");
-        setStatus("Checkout started with incomplete payment details. Please retry once from billing.");
+        setStatus("We couldn’t prepare the full secure payment session. Please retry once from billing.");
         setLoading(false);
         return;
       }
@@ -228,8 +229,8 @@ export function PricingActions({
         amount: data.checkout.amountPaise,
         currency: data.checkout.currency,
         order_id: data.checkout.orderId,
-        name: "Zenovee AI",
-        description: `${planName} Plan`,
+        name: "Zenovee",
+        description: `${planName} monthly workspace plan`,
         handler: async function (response: RazorpayVerifyPayload) {
           const verify = await fetch("/api/billing/verify", {
             method: "POST",
@@ -240,7 +241,7 @@ export function PricingActions({
             clearCheckoutTimeout();
             activeOrderIdRef.current = null;
             setStatusTone("success");
-            setStatus("Payment successful. Your subscription is active and your workspace is updating.");
+            setStatus("Payment received securely. Your Zenovee subscription is being activated now.");
             setLoading(false);
             router.push("/dashboard");
             router.refresh();
@@ -264,7 +265,7 @@ export function PricingActions({
             clearCheckoutTimeout();
             await reportCheckoutState(activeOrderIdRef.current ?? data.checkout?.orderId, "cancelled", "CHECKOUT_DISMISSED");
             activeOrderIdRef.current = null;
-            setStatus("Checkout was closed before payment completed. You can safely try again.");
+            setStatus("Checkout was closed before payment completed. No charge was completed, and you can safely try again.");
             setStatusTone("default");
             setLoading(false);
           },
@@ -283,7 +284,7 @@ export function PricingActions({
         await reportCheckoutState(activeOrderIdRef.current ?? data.checkout?.orderId, "failed", payload.error?.code ?? payload.error?.reason ?? "PAYMENT_FAILED");
         activeOrderIdRef.current = null;
         setStatusTone("error");
-        setStatus(payload.error?.description ?? "Payment failed before completion. Please verify your payment method and try again.");
+        setStatus(payload.error?.description ?? "Payment was not completed. Please verify your bank or UPI details and try again.");
         setLoading(false);
       });
 
@@ -292,7 +293,7 @@ export function PricingActions({
         void reportCheckoutState(activeOrderIdRef.current ?? data.checkout?.orderId, "abandoned", "CHECKOUT_TIMEOUT");
         activeOrderIdRef.current = null;
         setStatusTone("default");
-        setStatus("Checkout timed out before completion. Please try again when you’re ready.");
+        setStatus("Your protected checkout session timed out. Please start again whenever you’re ready.");
         setLoading(false);
       }, 8 * 60 * 1000);
 
@@ -303,18 +304,43 @@ export function PricingActions({
       await reportCheckoutState(activeOrderIdRef.current ?? undefined, "failed", "CLIENT_CHECKOUT_EXCEPTION");
       activeOrderIdRef.current = null;
       setStatusTone("error");
-      setStatus(`We couldn’t launch secure checkout. ${error instanceof Error ? error.message : "Please refresh and try again."}`);
+      setStatus(`We couldn’t open secure checkout. ${error instanceof Error ? error.message : "Please refresh and try again."}`);
       setLoading(false);
     }
   };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       <Script src="https://checkout.razorpay.com/v1/checkout.js" onLoad={() => setIsScriptReady(true)} onError={() => setIsScriptReady(false)} />
+      <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-3 text-left shadow-sm dark:border-white/10 dark:bg-white/5">
+        <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-600 dark:text-slate-300">
+          <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300">
+            <ShieldCheck className="h-3.5 w-3.5" />
+            Secure checkout
+          </span>
+          <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
+            <BadgeCheck className="h-3.5 w-3.5" />
+            Powered by Razorpay
+          </span>
+        </div>
+        <p className="mt-2 text-xs leading-5 text-slate-600 dark:text-slate-300">
+          Secure payments are processed through Razorpay. Depending on your bank or UPI app, the payment receiver name may appear differently during checkout.
+        </p>
+        <div className="mt-2 grid gap-2 text-xs text-slate-500 dark:text-slate-400 sm:grid-cols-2">
+          <div className="flex items-start gap-2">
+            <LockKeyhole className="mt-0.5 h-3.5 w-3.5 flex-none text-slate-500 dark:text-slate-300" />
+            <span>Encrypted payment flow with protected order verification before plan activation.</span>
+          </div>
+          <div className="flex items-start gap-2">
+            <Headphones className="mt-0.5 h-3.5 w-3.5 flex-none text-slate-500 dark:text-slate-300" />
+            <span>If a payment succeeds but access takes a moment to reflect, Zenovee support will help verify and resolve eligible issues promptly.</span>
+          </div>
+        </div>
+      </div>
       <Button className="w-full min-h-11" onClick={handleCheckout} disabled={loading} aria-label={`Checkout ${planName} plan`}>
-        {loading ? "Preparing..." : `Choose ${planName}`}
+        {loading ? "Preparing secure checkout..." : `Continue with ${planName}`}
       </Button>
-      <p className="text-xs text-muted-foreground">Secure payments via Razorpay. Your subscription updates automatically after payment.</p>
+      <p className="text-xs text-muted-foreground">Protected monthly billing for Zenovee plans. Subscription access updates automatically after successful verification.</p>
       {status ? (
         <p className={`text-xs ${statusTone === "error" ? "text-rose-500" : statusTone === "success" ? "text-emerald-600 dark:text-emerald-300" : "text-muted-foreground"}`}>
           {status}
