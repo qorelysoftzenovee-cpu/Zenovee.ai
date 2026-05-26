@@ -15,6 +15,91 @@ const checkoutRequestSchema = z.object({
 
 const REUSABLE_PENDING_WINDOW_MS = 15 * 60 * 1000;
 
+type PaymentInsertPayload = Database["public"]["Tables"]["payments"]["Insert"];
+
+function normalizePaymentAmount(amountPaise: number) {
+  return Number((amountPaise / 100).toFixed(2));
+}
+
+function validateCheckoutPersistenceInput(input: {
+  userId?: string | null;
+  plan?: { id: string; credits: number; amountPaise: number } | null;
+  amountPaise?: number | null;
+  amountRupees?: number | null;
+  order?: { id?: string | null; amount?: number | null; currency?: string | null } | null;
+}) {
+  if (!input.userId?.trim()) {
+    return "Unable to continue checkout because the user record is missing.";
+  }
+
+  if (!input.plan?.id?.trim()) {
+    return "Unable to continue checkout because the selected plan is invalid.";
+  }
+
+  if (!Number.isFinite(input.plan.credits) || input.plan.credits <= 0) {
+    return "Unable to continue checkout because the selected plan credits are invalid.";
+  }
+
+  if (!Number.isFinite(input.amountPaise) || (input.amountPaise ?? 0) <= 0) {
+    return "Unable to continue checkout because the selected plan amount is invalid.";
+  }
+
+  if (!Number.isFinite(input.amountRupees) || (input.amountRupees ?? 0) <= 0) {
+    return "Unable to continue checkout because the normalized billing amount is invalid.";
+  }
+
+  if (!input.order?.id?.trim()) {
+    return "Unable to continue checkout because the Razorpay order ID is missing.";
+  }
+
+  if (!Number.isFinite(input.order.amount) || (input.order.amount ?? 0) <= 0) {
+    return "Unable to continue checkout because Razorpay returned an invalid order amount.";
+  }
+
+  if (input.order.amount !== input.amountPaise) {
+    return "Unable to continue checkout because the Razorpay order amount does not match the selected plan.";
+  }
+
+  if ((input.order.currency ?? "").toUpperCase() !== "INR") {
+    return "Unable to continue checkout because the Razorpay order currency is invalid.";
+  }
+
+  return null;
+}
+
+async function insertPaymentWithSchemaFallback(
+  supabaseAdmin: ReturnType<typeof getSupabaseAdmin>,
+  paymentInsert: PaymentInsertPayload,
+  legacyPaymentInsert: PaymentInsertPayload & { amount: number }
+) {
+  const { error } = await supabaseAdmin.from("payments").insert(paymentInsert);
+
+  if (!error) {
+    return;
+  }
+
+  const shouldRetryWithLegacyAmount = /column\s+"?amount"?.*null|null value in column "amount"|amount/i.test(error.message);
+  if (!shouldRetryWithLegacyAmount) {
+    throw new Error(error.message);
+  }
+
+  serverLog({
+    level: "warn",
+    route: "api/billing/checkout",
+    message: "Retrying payment insert with legacy amount column fallback",
+    metadata: {
+      paymentInsert,
+      legacyPaymentInsert,
+      supabaseError: error.message,
+    },
+  });
+
+  const { error: legacyInsertError } = await supabaseAdmin.from("payments").insert(legacyPaymentInsert as never);
+  if (legacyInsertError) {
+    throw new Error(legacyInsertError.message);
+  }
+}
+
 function resolveCheckoutKey() {
   const publicKey = env.NEXT_PUBLIC_RAZORPAY_KEY_ID?.trim() ?? "";
   const serverKey = env.RAZORPAY_KEY_ID?.trim() ?? "";
@@ -165,20 +250,71 @@ export async function POST(request: Request) {
       metadata: { userId: user.id, planId: plan.id, amountPaise, order },
     });
 
+    const amountRupees = normalizePaymentAmount(amountPaise);
+    const persistenceValidationError = validateCheckoutPersistenceInput({
+      userId: user.id,
+      plan,
+      amountPaise,
+      amountRupees,
+      order: {
+        id: order.id,
+        amount: typeof order.amount === "number" ? order.amount : null,
+        currency: typeof order.currency === "string" ? order.currency : null,
+      },
+    });
+
+    if (persistenceValidationError) {
+      serverLog({
+        level: "warn",
+        route: "api/billing/checkout",
+        message: "Checkout persistence validation failed",
+        metadata: {
+          userId: user.id,
+          planId: plan.id,
+          planCredits: plan.credits,
+          amountPaise,
+          amountRupees,
+          orderId: order.id,
+          orderAmount: order.amount,
+          orderCurrency: order.currency,
+        },
+      });
+      return jsonError(persistenceValidationError, 400, { code: "INVALID_PAYMENT_PERSISTENCE_INPUT" });
+    }
+
     const nowIso = new Date().toISOString();
-    const paymentInsert: Database["public"]["Tables"]["payments"]["Insert"] = {
+    const paymentInsert: PaymentInsertPayload = {
       user_id: user.id,
-      payment_amount: Number((amountPaise / 100).toFixed(2)),
+      payment_amount: amountRupees,
       plan: plan.id,
       currency: "INR",
       status: "PENDING",
       order_id: order.id,
     };
 
-    const { error: paymentError } = await supabaseAdmin.from("payments").insert(paymentInsert);
-    if (paymentError) {
-      throw new Error(paymentError.message);
-    }
+    const legacyPaymentInsert = {
+      ...paymentInsert,
+      amount: amountRupees,
+    };
+
+    serverLog({
+      level: "info",
+      route: "api/billing/checkout",
+      message: "Payment insert payload prepared",
+      metadata: {
+        user_id: paymentInsert.user_id,
+        plan: paymentInsert.plan,
+        credits: plan.credits,
+        amount: amountRupees,
+        amountPaise,
+        payment_amount: paymentInsert.payment_amount,
+        currency: paymentInsert.currency,
+        order_id: paymentInsert.order_id,
+        status: paymentInsert.status,
+      },
+    });
+
+    await insertPaymentWithSchemaFallback(supabaseAdmin, paymentInsert, legacyPaymentInsert);
 
     const { error: subscriptionError } = await supabaseAdmin
       .from("subscriptions")
