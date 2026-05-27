@@ -229,22 +229,22 @@ export function HeroSlider() {
                     { label: "Users", value: "10k+", icon: "👥" },
                     { label: "Uptime", value: "99.9%", icon: "🔒" },
                   ].map(({ label, value, icon }) => (
-                    <div key={label} className="rounded-2xl border border-white/15 bg-white/[0.08] backdrop-blur-sm p-4 hover:bg-white/[0.12] transition-all duration-300 group cursor-default overflow-hidden">
+                    <div key={label} className="rounded-2xl border border-white/15 bg-white/[0.08] backdrop-blur-sm p-4 hover:bg-white/[0.12] transition-all duration-300 group cursor-default">
                       <p className="text-2xl mb-2">{icon}</p>
-                      <p className="text-[10px] uppercase tracking-widest text-white font-semibold">{label}</p>
+                      <p className="text-xs uppercase tracking-wide text-white font-semibold leading-tight">{label}</p>
                       <p className="mt-2 text-base font-bold text-white group-hover:text-blue-300 transition-colors">{value}</p>
                     </div>
                   ))}
                 </div>
 
-                <div className="rounded-2xl border border-white/15 bg-white/[0.06] backdrop-blur-sm p-5 space-y-3 overflow-hidden">
-                  <p className="text-xs uppercase tracking-widest text-white font-semibold mb-3">Included Features</p>
+                <div className="rounded-2xl border border-white/15 bg-white/[0.06] backdrop-blur-sm p-5 space-y-3">
+                  <p className="text-xs uppercase tracking-wide text-white font-semibold mb-3 leading-tight">Included Features</p>
                   {[active.benefit1, active.benefit2, active.benefit3].map((benefit) => (
-                    <div key={benefit} className="flex items-center gap-3 group/item min-w-0">
-                      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/30 border border-emerald-400/50 text-xs font-bold text-emerald-200 group-hover/item:bg-emerald-500/40 transition-colors flex-shrink-0">
+                    <div key={benefit} className="flex items-start gap-3 group/item">
+                      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/30 border border-emerald-400/50 text-xs font-bold text-emerald-200 group-hover/item:bg-emerald-500/40 transition-colors flex-shrink-0 mt-0.5">
                         ✓
                       </div>
-                      <span className="text-sm text-white group-hover/item:text-blue-300 transition-colors truncate">{benefit}</span>
+                      <span className="text-sm text-white group-hover/item:text-blue-300 transition-colors leading-snug">{benefit}</span>
                     </div>
                   ))}
                 </div>
