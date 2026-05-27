@@ -11,6 +11,7 @@ import { listToolDefinitions } from "@/definitions";
 
 const FAVORITES_KEY = "zenovee_tool_favorites";
 const RECENTS_KEY = "zenovee_recent_tools";
+const TOOL_STORAGE_SYNC_EVENT = "zenovee-tool-storage-sync";
 const INITIAL_VISIBLE_TOOLS = 4;
 
 const CATEGORY_COPY = {
@@ -60,23 +61,55 @@ type WorkspaceTool = {
   searchIndex: string;
 };
 
-function readStoredToolIds(storageKey: string) {
-  if (typeof window === "undefined") return [] as string[];
+const EMPTY_TOOL_IDS: string[] = [];
+const toolStorageCache = new Map<string, { raw: string | null; value: string[] }>();
+
+function parseStoredToolIds(raw: string | null) {
+  if (!raw) return EMPTY_TOOL_IDS;
 
   try {
-    const parsed = JSON.parse(window.localStorage.getItem(storageKey) ?? "[]");
-    return Array.isArray(parsed) ? parsed : [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((value): value is string => typeof value === "string") : EMPTY_TOOL_IDS;
   } catch {
-    return [];
+    return EMPTY_TOOL_IDS;
   }
+}
+
+function readStoredToolIds(storageKey: string) {
+  if (typeof window === "undefined") return EMPTY_TOOL_IDS;
+
+  const raw = window.localStorage.getItem(storageKey);
+  const cached = toolStorageCache.get(storageKey);
+
+  if (cached && cached.raw === raw) {
+    return cached.value;
+  }
+
+  const value = parseStoredToolIds(raw);
+  toolStorageCache.set(storageKey, { raw, value });
+  return value;
+}
+
+function writeStoredToolIds(storageKey: string, value: string[]) {
+  if (typeof window === "undefined") return;
+
+  const raw = JSON.stringify(value);
+  window.localStorage.setItem(storageKey, raw);
+  toolStorageCache.set(storageKey, { raw, value });
+  window.dispatchEvent(new CustomEvent(TOOL_STORAGE_SYNC_EVENT, { detail: { key: storageKey } }));
 }
 
 function subscribeToStorage(callback: () => void) {
   if (typeof window === "undefined") return () => {};
 
   const handleStorage = () => callback();
+  const handleLocalSync = () => callback();
   window.addEventListener("storage", handleStorage);
-  return () => window.removeEventListener("storage", handleStorage);
+  window.addEventListener(TOOL_STORAGE_SYNC_EVENT, handleLocalSync);
+  return () => {
+    window.removeEventListener("storage", handleStorage);
+    window.removeEventListener(TOOL_STORAGE_SYNC_EVENT, handleLocalSync);
+  };
 }
 
 function useDebouncedValue<T>(value: T, delayMs: number) {
@@ -287,12 +320,12 @@ export function ToolsWorkspace() {
   const favoriteIds = useSyncExternalStore(
     subscribeToStorage,
     () => readStoredToolIds(FAVORITES_KEY),
-    () => []
+    () => EMPTY_TOOL_IDS
   );
   const recentIds = useSyncExternalStore(
     subscribeToStorage,
     () => readStoredToolIds(RECENTS_KEY),
-    () => []
+    () => EMPTY_TOOL_IDS
   );
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>(() =>
@@ -352,6 +385,8 @@ export function ToolsWorkspace() {
   const toolMap = useMemo(() => new Map(tools.map((tool) => [tool.id, tool])), [tools]);
   const recentTools = useMemo(() => recentIds.map((id) => toolMap.get(id)).filter((tool): tool is WorkspaceTool => Boolean(tool)), [recentIds, toolMap]);
   const favoriteTools = useMemo(() => favoriteIds.map((id) => toolMap.get(id)).filter((tool): tool is WorkspaceTool => Boolean(tool)), [favoriteIds, toolMap]);
+  const favoriteIdSet = useMemo(() => new Set(favoriteIds), [favoriteIds]);
+  const recentIdSet = useMemo(() => new Set(recentIds), [recentIds]);
 
   const mostUsedTools = useMemo(() => {
     const recencyScore = new Map<string, number>();
@@ -365,13 +400,13 @@ export function ToolsWorkspace() {
         score:
           (tool.featured ? 3 : 0) +
           (tool.trending ? 2 : 0) +
-          (favoriteIds.includes(tool.id) ? 4 : 0) +
+          (favoriteIdSet.has(tool.id) ? 4 : 0) +
           (recencyScore.get(tool.id) ?? 0),
       }))
       .sort((a, b) => b.score - a.score || a.tool.name.localeCompare(b.tool.name))
       .slice(0, 6)
       .map(({ tool }) => tool);
-  }, [tools, favoriteIds, recentIds]);
+  }, [tools, favoriteIdSet, recentIds]);
 
   const featuredTools = useMemo(() => tools.filter((tool) => tool.featured).slice(0, 6), [tools]);
   const trendingTools = useMemo(() => tools.filter((tool) => tool.trending).slice(0, 6), [tools]);
@@ -386,8 +421,8 @@ export function ToolsWorkspace() {
         const passCategory = activeCategory === "All" || tool.category === activeCategory;
         const passMode =
           filterMode === "all" ||
-          (filterMode === "favorites" && favoriteIds.includes(tool.id)) ||
-          (filterMode === "recent" && recentIds.includes(tool.id));
+          (filterMode === "favorites" && favoriteIdSet.has(tool.id)) ||
+          (filterMode === "recent" && recentIdSet.has(tool.id));
         const passQuery = !queryTokens.length || queryTokens.every((token) => tool.searchIndex.includes(token));
 
         return passCategory && passMode && passQuery;
@@ -399,7 +434,7 @@ export function ToolsWorkspace() {
         if (a.trending !== b.trending) return Number(b.trending) - Number(a.trending);
         return a.name.localeCompare(b.name);
       });
-  }, [tools, activeCategory, filterMode, favoriteIds, recentIds, queryTokens]);
+  }, [tools, activeCategory, filterMode, favoriteIdSet, recentIdSet, queryTokens]);
 
   const groupedCategories = useMemo(
     () => CATEGORY_ORDER.map((category) => ({ category, tools: filteredTools.filter((tool) => tool.category === category) })).filter((group) => group.tools.length > 0),
@@ -407,11 +442,8 @@ export function ToolsWorkspace() {
   );
 
   const toggleFavorite = (id: string) => {
-    const next = favoriteIds.includes(id) ? favoriteIds.filter((value) => value !== id) : [id, ...favoriteIds].slice(0, 24);
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(FAVORITES_KEY, JSON.stringify(next));
-      window.dispatchEvent(new StorageEvent("storage", { key: FAVORITES_KEY }));
-    }
+    const next = favoriteIdSet.has(id) ? favoriteIds.filter((value) => value !== id) : [id, ...favoriteIds].slice(0, 24);
+    writeStoredToolIds(FAVORITES_KEY, next);
   };
 
   const toggleCategory = (category: string) => {

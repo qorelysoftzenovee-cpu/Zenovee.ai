@@ -11,6 +11,7 @@ import { AlertDialog } from "@/components/ui/dialogs";
 import { ArrowRight, Clock3, Sparkles, RefreshCcw, ShieldCheck } from "lucide-react";
 
 type ToolRunnerTool = Pick<ToolDefinition, "id" | "metadata" | "fields" | "creditCost" | "presets" | "examples">;
+const TOOL_STORAGE_SYNC_EVENT = "zenovee-tool-storage-sync";
 
 type Props = {
   tool: ToolRunnerTool;
@@ -103,6 +104,7 @@ export function ToolRunner({ tool, workspaceId = null, moduleId = null }: Props)
         const prev = JSON.parse(window.localStorage.getItem(key) ?? "[]") as string[];
         const next = [tool.id, ...prev.filter((id) => id !== tool.id)].slice(0, 12);
         window.localStorage.setItem(key, JSON.stringify(next));
+        window.dispatchEvent(new CustomEvent(TOOL_STORAGE_SYNC_EVENT, { detail: { key } }));
       }
 
       const historyRes = await fetch(`/api/tools?mode=history&toolId=${encodeURIComponent(tool.id)}&limit=6`);
