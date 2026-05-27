@@ -172,7 +172,7 @@ export function HeroSlider() {
                 <h2 className="text-balance text-3xl font-bold tracking-tight text-white md:text-4xl lg:text-5xl leading-tight">
                   {active.headline}
                 </h2>
-                <p className="max-w-2xl text-base leading-relaxed text-slate-300 md:text-lg">
+                <p className="max-w-2xl text-base leading-relaxed text-white md:text-lg">
                   {active.subtext}
                 </p>
               </div>
@@ -200,7 +200,7 @@ export function HeroSlider() {
 
               <div key={`benefits-${index}`} className="flex flex-wrap gap-2 pt-2 slide-in-up" style={{ animationDelay: "0.24s" }}>
                 {[active.benefit1, active.benefit2, active.benefit3].map((benefit) => (
-                  <div key={benefit} className="text-xs text-slate-200 bg-white/5 border border-white/10 rounded-full px-3 py-1.5 backdrop-blur-sm">
+                  <div key={benefit} className="text-xs text-white bg-white/10 border border-white/20 rounded-full px-3 py-1.5 backdrop-blur-sm font-medium">
                     ✓ {benefit}
                   </div>
                 ))}
@@ -209,12 +209,12 @@ export function HeroSlider() {
 
             <div key={`panel-${index}`} className="hero-panel-enter relative overflow-hidden rounded-[24px] border border-white/15 bg-white/5 backdrop-blur-sm p-6 md:p-8">
               <div className="relative space-y-4">
-                <div className={`rounded-2xl border ${active.accentColor} bg-white/[0.08] backdrop-blur-sm p-5 transition-all duration-300 hover:bg-white/[0.12] hover:border-white/25 overflow-hidden`}>
+                <div className={`rounded-2xl border ${active.accentColor} bg-white/10 backdrop-blur-sm p-5 transition-all duration-300 hover:bg-white/15 hover:border-white/30`}>
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <p className="text-xs uppercase tracking-wider text-white font-semibold">Key Capability</p>
-                      <p className="mt-3 text-lg font-bold text-white truncate">{active.eyebrow.split(" ")[1]}</p>
-                      <p className="mt-2 text-sm text-white/90">Professional workflow</p>
+                      <p className="mt-3 text-lg font-bold text-white">{active.eyebrow.split(" ")[1]}</p>
+                      <p className="mt-2 text-sm text-white">Professional workflow</p>
                     </div>
                     <div className={`rounded-full ${active.badgeColor} px-3 py-1.5 text-xs font-bold flex-shrink-0`}>
                       PRO
@@ -229,22 +229,22 @@ export function HeroSlider() {
                     { label: "Users", value: "10k+", icon: "👥" },
                     { label: "Uptime", value: "99.9%", icon: "🔒" },
                   ].map(({ label, value, icon }) => (
-                    <div key={label} className="rounded-2xl border border-white/15 bg-white/[0.08] backdrop-blur-sm p-4 hover:bg-white/[0.12] transition-all duration-300 group cursor-default">
+                    <div key={label} className="rounded-2xl border border-white/20 bg-white/10 backdrop-blur-sm p-4 hover:bg-white/15 transition-all duration-300 group cursor-default">
                       <p className="text-2xl mb-2">{icon}</p>
                       <p className="text-xs uppercase tracking-wide text-white font-semibold leading-tight">{label}</p>
-                      <p className="mt-2 text-base font-bold text-white group-hover:text-blue-300 transition-colors">{value}</p>
+                      <p className="mt-2 text-base font-bold text-white group-hover:text-blue-200 transition-colors">{value}</p>
                     </div>
                   ))}
                 </div>
 
-                <div className="rounded-2xl border border-white/15 bg-white/[0.06] backdrop-blur-sm p-5 space-y-3">
+                <div className="rounded-2xl border border-white/20 bg-white/10 backdrop-blur-sm p-5 space-y-3">
                   <p className="text-xs uppercase tracking-wide text-white font-semibold mb-3 leading-tight">Included Features</p>
                   {[active.benefit1, active.benefit2, active.benefit3].map((benefit) => (
                     <div key={benefit} className="flex items-start gap-3 group/item">
-                      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/30 border border-emerald-400/50 text-xs font-bold text-emerald-200 group-hover/item:bg-emerald-500/40 transition-colors flex-shrink-0 mt-0.5">
+                      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/40 border border-emerald-400/60 text-xs font-bold text-emerald-100 group-hover/item:bg-emerald-500/50 transition-colors flex-shrink-0 mt-0.5">
                         ✓
                       </div>
-                      <span className="text-sm text-white group-hover/item:text-blue-300 transition-colors leading-snug">{benefit}</span>
+                      <span className="text-sm text-white group-hover/item:text-blue-200 transition-colors leading-snug">{benefit}</span>
                     </div>
                   ))}
                 </div>

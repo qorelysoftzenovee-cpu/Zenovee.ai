@@ -140,7 +140,7 @@ export default async function LandingPage() {
                 <h1 className="text-balance text-4xl font-bold tracking-tight text-white md:text-5xl lg:text-6xl leading-tight">
                   Professional AI Content in Minutes, Not Weeks
                 </h1>
-                <p className="max-w-2xl text-base leading-relaxed text-slate-300 md:text-lg">
+                <p className="max-w-2xl text-base leading-relaxed text-white md:text-lg">
                   Transform your content operations at enterprise scale. Let Zenovee handle your content creation, sales sequences, and brand assets. Trusted by 10,000+ professionals to save 20+ hours weekly.
                 </p>
                 <div className="flex flex-wrap gap-3 pt-2">
@@ -158,9 +158,9 @@ export default async function LandingPage() {
                 {/* Trust Badges */}
                 <div className="grid grid-cols-2 gap-2 pt-4 md:grid-cols-2 lg:grid-cols-4">
                   {trustBadges.map((badge) => (
-                    <div key={badge.text} className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.05] px-3 py-2 backdrop-blur-sm hover:bg-white/[0.08] transition-colors">
+                    <div key={badge.text} className="flex items-center gap-2 rounded-lg border border-white/20 bg-white/10 px-3 py-2 backdrop-blur-sm hover:bg-white/15 transition-colors">
                       <span className="text-lg">{badge.icon}</span>
-                      <span className="text-xs text-slate-200 font-medium">{badge.text}</span>
+                      <span className="text-xs text-white font-medium">{badge.text}</span>
                     </div>
                   ))}
                 </div>
@@ -175,7 +175,7 @@ export default async function LandingPage() {
           <div className="mb-12 space-y-4 text-center">
             <p className="premium-label inline-block">Powerful Features</p>
             <h2 className="text-3xl font-bold tracking-tight md:text-4xl">Everything you need to create like a pro</h2>
-            <p className="mx-auto max-w-2xl text-lg text-slate-400">
+            <p className="mx-auto max-w-2xl text-lg text-white">
               Zenovee combines cutting-edge AI with intuitive design to make professional content creation accessible to everyone
             </p>
           </div>
@@ -189,7 +189,7 @@ export default async function LandingPage() {
                       <CardTitle className="text-lg group-hover:text-blue-300 transition-colors text-white">{feature.title}</CardTitle>
                     </div>
                   </div>
-                  <CardDescription className="text-slate-200 mt-2">{feature.description}</CardDescription>
+                  <CardDescription className="text-white mt-2">{feature.description}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="inline-flex items-center gap-2 rounded-full bg-emerald-500/15 border border-emerald-400/30 px-3 py-1 text-xs font-semibold text-emerald-200">
@@ -207,7 +207,7 @@ export default async function LandingPage() {
             <div className="mb-12 space-y-4 text-center">
               <p className="premium-label inline-block border-white/15 bg-white/5 text-slate-200">Specialized Workflows</p>
               <h2 className="text-3xl font-bold tracking-tight text-white md:text-4xl">Complete operating systems for every use case</h2>
-              <p className="mx-auto max-w-2xl text-lg text-slate-300">
+              <p className="mx-auto max-w-2xl text-lg text-white">
                 Each workspace is a complete system designed for a specific outcome—not just a generic tool
               </p>
             </div>
@@ -216,7 +216,7 @@ export default async function LandingPage() {
                 <Card key={tool.slug} className="border-white/10 bg-gradient-to-br from-white/5 to-white/[0.02] text-white hover:border-white/30 hover:bg-white/[0.08] transition-all duration-300 group overflow-hidden">
                   <CardHeader>
                     <CardTitle className="group-hover:text-blue-300 transition-colors text-white line-clamp-2">{tool.name}</CardTitle>
-                    <CardDescription className="text-white/80 mt-2 line-clamp-2">{tool.heroDescription}</CardDescription>
+                    <CardDescription className="text-white/90 mt-2 line-clamp-2">{tool.heroDescription}</CardDescription>
                   </CardHeader>
                   <CardContent className="flex items-center justify-between gap-3">
                     <span className="text-xs text-white/70">Premium workflow</span>
@@ -235,7 +235,7 @@ export default async function LandingPage() {
           <div className="mb-12 space-y-4 text-center">
             <p className="premium-label inline-block">Getting Started</p>
             <h2 className="text-3xl font-bold tracking-tight md:text-4xl">Three steps to your first output</h2>
-            <p className="mx-auto max-w-2xl text-slate-400">Start generating professional content in under 5 minutes</p>
+            <p className="mx-auto max-w-2xl text-slate-300">Start generating professional content in under 5 minutes</p>
           </div>
             <div className="grid gap-6 md:grid-cols-3">
             {steps.map((step, index) => (
@@ -253,7 +253,7 @@ export default async function LandingPage() {
                     <CardTitle className="text-white">{step.title}</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-white/80">{step.text}</p>
+                    <p className="text-white/90">{step.text}</p>
                   </CardContent>
                 </Card>
               </div>
@@ -267,7 +267,7 @@ export default async function LandingPage() {
             <div className="mb-12 space-y-4 text-center">
               <p className="premium-label inline-block border-white/15 bg-white/5 text-slate-200">Simple Pricing</p>
               <h2 className="text-3xl font-bold tracking-tight text-white md:text-4xl">Flexible plans for every budget</h2>
-              <p className="mx-auto max-w-2xl text-lg text-slate-300">
+              <p className="mx-auto max-w-2xl text-lg text-white">
                 No setup fees. No long-term contracts. Cancel anytime.
               </p>
             </div>
@@ -304,7 +304,7 @@ export default async function LandingPage() {
             </div>
             <div className="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-6 backdrop-blur-sm text-center">
               <p className="text-sm font-semibold text-white">🔒 Secure payments processed by Razorpay</p>
-              <p className="mt-2 text-xs text-white/70">All transactions are encrypted and PCI-compliant. No hidden fees.</p>
+              <p className="mt-2 text-xs text-white/80">All transactions are encrypted and PCI-compliant. No hidden fees.</p>
             </div>
           </div>
         </section>
@@ -326,7 +326,7 @@ export default async function LandingPage() {
                     </svg>
                   </span>
                 </summary>
-                <p className="mt-4 text-white/80">{item.answer}</p>
+                <p className="mt-4 text-white/90">{item.answer}</p>
               </details>
             ))}
           </div>
