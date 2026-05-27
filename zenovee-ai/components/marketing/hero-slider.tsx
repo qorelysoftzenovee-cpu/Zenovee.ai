@@ -209,14 +209,14 @@ export function HeroSlider() {
 
             <div key={`panel-${index}`} className="hero-panel-enter relative overflow-hidden rounded-[24px] border border-white/15 bg-white/5 backdrop-blur-sm p-6 md:p-8">
               <div className="relative space-y-4">
-                <div className={`rounded-2xl border ${active.accentColor} bg-white/[0.08] backdrop-blur-sm p-5 transition-all duration-300 hover:bg-white/[0.12] hover:border-white/25`}>
+                <div className={`rounded-2xl border ${active.accentColor} bg-white/[0.08] backdrop-blur-sm p-5 transition-all duration-300 hover:bg-white/[0.12] hover:border-white/25 overflow-hidden`}>
                   <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-xs uppercase tracking-wider text-slate-300 font-semibold">Key Capability</p>
-                      <p className="mt-3 text-lg font-semibold text-white">{active.eyebrow.split(" ")[1]}</p>
-                      <p className="mt-2 text-sm text-slate-200">Professional workflow</p>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs uppercase tracking-wider text-white font-semibold">Key Capability</p>
+                      <p className="mt-3 text-lg font-bold text-white truncate">{active.eyebrow.split(" ")[1]}</p>
+                      <p className="mt-2 text-sm text-white/90">Professional workflow</p>
                     </div>
-                    <div className={`rounded-full ${active.badgeColor} px-3 py-1.5 text-xs font-bold`}>
+                    <div className={`rounded-full ${active.badgeColor} px-3 py-1.5 text-xs font-bold flex-shrink-0`}>
                       PRO
                     </div>
                   </div>
@@ -229,22 +229,22 @@ export function HeroSlider() {
                     { label: "Users", value: "10k+", icon: "👥" },
                     { label: "Uptime", value: "99.9%", icon: "🔒" },
                   ].map(({ label, value, icon }) => (
-                    <div key={label} className="rounded-2xl border border-white/15 bg-white/[0.08] backdrop-blur-sm p-4 hover:bg-white/[0.12] transition-all duration-300 group cursor-default">
+                    <div key={label} className="rounded-2xl border border-white/15 bg-white/[0.08] backdrop-blur-sm p-4 hover:bg-white/[0.12] transition-all duration-300 group cursor-default overflow-hidden">
                       <p className="text-2xl mb-2">{icon}</p>
-                      <p className="text-[10px] uppercase tracking-widest text-slate-300 font-semibold">{label}</p>
+                      <p className="text-[10px] uppercase tracking-widest text-white font-semibold">{label}</p>
                       <p className="mt-2 text-base font-bold text-white group-hover:text-blue-300 transition-colors">{value}</p>
                     </div>
                   ))}
                 </div>
 
-                <div className="rounded-2xl border border-white/15 bg-white/[0.06] backdrop-blur-sm p-5 space-y-3">
-                  <p className="text-xs uppercase tracking-widest text-slate-300 font-semibold mb-3">Included Features</p>
+                <div className="rounded-2xl border border-white/15 bg-white/[0.06] backdrop-blur-sm p-5 space-y-3 overflow-hidden">
+                  <p className="text-xs uppercase tracking-widest text-white font-semibold mb-3">Included Features</p>
                   {[active.benefit1, active.benefit2, active.benefit3].map((benefit) => (
-                    <div key={benefit} className="flex items-center gap-3 group/item">
-                      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/30 border border-emerald-400/50 text-xs font-bold text-emerald-200 group-hover/item:bg-emerald-500/40 transition-colors">
+                    <div key={benefit} className="flex items-center gap-3 group/item min-w-0">
+                      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/30 border border-emerald-400/50 text-xs font-bold text-emerald-200 group-hover/item:bg-emerald-500/40 transition-colors flex-shrink-0">
                         ✓
                       </div>
-                      <span className="text-sm text-slate-200 group-hover/item:text-white transition-colors">{benefit}</span>
+                      <span className="text-sm text-white group-hover/item:text-blue-300 transition-colors truncate">{benefit}</span>
                     </div>
                   ))}
                 </div>

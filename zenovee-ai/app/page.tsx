@@ -181,15 +181,15 @@ export default async function LandingPage() {
           </div>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {features.map((feature, index) => (
-              <Card key={index} className="border-border bg-gradient-to-br from-white/5 to-white/[0.02] backdrop-blur-sm hover:border-white/20 hover:bg-white/[0.08] transition-all duration-300 group">
+              <Card key={index} className="border-border bg-gradient-to-br from-white/5 to-white/[0.02] backdrop-blur-sm hover:border-white/20 hover:bg-white/[0.08] transition-all duration-300 group overflow-hidden">
                 <CardHeader>
                   <div className="flex items-start justify-between gap-4">
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <div className="mb-3 text-4xl">{feature.icon}</div>
-                      <CardTitle className="text-lg group-hover:text-blue-300 transition-colors">{feature.title}</CardTitle>
+                      <CardTitle className="text-lg group-hover:text-blue-300 transition-colors text-white">{feature.title}</CardTitle>
                     </div>
                   </div>
-                  <CardDescription className="text-slate-300">{feature.description}</CardDescription>
+                  <CardDescription className="text-slate-200 mt-2">{feature.description}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="inline-flex items-center gap-2 rounded-full bg-emerald-500/15 border border-emerald-400/30 px-3 py-1 text-xs font-semibold text-emerald-200">
@@ -213,14 +213,14 @@ export default async function LandingPage() {
             </div>
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
               {topTools.slice(0, 4).map((tool) => (
-                <Card key={tool.slug} className="border-white/10 bg-gradient-to-br from-white/5 to-white/[0.02] text-white hover:border-white/30 hover:bg-white/[0.08] transition-all duration-300 group">
+                <Card key={tool.slug} className="border-white/10 bg-gradient-to-br from-white/5 to-white/[0.02] text-white hover:border-white/30 hover:bg-white/[0.08] transition-all duration-300 group overflow-hidden">
                   <CardHeader>
-                    <CardTitle className="group-hover:text-blue-300 transition-colors">{tool.name}</CardTitle>
-                    <CardDescription className="text-slate-300">{tool.heroDescription}</CardDescription>
+                    <CardTitle className="group-hover:text-blue-300 transition-colors text-white line-clamp-2">{tool.name}</CardTitle>
+                    <CardDescription className="text-white/80 mt-2 line-clamp-2">{tool.heroDescription}</CardDescription>
                   </CardHeader>
                   <CardContent className="flex items-center justify-between gap-3">
-                    <span className="text-xs text-slate-300">Premium workflow</span>
-                    <Button asChild size="sm" className="bg-blue-600 hover:bg-blue-700">
+                    <span className="text-xs text-white/70">Premium workflow</span>
+                    <Button asChild size="sm" className="bg-blue-600 hover:bg-blue-700 flex-shrink-0">
                       <Link href={user ? "/dashboard/tools" : "/register"}>Explore</Link>
                     </Button>
                   </CardContent>
@@ -237,7 +237,7 @@ export default async function LandingPage() {
             <h2 className="text-3xl font-bold tracking-tight md:text-4xl">Three steps to your first output</h2>
             <p className="mx-auto max-w-2xl text-slate-400">Start generating professional content in under 5 minutes</p>
           </div>
-          <div className="grid gap-6 md:grid-cols-3">
+            <div className="grid gap-6 md:grid-cols-3">
             {steps.map((step, index) => (
               <div key={step.title} className="relative">
                 {/* Connection Line */}
@@ -245,15 +245,15 @@ export default async function LandingPage() {
                   <div className="absolute top-12 left-[60%] hidden w-[calc(100%_-_60%_+_1rem)] h-1 bg-gradient-to-r from-blue-500 to-transparent md:block" />
                 )}
                 
-                <Card className="border-border bg-gradient-to-br from-white/5 to-white/[0.02] hover:border-white/20 transition-all duration-300 relative z-10">
+                <Card className="border-border bg-gradient-to-br from-white/5 to-white/[0.02] hover:border-white/20 transition-all duration-300 relative z-10 overflow-hidden">
                   <CardHeader>
                     <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-lg font-bold text-white">
                       {index + 1}
                     </div>
-                    <CardTitle>{step.title}</CardTitle>
+                    <CardTitle className="text-white">{step.title}</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-slate-400">{step.text}</p>
+                    <p className="text-white/80">{step.text}</p>
                   </CardContent>
                 </Card>
               </div>
@@ -273,25 +273,25 @@ export default async function LandingPage() {
             </div>
             <div className="grid gap-6 md:grid-cols-3 lg:grid-cols-4">
               {subscriptionPlans.map((plan) => (
-                <Card key={plan.id} className={`border transition-all duration-300 ${plan.premiumLabel ? "border-blue-400/50 bg-gradient-to-br from-blue-500/10 to-blue-600/5 shadow-lg shadow-blue-500/20" : "border-border bg-card hover:border-white/30"}`}>
+                <Card key={plan.id} className={`border transition-all duration-300 overflow-hidden ${plan.premiumLabel ? "border-blue-400/50 bg-gradient-to-br from-blue-500/10 to-blue-600/5 shadow-lg shadow-blue-500/20" : "border-border bg-card hover:border-white/30"}`}>
                   <CardHeader>
-                    <div className="flex items-center gap-2">
-                      <CardTitle>{plan.displayName}</CardTitle>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <CardTitle className="text-white truncate">{plan.displayName}</CardTitle>
                       {plan.premiumLabel && (
-                        <span className="rounded-full border border-blue-400 bg-blue-500/20 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-blue-300">
+                        <span className="rounded-full border border-blue-400 bg-blue-500/20 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-blue-300 flex-shrink-0">
                           {plan.premiumLabel}
                         </span>
                       )}
                     </div>
-                    <CardDescription className="mt-2">{plan.credits.toLocaleString()} credits / month</CardDescription>
+                    <CardDescription className="mt-2 text-white/80">{plan.credits.toLocaleString()} credits / month</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div>
-                      <p className="text-3xl font-bold tracking-tight">
+                      <p className="text-3xl font-bold tracking-tight text-white">
                         {formatRupees(plan.monthlyPriceRupees)}
-                        <span className="ml-2 text-base font-normal text-slate-400">/month</span>
+                        <span className="ml-2 text-base font-normal text-white/70">/month</span>
                       </p>
-                      <p className="mt-2 text-sm text-slate-400">{plan.premiumPositioning}</p>
+                      <p className="mt-2 text-sm text-white/80">{plan.premiumPositioning}</p>
                     </div>
                     <Button asChild className="w-full" variant={plan.premiumLabel ? "default" : "outline"}>
                       <Link href={user ? "/dashboard" : "/register"}>
@@ -303,8 +303,8 @@ export default async function LandingPage() {
               ))}
             </div>
             <div className="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-6 backdrop-blur-sm text-center">
-              <p className="text-sm font-semibold text-slate-200">🔒 Secure payments processed by Razorpay</p>
-              <p className="mt-2 text-xs text-slate-400">All transactions are encrypted and PCI-compliant. No hidden fees.</p>
+              <p className="text-sm font-semibold text-white">🔒 Secure payments processed by Razorpay</p>
+              <p className="mt-2 text-xs text-white/70">All transactions are encrypted and PCI-compliant. No hidden fees.</p>
             </div>
           </div>
         </section>
@@ -317,16 +317,16 @@ export default async function LandingPage() {
           </div>
           <div className="mx-auto max-w-3xl space-y-4">
             {faqItems.map((item, index) => (
-              <details key={index} className="group border border-border rounded-lg bg-card/50 backdrop-blur-sm p-5 cursor-pointer hover:border-white/20 transition-all duration-300">
+              <details key={index} className="group border border-border rounded-lg bg-card/50 backdrop-blur-sm p-5 cursor-pointer hover:border-white/20 transition-all duration-300 overflow-hidden">
                 <summary className="flex items-center justify-between font-semibold text-white hover:text-blue-300 transition-colors">
-                  <span>{item.question}</span>
-                  <span className="ml-4 inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/10 group-open:bg-white/20 transition-all duration-300">
+                  <span className="text-left">{item.question}</span>
+                  <span className="ml-4 inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/10 group-open:bg-white/20 transition-all duration-300 flex-shrink-0">
                     <svg className="h-4 w-4 transition-transform duration-300 group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
                     </svg>
                   </span>
                 </summary>
-                <p className="mt-4 text-slate-400">{item.answer}</p>
+                <p className="mt-4 text-white/80">{item.answer}</p>
               </details>
             ))}
           </div>
