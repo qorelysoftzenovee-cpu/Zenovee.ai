@@ -4,7 +4,6 @@ import { requireStandardUser } from "@/lib/auth";
 import { WorkspaceShell } from "@/components/layout/workspace-shell";
 import { getActivePlans, formatRupees, getPlanById, getPlanDisplayName, getPlanSupportText } from "@/lib/billing/plans";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { SUPPORT_EMAIL } from "@/lib/seo/site";
 
 function formatDate(value?: string | null) {
   if (!value) return "—";
@@ -50,15 +49,15 @@ export default async function BillingPage() {
           <h2 className="mt-4 text-4xl font-bold tracking-tight text-foreground">Plans, Renewals & Payment History</h2>
           <p className="mt-3 max-w-2xl text-base font-medium leading-relaxed text-foreground/85">Your active plan, billing status, and complete transaction ledger are centralized here within our protected, enterprise-grade checkout experience.</p>
           <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div className="rounded-xl border border-primary/30 bg-white/5 backdrop-blur px-4 py-3">
+            <div className="rounded-xl border border-primary/20 bg-white/60 backdrop-blur px-4 py-3">
               <p className="text-xs font-semibold uppercase tracking-wider text-primary">Active Plan</p>
               <p className="mt-2 text-lg font-bold text-foreground">{currentPlan?.displayName ?? "None"}</p>
             </div>
-            <div className="rounded-xl border border-primary/30 bg-white/5 backdrop-blur px-4 py-3">
+            <div className="rounded-xl border border-primary/20 bg-white/60 backdrop-blur px-4 py-3">
               <p className="text-xs font-semibold uppercase tracking-wider text-primary">Subscription Status</p>
               <p className="mt-2 text-lg font-bold capitalize text-foreground">{normalizedStatus || "Inactive"}</p>
             </div>
-            <div className="rounded-xl border border-primary/30 bg-white/5 backdrop-blur px-4 py-3">
+            <div className="rounded-xl border border-primary/20 bg-white/60 backdrop-blur px-4 py-3">
               <p className="text-xs font-semibold uppercase tracking-wider text-primary">Total Payments</p>
               <p className="mt-2 text-lg font-bold text-foreground">{(payments ?? []).length}</p>
             </div>
@@ -88,7 +87,7 @@ export default async function BillingPage() {
                 </CardHeader>
                 <CardContent className="space-y-5">
                   <div className="rounded-xl bg-gradient-to-br from-primary/5 to-transparent p-4 border border-primary/20">
-                    <p className="text-4xl font-bold text-foreground">{formatRupees(plan.monthlyPriceRupees)}<span className="text-sm font-medium text-foreground/70">/mo</span></p>
+                      <p className="text-4xl font-bold text-foreground break-words">{formatRupees(plan.monthlyPriceRupees)}<span className="text-sm font-medium text-foreground/70">/mo</span></p>
                   </div>
                   <div className="rounded-lg bg-primary/5 p-3 border border-primary/20">
                     <p className="text-sm font-bold uppercase tracking-wider text-primary">Credits Included</p>
@@ -101,7 +100,9 @@ export default async function BillingPage() {
                     {plan.features.map((feature) => <p key={feature} className="flex items-center gap-2 text-sm font-medium text-foreground"><span className="inline-block h-1.5 w-1.5 rounded-full bg-primary"></span> {feature}</p>)}
                     <p className="flex items-center gap-2 text-sm font-medium text-foreground"><span className="inline-block h-1.5 w-1.5 rounded-full bg-primary"></span> {getPlanSupportText(plan.id)}</p>
                   </div>
-                  <PricingActions planId={plan.id} planName={plan.displayName} />
+                  <div className="pt-2">
+                    <PricingActions planId={plan.id} planName={plan.displayName} />
+                  </div>
                 </CardContent>
               </Card>
             );

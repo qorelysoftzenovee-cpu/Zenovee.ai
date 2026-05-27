@@ -50,21 +50,21 @@ export function Dialog({
 
       {/* Dialog */}
       <div className={cn(
-        "relative w-full mx-4 rounded-2xl border bg-card shadow-[0_24px_56px_-32px_rgba(15,23,42,0.45)] animate-scale",
+        "relative mx-4 w-full rounded-[28px] border bg-white/96 shadow-[0_30px_80px_-38px_rgba(15,23,42,0.4)] backdrop-blur-xl animate-scale",
         sizeClasses[size],
         variantClasses[variant]
       )}>
         {/* Header */}
-        <div className="flex items-start justify-between gap-4 border-b border-border/60 p-6">
+        <div className="flex items-start justify-between gap-4 border-b border-border/60 p-6 md:p-7">
           <div className="flex-1">
-            <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
+            <h2 className="text-lg font-semibold tracking-tight text-slate-950">{title}</h2>
             {description && (
-              <p className="text-sm text-muted-foreground mt-1">{description}</p>
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">{description}</p>
             )}
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg hover:bg-muted p-1.5 transition-colors duration-200"
+            className="rounded-xl border border-transparent p-1.5 transition-colors duration-200 hover:border-border hover:bg-muted/70"
           >
             <X size={18} className="text-muted-foreground" />
           </button>
@@ -72,14 +72,14 @@ export function Dialog({
 
         {/* Content */}
         {children && (
-          <div className="p-6">
+          <div className="p-6 md:p-7">
             {children}
           </div>
         )}
 
         {/* Footer */}
         {footer && (
-          <div className="border-t border-border/60 p-4 md:p-6 flex items-center justify-end gap-3">
+          <div className="flex items-center justify-end gap-3 border-t border-border/60 p-4 md:p-6">
             {footer}
           </div>
         )}
@@ -149,7 +149,7 @@ export function ConfirmDialog({
             onClick={handleConfirm}
             disabled={loading || isLoading}
           >
-            {loading || isLoading ? "Loading..." : confirmLabel}
+            {loading || isLoading ? "Working..." : confirmLabel}
           </Button>
         </>
       }
@@ -278,7 +278,7 @@ export function FormDialog({
             onClick={handleSubmit}
             disabled={loading || isLoading}
           >
-            {loading || isLoading ? "Loading..." : submitLabel}
+            {loading || isLoading ? "Working..." : submitLabel}
           </Button>
         </>
       }

@@ -38,10 +38,10 @@ export default function Navigation({ isAuthenticated, isAdmin = false }: { isAut
   const navItems = isAuthenticated ? authenticatedNavItems : publicNavItems;
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b border-border/60 bg-background/95 backdrop-blur-xl">
+    <nav className="sticky top-0 z-50 w-full border-b border-white/70 bg-white/80 backdrop-blur-xl">
       <div className="section-shell flex items-center justify-between gap-4 py-3 md:py-4">
         <Link href="/" className="group flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-900 shadow-sm">
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-950 shadow-[0_16px_30px_-20px_rgba(15,23,42,0.55)]">
             <span className="text-base font-semibold text-white">Z</span>
           </div>
           <div className="space-y-0.5 leading-none">
@@ -55,7 +55,7 @@ export default function Navigation({ isAuthenticated, isAdmin = false }: { isAut
             <Link
               key={idx}
               href={item.href}
-              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              className="text-sm font-medium text-slate-500 transition-colors hover:text-slate-950"
             >
               {item.label}
             </Link>
@@ -89,19 +89,19 @@ export default function Navigation({ isAuthenticated, isAdmin = false }: { isAut
         <button
           aria-label={isOpen ? 'Close navigation menu' : 'Open navigation menu'}
           onClick={() => setIsOpen(!isOpen)}
-          className="rounded-xl border border-border bg-card p-2.5 shadow-[0_8px_20px_-16px_rgba(15,23,42,0.45)] transition-colors hover:bg-muted md:hidden"
+          className="rounded-xl border border-slate-200 bg-white p-2.5 shadow-[0_14px_28px_-20px_rgba(15,23,42,0.24)] transition-colors hover:bg-slate-50 md:hidden"
         >
           {isOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
       </div>
 
-      <div className={`border-t border-border bg-background md:hidden ${isOpen ? 'block' : 'hidden'}`}>
+      <div className={`border-t border-slate-200 bg-white/95 md:hidden ${isOpen ? 'block' : 'hidden'}`}>
         <div className="section-shell space-y-3 py-4">
           {navItems.map((item, idx) => (
             <Link
               key={idx}
               href={item.href}
-              className="block rounded-xl px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              className="block rounded-xl px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-950"
               onClick={() => setIsOpen(false)}
             >
               {item.label}

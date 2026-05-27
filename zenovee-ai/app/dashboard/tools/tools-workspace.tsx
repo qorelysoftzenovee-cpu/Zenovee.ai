@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { ChevronDown, Clock3, Flame, Search, Sparkles, Star, TrendingUp, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -59,6 +59,25 @@ type WorkspaceTool = {
   tags: string[];
   searchIndex: string;
 };
+
+function readStoredToolIds(storageKey: string) {
+  if (typeof window === "undefined") return [] as string[];
+
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(storageKey) ?? "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function subscribeToStorage(callback: () => void) {
+  if (typeof window === "undefined") return () => {};
+
+  const handleStorage = () => callback();
+  window.addEventListener("storage", handleStorage);
+  return () => window.removeEventListener("storage", handleStorage);
+}
 
 function useDebouncedValue<T>(value: T, delayMs: number) {
   const [debouncedValue, setDebouncedValue] = useState(value);
@@ -265,24 +284,16 @@ export function ToolsWorkspace() {
   const debouncedQuery = useDebouncedValue(query, 180);
   const [activeCategory, setActiveCategory] = useState<string>("All");
   const [filterMode, setFilterMode] = useState<FilterMode>("all");
-  const [favoriteIds, setFavoriteIds] = useState<string[]>(() => {
-    if (typeof window === "undefined") return [];
-    try {
-      const parsedFavorites = JSON.parse(window.localStorage.getItem(FAVORITES_KEY) ?? "[]");
-      return Array.isArray(parsedFavorites) ? parsedFavorites : [];
-    } catch {
-      return [];
-    }
-  });
-  const [recentIds] = useState<string[]>(() => {
-    if (typeof window === "undefined") return [];
-    try {
-      const parsedRecents = JSON.parse(window.localStorage.getItem(RECENTS_KEY) ?? "[]");
-      return Array.isArray(parsedRecents) ? parsedRecents : [];
-    } catch {
-      return [];
-    }
-  });
+  const favoriteIds = useSyncExternalStore(
+    subscribeToStorage,
+    () => readStoredToolIds(FAVORITES_KEY),
+    () => []
+  );
+  const recentIds = useSyncExternalStore(
+    subscribeToStorage,
+    () => readStoredToolIds(RECENTS_KEY),
+    () => []
+  );
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(CATEGORY_ORDER.map((category, index) => [category, index < 2]))
@@ -397,9 +408,9 @@ export function ToolsWorkspace() {
 
   const toggleFavorite = (id: string) => {
     const next = favoriteIds.includes(id) ? favoriteIds.filter((value) => value !== id) : [id, ...favoriteIds].slice(0, 24);
-    setFavoriteIds(next);
     if (typeof window !== "undefined") {
       window.localStorage.setItem(FAVORITES_KEY, JSON.stringify(next));
+      window.dispatchEvent(new StorageEvent("storage", { key: FAVORITES_KEY }));
     }
   };
 

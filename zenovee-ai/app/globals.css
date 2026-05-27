@@ -95,6 +95,28 @@
     @apply rounded-3xl border border-border/50 bg-gradient-to-br from-card via-card to-background/50 text-card-foreground shadow-[0_24px_48px_-30px_rgba(15,23,42,0.45)] backdrop-blur-md;
   }
 
+  .premium-glass {
+    @apply rounded-3xl border border-white/50 bg-white/72 text-card-foreground shadow-[0_24px_60px_-34px_rgba(15,23,42,0.22)] backdrop-blur-xl;
+  }
+
+  .premium-grid {
+    background-image:
+      linear-gradient(to right, rgba(148, 163, 184, 0.08) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(148, 163, 184, 0.08) 1px, transparent 1px);
+    background-size: 42px 42px;
+  }
+
+  .premium-spotlight {
+    background:
+      radial-gradient(circle at top left, rgba(99, 102, 241, 0.14), transparent 28%),
+      radial-gradient(circle at top right, rgba(59, 130, 246, 0.12), transparent 24%),
+      radial-gradient(circle at bottom center, rgba(255, 255, 255, 0.8), transparent 36%);
+  }
+
+  .section-surface {
+    @apply relative overflow-hidden rounded-[32px] border border-border/60 bg-gradient-to-br from-white via-white to-slate-50/85 shadow-[0_24px_50px_-34px_rgba(15,23,42,0.16)];
+  }
+
   /* === INTERACTIVE STATES === */
   .interactive-lift {
     @apply transition-colors duration-150 hover:shadow-[0_10px_24px_-22px_rgba(15,23,42,0.26)];
@@ -299,8 +321,10 @@
 
   /* === LANDING PAGE OVERRIDES === */
   .landing-dark {
-    background: #0b1020;
-    color: #f8fafc;
+    background:
+      radial-gradient(circle at top, rgba(99, 102, 241, 0.16), transparent 25%),
+      linear-gradient(180deg, #f8fbff 0%, #f4f7fb 52%, #eef2f8 100%);
+    color: #0f172a;
   }
 
   .landing-light {

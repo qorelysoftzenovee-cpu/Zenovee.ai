@@ -1,3 +1,5 @@
+import { PremiumBillingSkeleton } from "@/components/ui/premium-skeleton";
+
 export default function LoadingBilling() {
-  return <div className="h-40 animate-pulse rounded-2xl border border-slate-200 bg-white" />;
+  return <PremiumBillingSkeleton />;
 }

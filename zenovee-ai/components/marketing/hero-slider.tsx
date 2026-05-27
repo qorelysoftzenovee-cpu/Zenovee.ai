@@ -7,64 +7,64 @@ import { Button } from "@/components/ui/button";
 
 const slides = [
   {
-    eyebrow: "⚡ AI-Powered Content Engine",
-    headline: "Enterprise-grade AI that transforms briefs into polished assets instantly",
-    subtext: "Professional content creation at scale. Your AI workspace handles LinkedIn posts, SEO articles, sales copy, and premium brand assets with institutional-level quality.",
-    cta: "Start Now",
+    eyebrow: "Executive workspace",
+    headline: "A calmer AI surface for brand, growth, and content execution",
+    subtext: "Move from scattered prompt tabs to a structured workspace that turns briefs into clean, deployable output with premium UX around every step.",
+    cta: "Start now",
     href: "/register",
-    ctaSecondary: "Explore Features",
+    ctaSecondary: "Explore tools",
     hrefSecondary: "/tools",
-    benefit1: "50+ Enterprise Templates",
-    benefit2: "Industry-Leading AI Quality",
-    benefit3: "Unlimited Professional Exports",
-    color: "from-blue-600/20 via-blue-900/10 to-slate-950",
-    accentColor: "bg-blue-500/20 border-blue-400/30",
-    badgeColor: "bg-blue-400/15 border-blue-300/35 text-blue-100",
+    benefit1: "Focused workflow entry points",
+    benefit2: "Clean premium hierarchy",
+    benefit3: "Business-ready output",
+    color: "from-white via-slate-50 to-blue-50",
+    accentColor: "bg-blue-500/20 border-blue-200/40",
+    badgeColor: "bg-blue-50 border-blue-200 text-blue-700",
   },
   {
-    eyebrow: "🚀 B2B Sales Acceleration",
-    headline: "Close enterprise deals faster with AI-powered sales workflows",
-    subtext: "Generate personalized cold email sequences, LinkedIn outreach, and sales strategies. Amplify your sales team's effectiveness with precision-engineered messaging at scale.",
-    cta: "Access Sales Tools",
+    eyebrow: "Revenue systems",
+    headline: "Sharpen outbound and conversion workflows without losing tone or trust",
+    subtext: "Use premium sales workflows to structure sequences, objections, and messaging systems for serious B2B execution.",
+    cta: "Access sales tools",
     href: "/tools",
-    ctaSecondary: "View Pricing",
+    ctaSecondary: "View pricing",
     hrefSecondary: "/pricing",
-    benefit1: "Multi-channel Sequences",
-    benefit2: "Objection Response Engine",
-    benefit3: "Real-time Campaign Analytics",
-    color: "from-emerald-600/20 via-emerald-900/10 to-slate-950",
-    accentColor: "bg-emerald-500/20 border-emerald-400/30",
-    badgeColor: "bg-emerald-400/15 border-emerald-300/35 text-emerald-100",
+    benefit1: "ICP-aware messaging",
+    benefit2: "Enterprise objection flows",
+    benefit3: "Faster campaign readiness",
+    color: "from-white via-emerald-50/60 to-cyan-50",
+    accentColor: "bg-emerald-500/20 border-emerald-200/40",
+    badgeColor: "bg-emerald-50 border-emerald-200 text-emerald-700",
   },
   {
-    eyebrow: "📈 SEO Authority Builder",
-    headline: "Dominate search rankings with topical authority and strategy",
-    subtext: "Create comprehensive topic clusters, interconnected content, and SEO-optimized articles. Build the authority foundation that drives consistent organic traffic.",
-    cta: "Launch SEO Workspace",
+    eyebrow: "Search authority",
+    headline: "Turn SEO work into a system of briefs, clusters, and authority maps",
+    subtext: "Zenovee helps teams structure search strategy with better clarity, stronger discoverability, and fewer disconnected content tasks.",
+    cta: "Launch SEO workspace",
     href: "/tools/seo-article-generator",
-    ctaSecondary: "See Dashboard",
+    ctaSecondary: "See dashboard",
     hrefSecondary: "/dashboard",
-    benefit1: "Semantic Keyword Clustering",
-    benefit2: "Content Interconnection Maps",
-    benefit3: "Rank Tracking Integration",
-    color: "from-purple-600/20 via-purple-900/10 to-slate-950",
-    accentColor: "bg-purple-500/20 border-purple-400/30",
-    badgeColor: "bg-purple-400/15 border-purple-300/35 text-purple-100",
+    benefit1: "Topic architecture",
+    benefit2: "Search-ready organization",
+    benefit3: "Compounding authority",
+    color: "from-white via-violet-50/60 to-fuchsia-50",
+    accentColor: "bg-violet-500/20 border-violet-200/40",
+    badgeColor: "bg-violet-50 border-violet-200 text-violet-700",
   },
   {
-    eyebrow: "💎 Premium Brand Studio",
-    headline: "Create premium brand assets that command market attention",
-    subtext: "Generate professional thumbnails, social cards, product presentations, and brand materials. Maintain distinctive visual identity across all premium channels.",
-    cta: "Access Brand Studio",
+    eyebrow: "Brand systems",
+    headline: "Create higher-trust brand assets with a more refined creative workflow",
+    subtext: "Support launches, social assets, and premium visual execution with tools organized around consistency—not just generation volume.",
+    cta: "Access brand studio",
     href: "/tools",
-    ctaSecondary: "View Portfolio",
+    ctaSecondary: "View pricing",
     hrefSecondary: "/pricing",
-    benefit1: "Professional Brand Templates",
-    benefit2: "Multi-format Export",
-    benefit3: "Brand Voice Consistency",
-    color: "from-pink-600/20 via-pink-900/10 to-slate-950",
-    accentColor: "bg-pink-500/20 border-pink-400/30",
-    badgeColor: "bg-pink-400/15 border-pink-300/35 text-pink-100",
+    benefit1: "Cleaner asset direction",
+    benefit2: "Premium previews",
+    benefit3: "Consistent brand execution",
+    color: "from-white via-rose-50/60 to-orange-50",
+    accentColor: "bg-rose-500/20 border-rose-200/40",
+    badgeColor: "bg-rose-50 border-rose-200 text-rose-700",
   },
 ];
 
@@ -89,10 +89,7 @@ export function HeroSlider() {
   }, [isPlaying]);
 
   useEffect(() => {
-    if (!isPlaying) {
-      setAutoProgress(0);
-      return;
-    }
+    if (!isPlaying) return;
 
     let rafId: number;
     const startTime = Date.now();
@@ -111,6 +108,8 @@ export function HeroSlider() {
     rafId = requestAnimationFrame(updateProgress);
     return () => cancelAnimationFrame(rafId);
   }, [isPlaying, index]);
+
+  const displayedProgress = isPlaying ? autoProgress : 0;
 
   const handlePrev = () => {
     setIndex((prev) => (prev - 1 + slides.length) % slides.length);
@@ -151,12 +150,12 @@ export function HeroSlider() {
       `}</style>
 
       <div 
-        className={`relative overflow-hidden rounded-[32px] border border-white/10 bg-gradient-to-br ${active.color} p-6 shadow-[0_50px_100px_-30px_rgba(0,0,0,0.6)] backdrop-blur-sm md:p-8 lg:p-12 transition-colors duration-500`}
+        className={`relative overflow-hidden rounded-[36px] border border-white/70 bg-gradient-to-br ${active.color} p-6 shadow-[0_32px_80px_-42px_rgba(15,23,42,0.28)] backdrop-blur-sm md:p-8 lg:p-10 transition-colors duration-500`}
         style={{ backfaceVisibility: 'hidden' }}
       >
         <div className="absolute inset-0 overflow-hidden rounded-[32px]">
-          <div className={`absolute -top-40 -right-40 h-80 w-80 rounded-full opacity-20 blur-3xl pointer-events-none will-change-transform ${active.accentColor.split(' ')[0]}`} />
-          <div className="absolute -bottom-20 -left-20 h-80 w-80 rounded-full bg-slate-700/10 opacity-20 blur-3xl pointer-events-none" />
+          <div className={`absolute -top-28 -right-24 h-72 w-72 rounded-full opacity-70 blur-3xl pointer-events-none will-change-transform ${active.accentColor.split(' ')[0]}`} />
+          <div className="absolute -bottom-16 -left-16 h-64 w-64 rounded-full bg-white opacity-70 blur-3xl pointer-events-none" />
         </div>
 
         <div className="relative z-10">
@@ -169,10 +168,10 @@ export function HeroSlider() {
               </div>
 
               <div key={`headline-${index}`} className="space-y-4 slide-in-up" style={{ animationDelay: "0.08s" }}>
-                <h2 className="text-balance text-3xl font-bold tracking-tight text-white md:text-4xl lg:text-5xl leading-tight">
+                 <h2 className="text-balance text-3xl font-semibold tracking-[-0.04em] text-slate-950 md:text-4xl lg:text-5xl leading-tight">
                   {active.headline}
                 </h2>
-                <p className="max-w-2xl text-base leading-relaxed text-white md:text-lg">
+                 <p className="max-w-2xl text-base leading-relaxed text-slate-600 md:text-lg">
                   {active.subtext}
                 </p>
               </div>
@@ -181,7 +180,7 @@ export function HeroSlider() {
                 <Button
                   asChild
                   size="lg"
-                  className="bg-white text-slate-950 hover:bg-slate-100 font-semibold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 group"
+                   className="bg-slate-950 text-white hover:bg-slate-800 shadow-[0_20px_40px_-22px_rgba(15,23,42,0.45)] group"
                 >
                   <Link href={active.href}>
                     {active.cta}
@@ -192,7 +191,7 @@ export function HeroSlider() {
                   asChild
                   size="lg"
                   variant="outline"
-                  className="border-white/30 text-white hover:bg-white/10 hover:border-white/50 font-semibold transition-all duration-300"
+                   className="border-slate-300 bg-white/70 text-slate-900 hover:bg-white font-semibold transition-all duration-300"
                 >
                   <Link href={active.hrefSecondary}>{active.ctaSecondary}</Link>
                 </Button>
@@ -200,55 +199,55 @@ export function HeroSlider() {
 
               <div key={`benefits-${index}`} className="flex flex-wrap gap-2 pt-2 slide-in-up" style={{ animationDelay: "0.24s" }}>
                 {[active.benefit1, active.benefit2, active.benefit3].map((benefit) => (
-                  <div key={benefit} className="text-xs text-white bg-white/10 border border-white/20 rounded-full px-3 py-1.5 backdrop-blur-sm font-medium">
+                  <div key={benefit} className="rounded-full border border-slate-200 bg-white/80 px-3 py-1.5 text-xs font-medium text-slate-700 backdrop-blur-sm">
                     ✓ {benefit}
                   </div>
                 ))}
               </div>
             </div>
 
-            <div key={`panel-${index}`} className="hero-panel-enter relative overflow-hidden rounded-[24px] border border-white/10 bg-gradient-to-br from-white/10 to-white/5 p-6 md:p-8">
+            <div key={`panel-${index}`} className="hero-panel-enter relative overflow-hidden rounded-[28px] border border-white/80 bg-white/76 p-6 shadow-[0_24px_60px_-40px_rgba(15,23,42,0.24)] backdrop-blur-xl md:p-8">
               <div className="relative space-y-6">
-                <div className="rounded-[28px] border border-white/10 bg-slate-950/70 p-5 backdrop-blur-xl shadow-xl shadow-slate-950/20">
-                  <p className="text-[11px] uppercase tracking-[0.26em] text-slate-300">Conversion Accelerator</p>
-                  <h3 className="mt-3 text-2xl font-bold text-white">Turn every brief into a high-impact outcome</h3>
-                  <p className="mt-3 text-sm leading-relaxed text-slate-300">This slide now shows the exact reason your team should convert: faster launches, better messaging, and measurable ROI from every asset.</p>
+                <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_18px_40px_-34px_rgba(15,23,42,0.18)]">
+                  <p className="text-[11px] uppercase tracking-[0.26em] text-slate-500">Workspace snapshot</p>
+                  <h3 className="mt-3 text-2xl font-semibold text-slate-950">A better surface for premium AI execution</h3>
+                  <p className="mt-3 text-sm leading-relaxed text-slate-600">The goal is clarity: better hierarchy, calmer layout, and workflow presentation that feels trustworthy enough for daily business use.</p>
 
                   <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                      <p className="text-[11px] uppercase tracking-[0.24em] text-slate-400">Conversion Lift</p>
-                      <p className="mt-2 text-2xl font-bold text-white">+38%</p>
-                      <p className="mt-1 text-sm text-slate-400">Average response rate increase</p>
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                      <p className="text-[11px] uppercase tracking-[0.24em] text-slate-400">Workflow UX</p>
+                      <p className="mt-2 text-2xl font-semibold text-slate-950">Cleaner</p>
+                      <p className="mt-1 text-sm text-slate-500">Less noise, stronger trust signals</p>
                     </div>
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                      <p className="text-[11px] uppercase tracking-[0.24em] text-slate-400">Launch Speed</p>
-                      <p className="mt-2 text-2xl font-bold text-white">3× faster</p>
-                      <p className="mt-1 text-sm text-slate-400">From brief to publish-ready in minutes</p>
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                      <p className="text-[11px] uppercase tracking-[0.24em] text-slate-400">Team readiness</p>
+                      <p className="mt-2 text-2xl font-semibold text-slate-950">Higher</p>
+                      <p className="mt-1 text-sm text-slate-500">More deployable output, fewer rough edges</p>
                     </div>
                   </div>
                 </div>
 
-                <div className="rounded-[28px] border border-white/10 bg-white/5 p-5 backdrop-blur-xl">
+                <div className="rounded-[28px] border border-slate-200 bg-slate-50/75 p-5 backdrop-blur-xl">
                   <div className="flex items-start gap-4">
-                    <div className="mt-1 flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-500/20 text-white">
-                      ⭐
+                    <div className="mt-1 flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-100 text-blue-700">
+                      ✦
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-white">“Zenovee helped our team launch a campaign in 90 minutes that used to take 2 days.”</p>
-                      <p className="mt-3 text-xs uppercase tracking-[0.22em] text-slate-400">— Priya, Head of Growth</p>
+                      <p className="text-sm font-semibold text-slate-900">“This feels more like a premium workspace than a bundle of AI tools.”</p>
+                      <p className="mt-3 text-xs uppercase tracking-[0.22em] text-slate-400">— Internal product benchmark</p>
                     </div>
                   </div>
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-3">
                   {[
-                    { label: "Enterprise-ready", value: "Built for teams" },
-                    { label: "Data-driven", value: "Performance first" },
-                    { label: "Guaranteed", value: "Risk-free" },
+                    { label: "Premium", value: "Calm UX" },
+                    { label: "Trusted", value: "Secure billing" },
+                    { label: "Structured", value: "Workflow-first" },
                   ].map((item) => (
-                    <div key={item.label} className="rounded-2xl border border-white/10 bg-white/5 p-4 text-center">
+                    <div key={item.label} className="rounded-2xl border border-slate-200 bg-white/85 p-4 text-center">
                       <p className="text-xs uppercase tracking-[0.24em] text-slate-400">{item.label}</p>
-                      <p className="mt-2 text-base font-bold text-white">{item.value}</p>
+                      <p className="mt-2 text-base font-semibold text-slate-900">{item.value}</p>
                     </div>
                   ))}
                 </div>
@@ -256,18 +255,18 @@ export function HeroSlider() {
             </div>
           </div>
 
-          <div className="mt-8 flex items-center justify-between pt-6 border-t border-white/10">
+          <div className="mt-8 flex items-center justify-between pt-6 border-t border-slate-200">
             <div className="flex gap-2 flex-1">
               {slides.map((_, i) => (
                 <div 
                   key={i} 
-                  className="flex-1 h-1 bg-white/10 rounded-full overflow-hidden cursor-pointer hover:bg-white/20 transition-colors" 
+                  className="flex-1 h-1 rounded-full bg-slate-200 overflow-hidden cursor-pointer hover:bg-slate-300 transition-colors" 
                   onClick={() => goToSlide(i)}
                 >
                   <div
-                    className="h-full rounded-full bg-gradient-to-r from-white via-blue-300 to-white transition-all duration-75"
+                    className="h-full rounded-full bg-gradient-to-r from-slate-900 via-blue-600 to-slate-900 transition-all duration-75"
                     style={{
-                      width: i === index ? `${autoProgress}%` : i < index ? "100%" : "0%",
+                      width: i === index ? `${displayedProgress}%` : i < index ? "100%" : "0%",
                     }}
                   />
                 </div>
@@ -277,7 +276,7 @@ export function HeroSlider() {
             <div className="flex items-center gap-3 ml-4">
               <button
                 onClick={handlePrev}
-                className="p-2 rounded-full border border-white/20 bg-white/5 hover:bg-white/10 text-white transition-all duration-300 hover:border-white/40"
+                className="rounded-full border border-slate-200 bg-white p-2 text-slate-700 transition-all duration-300 hover:border-slate-300 hover:bg-slate-50"
                 aria-label="Previous slide"
               >
                 <ChevronLeft size={18} />
@@ -285,7 +284,7 @@ export function HeroSlider() {
 
               <button
                 onClick={() => setIsPlaying(!isPlaying)}
-                className="p-2 rounded-full border border-white/20 bg-white/5 hover:bg-white/10 text-white transition-all duration-300 hover:border-white/40"
+                className="rounded-full border border-slate-200 bg-white p-2 text-slate-700 transition-all duration-300 hover:border-slate-300 hover:bg-slate-50"
                 aria-label={isPlaying ? "Pause" : "Play"}
               >
                 {isPlaying ? <Pause size={18} /> : <Play size={18} />}
@@ -293,13 +292,13 @@ export function HeroSlider() {
 
               <button
                 onClick={handleNext}
-                className="p-2 rounded-full border border-white/20 bg-white/5 hover:bg-white/10 text-white transition-all duration-300 hover:border-white/40"
+                className="rounded-full border border-slate-200 bg-white p-2 text-slate-700 transition-all duration-300 hover:border-slate-300 hover:bg-slate-50"
                 aria-label="Next slide"
               >
                 <ChevronRight size={18} />
               </button>
 
-              <div className="text-sm font-semibold text-white/60 ml-2 min-w-fit">
+              <div className="ml-2 min-w-fit text-sm font-semibold text-slate-500">
                 {index + 1} / {slides.length}
               </div>
             </div>

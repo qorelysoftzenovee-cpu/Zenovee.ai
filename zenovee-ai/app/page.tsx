@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, CheckCircle2, ShieldCheck, Sparkles, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentUser } from "@/lib/auth";
@@ -24,97 +24,75 @@ const premiumShowcaseSlugs = new Set([
 ]);
 
 export const metadata: Metadata = createMetadata({
-  title: "Zenovee — AI Workspace Operating System",
-  description: "Run LinkedIn, SEO, sales outreach, conversion copy, and brand workflows in one premium AI workspace.",
+  title: "Zenovee — Premium AI Workspace for Growth Teams",
+  description:
+    "Zenovee gives growth, SEO, sales, and brand teams a premium AI workspace to run business-grade workflows with speed, trust, and polish.",
   path: "/",
-  keywords: ["AI tools", "AI marketing", "AI content", "premium SaaS"],
+  keywords: ["AI workspace", "AI SaaS", "sales AI", "SEO AI", "premium SaaS"],
 });
 
-const steps = [
-  { 
-    title: "Create Account", 
-    text: "Set up your Zenovee workspace in seconds with email authentication." 
+const trustPillars = [
+  { label: "Protected billing", value: "Razorpay-verified checkout" },
+  { label: "Business-grade workflows", value: "Built for growth, sales, SEO, and brand teams" },
+  { label: "Clean execution", value: "Structured outputs with premium exports" },
+];
+
+const premiumWorkflows = [
+  {
+    title: "Executive positioning",
+    description:
+      "Shape high-trust authority content, thought leadership, and strategic narratives for founders and operators.",
+    points: ["LinkedIn authority systems", "Thought leadership", "High-trust positioning"],
   },
-  { 
-    title: "Select Workspace", 
-    text: "Choose from 50+ AI-powered professional tools designed for enterprise outcomes." 
+  {
+    title: "Revenue acceleration",
+    description:
+      "Launch outbound and conversion messaging with sharper ICP alignment, objections, and enterprise tone.",
+    points: ["Sales sequences", "Objection handling", "Conversion messaging"],
   },
-  { 
-    title: "Generate Assets", 
-    text: "Brief your AI, deploy at scale, and download professional-grade output instantly." 
+  {
+    title: "Search authority",
+    description:
+      "Move from isolated content tasks to structured organic growth systems with topical coverage and clusters.",
+    points: ["Topic clustering", "Authority maps", "Search-ready briefs"],
   },
 ];
 
-const trustBadges = [
-  { icon: "🔒", text: "Enterprise Security" },
-  { icon: "⚡", text: "99.9% Uptime SLA" },
-  { icon: "🌍", text: "10,000+ Active Users" },
-  { icon: "⭐", text: "4.9/5 Rating" },
-];
-
-const features = [
+const operatingModel = [
   {
-    icon: "🚀",
-    title: "AI-Powered Content Generation",
-    description: "Create professional-grade content across 50+ templates without writer's block",
-    stats: "90% faster than manual writing",
+    title: "Choose your workflow",
+    text: "Start inside a dedicated growth, SEO, sales, or brand workflow instead of stitching together generic prompts.",
   },
   {
-    icon: "📊",
-    title: "Real-time Analytics & Insights",
-    description: "Track performance metrics and optimize your content strategy in real-time",
-    stats: "Data-driven decisions",
+    title: "Brief once, generate clearly",
+    text: "Zenovee turns structured inputs into premium outputs with calmer interfaces, guided context, and faster iteration.",
   },
   {
-    icon: "🔄",
-    title: "Seamless Multi-Channel Publishing",
-    description: "Export and publish to LinkedIn, Medium, WordPress, and more—all in one click",
-    stats: "20+ integrations included",
-  },
-  {
-    icon: "🎯",
-    title: "Brand Voice Consistency",
-    description: "Maintain your unique brand tone and style across all generated assets",
-    stats: "AI remembers your voice",
-  },
-  {
-    icon: "💰",
-    title: "Affordable Credit System",
-    description: "Pay only for what you use with flexible credit plans starting at ₹499/month",
-    stats: "No hidden fees",
-  },
-  {
-    icon: "👥",
-    title: "Premium Customer Support",
-    description: "24/7 email support, live chat, and dedicated success managers for Pro+ plans",
-    stats: "Average response: 2 hours",
+    title: "Review, export, and deploy",
+    text: "Move from ideation to ready-to-use assets with dependable billing, saved outputs, and polished workspace tooling.",
   },
 ];
 
 const faqItems = [
   {
-    question: "How do credits work?",
-    answer: "Credits power every tool action—from generating to exporting. Different tools use different credit amounts. You get monthly credits based on your plan, and unused credits roll over.",
+    question: "What makes Zenovee feel different from generic AI tools?",
+    answer:
+      "Zenovee is organized as premium business workflows, not prompt clutter. Each tool is positioned around a real business outcome—authority, revenue, search growth, or brand execution—with cleaner inputs and higher-signal outputs.",
   },
   {
-    question: "Can I upgrade or downgrade my plan anytime?",
-    answer: "Yes! Upgrade or downgrade your subscription any time. Changes take effect immediately, and we prorate charges on your next billing cycle.",
+    question: "Is billing secure and predictable?",
+    answer:
+      "Yes. Billing flows are processed through verified Razorpay checkout, and payments are synchronized before plan or credits are updated so your account state remains reliable.",
   },
   {
-    question: "How do I get started?",
-    answer: "Create your account, select your preferred workspace, and start generating professional assets. Premium plans include dedicated onboarding and support for enterprises.",
+    question: "Who is Zenovee built for?",
+    answer:
+      "Zenovee is built for operators, consultants, founders, marketers, and teams who want premium AI workflows for execution—not hobby-grade experimentation.",
   },
   {
-    question: "Do you offer annual billing discounts?",
-    answer: "Yes! Annual plans come with 2 months free (16.67% discount). Switch to annual at checkout or contact support for existing customers.",
-  },
-  {
-    question: "Is my content safe and private?",
-    answer: "Absolutely. All content is encrypted in transit and at rest. We never train on your data, and you retain 100% ownership of everything you create.",
-  },
-  {
-    question: "Do I need to be technical to use Zenovee?",
-    answer: "Not at all! Zenovee is built for non-technical users. Just fill in your brief, hit generate, and download your asset. No coding or setup required.",
+    question: "Can non-technical teams use it confidently?",
+    answer:
+      "Absolutely. The workspace is designed to feel structured, calm, and guided, so non-technical users can move from brief to output without learning a complex AI stack.",
   },
 ];
 
@@ -122,107 +100,89 @@ export default async function LandingPage() {
   const user = await getCurrentUser();
   const topTools = toolSeoPages.filter((tool) => premiumShowcaseSlugs.has(tool.slug));
   const subscriptionPlans = getActivePlans();
+  const featuredPlans = subscriptionPlans.slice(0, 3);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen landing-dark text-slate-900">
       <JsonLd data={createBreadcrumbSchema([{ name: "Home", path: "/" }])} />
       <Navigation isAuthenticated={Boolean(user)} isAdmin={user?.role === "admin"} />
 
-      <main>
-        {/* Enhanced Hero Section */}
-        <section className="landing-dark border-b border-white/10">
-          <div className="section-shell py-16 md:py-20 lg:py-24">
-            <div className="grid items-center gap-10 lg:grid-cols-[1fr_1.08fr] lg:gap-12">
-              <div className="space-y-6">
-                <div className="inline-flex items-center gap-2 rounded-full border border-blue-400/30 bg-blue-500/10 px-4 py-2 backdrop-blur-sm">
-                  <span className="text-sm font-semibold text-blue-300">✨ Enterprise AI for Growth Teams</span>
-                </div>
-                <h1 className="text-balance text-4xl font-bold tracking-tight text-white md:text-5xl lg:text-6xl leading-tight">
-                  Professional AI Content in Minutes, Not Weeks
-                </h1>
-                <p className="max-w-2xl text-base leading-relaxed text-white md:text-lg">
-                  Transform your content operations at enterprise scale. Let Zenovee handle your content creation, sales sequences, and brand assets. Trusted by 10,000+ professionals to save 20+ hours weekly.
-                </p>
-                <div className="flex flex-wrap gap-3 pt-2">
-                  <Button asChild size="lg" className="bg-white text-slate-900 hover:bg-slate-100 font-semibold shadow-lg hover:shadow-xl transition-all duration-300 group">
-                    <Link href={user ? "/dashboard" : "/register"}>
-                      {user ? "Open Dashboard" : "Get Started"}
-                      <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
-                    </Link>
-                  </Button>
-                  <Button asChild size="lg" variant="outline" className="border-white/30 text-white hover:bg-white/10 hover:border-white/50 font-semibold">
-                    <Link href="/pricing">View Pricing</Link>
-                  </Button>
-                </div>
-
-                {/* Trust Badges */}
-                <div className="grid grid-cols-2 gap-2 pt-4 md:grid-cols-2 lg:grid-cols-4">
-                  {trustBadges.map((badge) => (
-                    <div key={badge.text} className="flex items-center gap-2 rounded-lg border border-white/20 bg-white/10 px-3 py-2 backdrop-blur-sm hover:bg-white/15 transition-colors">
-                      <span className="text-lg">{badge.icon}</span>
-                      <span className="text-xs text-white font-medium">{badge.text}</span>
-                    </div>
-                  ))}
-                </div>
+      <main className="overflow-hidden">
+        <section className="section-shell relative py-10 md:py-14 lg:py-16">
+          <div className="premium-grid premium-spotlight absolute inset-x-4 top-0 -z-10 h-[92%] rounded-[40px] opacity-70 blur-[0.5px] md:inset-x-6 lg:inset-x-8" />
+          <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(520px,0.95fr)] lg:gap-10">
+            <div className="space-y-8 pt-6 md:pt-10">
+              <div className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-white/75 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-700 shadow-[0_16px_36px_-26px_rgba(15,23,42,0.25)] backdrop-blur-xl">
+                <Sparkles className="size-3.5 text-primary" />
+                Premium AI workspace for serious execution
               </div>
-              <HeroSlider />
+
+              <div className="space-y-5">
+                <h1 className="max-w-4xl text-balance text-5xl font-semibold tracking-[-0.05em] text-slate-950 md:text-6xl lg:text-7xl">
+                  Business-grade AI workflows with the polish of a modern platform.
+                </h1>
+                <p className="max-w-2xl text-lg leading-8 text-slate-600 md:text-xl">
+                  Zenovee helps growth, SEO, sales, and brand teams move faster with structured AI workflows, protected billing, and a calm workspace that feels premium from first click to final output.
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <Button asChild size="lg" className="min-w-[180px]">
+                  <Link href={user ? "/dashboard" : "/register"}>
+                    {user ? "Open workspace" : "Create workspace"}
+                    <ArrowRight size={18} />
+                  </Link>
+                </Button>
+                <Button asChild size="lg" variant="outline" className="min-w-[160px] border-slate-300 bg-white/70 text-slate-900 hover:bg-white">
+                  <Link href="/pricing">View pricing</Link>
+                </Button>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-3">
+                {trustPillars.map((pillar) => (
+                  <div key={pillar.label} className="premium-glass p-4">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">{pillar.label}</p>
+                    <p className="mt-2 text-sm font-medium leading-6 text-slate-800">{pillar.value}</p>
+                  </div>
+                ))}
+              </div>
             </div>
+
+            <HeroSlider />
           </div>
         </section>
 
-        {/* Features Grid Section */}
-        <section className="section-shell py-16 md:py-20 lg:py-24">
-          <div className="mb-12 space-y-4 text-center">
-            <p className="premium-label inline-block">Powerful Features</p>
-            <h2 className="text-3xl font-bold tracking-tight md:text-4xl">Everything you need to create like a pro</h2>
-            <p className="mx-auto max-w-2xl text-lg text-white">
-              Zenovee combines cutting-edge AI with intuitive design to make professional content creation accessible to everyone
-            </p>
-          </div>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {features.map((feature, index) => (
-              <Card key={index} className="border-border bg-gradient-to-br from-white/5 to-white/[0.02] backdrop-blur-sm hover:border-white/20 hover:bg-white/[0.08] transition-all duration-300 group overflow-hidden">
-                <CardHeader>
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0 flex-1">
-                      <div className="mb-3 text-4xl">{feature.icon}</div>
-                      <CardTitle className="text-lg group-hover:text-blue-300 transition-colors text-white">{feature.title}</CardTitle>
-                    </div>
-                  </div>
-                  <CardDescription className="text-white mt-2">{feature.description}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="inline-flex items-center gap-2 rounded-full bg-emerald-500/15 border border-emerald-400/30 px-3 py-1 text-xs font-semibold text-emerald-200">
-                    ✓ {feature.stats}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </section>
-
-        {/* Workspace Systems Section - Enhanced */}
-        <section className="landing-dark border-y border-white/10 py-16 md:py-20 lg:py-24">
-          <div className="section-shell">
-            <div className="mb-12 space-y-4 text-center">
-              <p className="premium-label inline-block border-white/15 bg-white/5 text-slate-200">Specialized Workflows</p>
-              <h2 className="text-3xl font-bold tracking-tight text-white md:text-4xl">Complete operating systems for every use case</h2>
-              <p className="mx-auto max-w-2xl text-lg text-white">
-                Each workspace is a complete system designed for a specific outcome—not just a generic tool
-              </p>
+        <section className="section-shell py-8 md:py-10">
+          <div className="section-surface p-6 md:p-8 lg:p-10">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+              <div className="max-w-2xl space-y-3">
+                <p className="premium-label">Why teams trust Zenovee</p>
+                <h2 className="text-3xl font-semibold tracking-tight text-slate-950 md:text-4xl">A premium operating layer for modern AI execution</h2>
+                <p className="text-base leading-7 text-slate-600 md:text-lg">
+                  No filler dashboards. No vague AI promises. Just focused workflows, better visual hierarchy, and a workspace designed to increase confidence.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-3 text-sm text-slate-600">
+                <span className="stat-chip">Protected payments</span>
+                <span className="stat-chip">Premium exports</span>
+                <span className="stat-chip">Workspace-first UX</span>
+              </div>
             </div>
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-              {topTools.slice(0, 4).map((tool) => (
-                <Card key={tool.slug} className="border-white/10 bg-gradient-to-br from-white/5 to-white/[0.02] text-white hover:border-white/30 hover:bg-white/[0.08] transition-all duration-300 group overflow-hidden">
-                  <CardHeader>
-                    <CardTitle className="group-hover:text-blue-300 transition-colors text-white line-clamp-2">{tool.name}</CardTitle>
-                    <CardDescription className="text-white/90 mt-2 line-clamp-2">{tool.heroDescription}</CardDescription>
+
+            <div className="mt-8 grid gap-4 lg:grid-cols-3">
+              {premiumWorkflows.map((workflow) => (
+                <Card key={workflow.title} className="border-white/70 bg-white/88 shadow-[0_18px_48px_-34px_rgba(15,23,42,0.22)]">
+                  <CardHeader className="space-y-3">
+                    <CardTitle className="text-slate-950">{workflow.title}</CardTitle>
+                    <CardDescription className="text-slate-600">{workflow.description}</CardDescription>
                   </CardHeader>
-                  <CardContent className="flex items-center justify-between gap-3">
-                    <span className="text-xs text-white/70">Premium workflow</span>
-                    <Button asChild size="sm" className="bg-blue-600 hover:bg-blue-700 flex-shrink-0">
-                      <Link href={user ? "/dashboard/tools" : "/register"}>Explore</Link>
-                    </Button>
+                  <CardContent className="space-y-2">
+                    {workflow.points.map((point) => (
+                      <div key={point} className="flex items-center gap-2 text-sm text-slate-700">
+                        <CheckCircle2 className="size-4 text-emerald-500" />
+                        <span>{point}</span>
+                      </div>
+                    ))}
                   </CardContent>
                 </Card>
               ))}
@@ -230,143 +190,182 @@ export default async function LandingPage() {
           </div>
         </section>
 
-        {/* How It Works - Streamlined */}
-        <section className="section-shell py-16 md:py-20 lg:py-24">
-          <div className="mb-12 space-y-4 text-center">
-            <p className="premium-label inline-block">Getting Started</p>
-            <h2 className="text-3xl font-bold tracking-tight md:text-4xl">Three steps to your first output</h2>
-            <p className="mx-auto max-w-2xl text-slate-300">Start generating professional content in under 5 minutes</p>
-          </div>
-            <div className="grid gap-6 md:grid-cols-3">
-            {steps.map((step, index) => (
-              <div key={step.title} className="relative">
-                {/* Connection Line */}
-                {index < steps.length - 1 && (
-                  <div className="absolute top-12 left-[60%] hidden w-[calc(100%_-_60%_+_1rem)] h-1 bg-gradient-to-r from-blue-500 to-transparent md:block" />
-                )}
-                
-                <Card className="border-border bg-gradient-to-br from-white/5 to-white/[0.02] hover:border-white/20 transition-all duration-300 relative z-10 overflow-hidden">
-                  <CardHeader>
-                    <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-lg font-bold text-white">
-                      {index + 1}
-                    </div>
-                    <CardTitle className="text-white">{step.title}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-white/90">{step.text}</p>
-                  </CardContent>
-                </Card>
+        <section className="section-shell py-8 md:py-10 lg:py-12">
+          <div className="space-y-5">
+            <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+              <div className="space-y-3">
+                <p className="premium-label">Premium workflow showcase</p>
+                <h2 className="text-3xl font-semibold tracking-tight text-slate-950 md:text-4xl">Tools presented as polished systems, not template clutter</h2>
               </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Pricing Section - Enhanced */}
-        <section className="landing-dark border-y border-white/10 py-16 md:py-20 lg:py-24">
-          <div className="section-shell">
-            <div className="mb-12 space-y-4 text-center">
-              <p className="premium-label inline-block border-white/15 bg-white/5 text-slate-200">Simple Pricing</p>
-              <h2 className="text-3xl font-bold tracking-tight text-white md:text-4xl">Flexible plans for every budget</h2>
-              <p className="mx-auto max-w-2xl text-lg text-white">
-                No setup fees. No long-term contracts. Cancel anytime.
+              <p className="max-w-xl text-sm leading-7 text-slate-600 md:text-base">
+                Explore a curated set of workflow entry points with clearer positioning, stronger hierarchy, and copy written for outcomes—not generic AI claims.
               </p>
             </div>
-            <div className="grid gap-6 md:grid-cols-3 lg:grid-cols-4">
-              {subscriptionPlans.map((plan) => (
-                <Card key={plan.id} className={`border transition-all duration-300 overflow-hidden ${plan.premiumLabel ? "border-blue-400/50 bg-gradient-to-br from-blue-500/10 to-blue-600/5 shadow-lg shadow-blue-500/20" : "border-border bg-card hover:border-white/30"}`}>
-                  <CardHeader>
-                    <div className="flex items-center gap-2 min-w-0">
-                      <CardTitle className="text-white truncate">{plan.displayName}</CardTitle>
-                      {plan.premiumLabel && (
-                        <span className="rounded-full border border-blue-400 bg-blue-500/20 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-blue-300 flex-shrink-0">
-                          {plan.premiumLabel}
-                        </span>
-                      )}
+
+            <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
+              {topTools.slice(0, 4).map((tool, index) => (
+                <Card key={tool.slug} className="group overflow-hidden border-white/70 bg-white/90 shadow-[0_22px_48px_-34px_rgba(15,23,42,0.2)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_28px_58px_-30px_rgba(15,23,42,0.26)]">
+                  <CardHeader className="space-y-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-600">
+                        {index < 2 ? "Featured" : "Workflow"}
+                      </span>
+                      <span className="text-xs font-medium text-slate-400">Premium system</span>
                     </div>
-                    <CardDescription className="mt-2 text-white/80">{plan.credits.toLocaleString()} credits / month</CardDescription>
+                    <div>
+                      <CardTitle className="line-clamp-2 text-slate-950">{tool.name}</CardTitle>
+                      <CardDescription className="mt-3 line-clamp-3 text-slate-600">{tool.heroDescription}</CardDescription>
+                    </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div>
-                      <p className="text-3xl font-bold tracking-tight text-white">
-                        {formatRupees(plan.monthlyPriceRupees)}
-                        <span className="ml-2 text-base font-normal text-white/70">/month</span>
-                      </p>
-                      <p className="mt-2 text-sm text-white/80">{plan.premiumPositioning}</p>
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 text-sm leading-6 text-slate-600">
+                      Structured inputs, calmer UX, and outputs designed to feel ready for real client and team use.
                     </div>
-                    <Button asChild className="w-full" variant={plan.premiumLabel ? "default" : "outline"}>
-                      <Link href={user ? "/dashboard" : "/register"}>
-                        {plan.premiumLabel ? "Get Started" : "Choose Plan"}
-                      </Link>
+                    <Button asChild size="sm" className="w-full">
+                      <Link href={user ? "/dashboard/tools" : "/register"}>Explore workflow</Link>
                     </Button>
                   </CardContent>
                 </Card>
               ))}
             </div>
-            <div className="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-6 backdrop-blur-sm text-center">
-              <p className="text-sm font-semibold text-white">🔒 Secure payments processed by Razorpay</p>
-              <p className="mt-2 text-xs text-white/80">All transactions are encrypted and PCI-compliant. No hidden fees.</p>
+          </div>
+        </section>
+
+        <section className="section-shell py-8 md:py-10 lg:py-12">
+          <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
+            <div className="section-surface p-6 md:p-8">
+              <p className="premium-label">Operating model</p>
+              <h2 className="mt-4 text-3xl font-semibold tracking-tight text-slate-950">From prompt chaos to structured execution</h2>
+              <p className="mt-4 text-base leading-7 text-slate-600">
+                Zenovee is designed to reduce decision fatigue. Each step helps your team move from idea to premium output with less noise and more control.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              {operatingModel.map((step, index) => (
+                <Card key={step.title} className="border-white/70 bg-white/92">
+                  <CardContent className="flex gap-4 p-6 md:p-7">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-slate-950 text-sm font-semibold text-white shadow-[0_18px_36px_-26px_rgba(15,23,42,0.5)]">
+                      {index + 1}
+                    </div>
+                    <div className="space-y-2">
+                      <h3 className="text-lg font-semibold text-slate-950">{step.title}</h3>
+                      <p className="text-sm leading-7 text-slate-600 md:text-base">{step.text}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           </div>
         </section>
 
-        {/* FAQ Section - High Conversion */}
-        <section className="section-shell py-16 md:py-20 lg:py-24">
-          <div className="mb-12 space-y-4 text-center">
-            <p className="premium-label inline-block">Questions?</p>
-            <h2 className="text-3xl font-bold tracking-tight md:text-4xl">Frequently asked questions</h2>
-          </div>
-          <div className="mx-auto max-w-3xl space-y-4">
-            {faqItems.map((item, index) => (
-              <details key={index} className="group border border-border rounded-lg bg-card/50 backdrop-blur-sm p-5 cursor-pointer hover:border-white/20 transition-all duration-300 overflow-hidden">
-                <summary className="flex items-center justify-between font-semibold text-white hover:text-blue-300 transition-colors">
-                  <span className="text-left">{item.question}</span>
-                  <span className="ml-4 inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/10 group-open:bg-white/20 transition-all duration-300 flex-shrink-0">
-                    <svg className="h-4 w-4 transition-transform duration-300 group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                    </svg>
-                  </span>
-                </summary>
-                <p className="mt-4 text-white/90">{item.answer}</p>
-              </details>
-            ))}
+        <section className="section-shell py-8 md:py-10 lg:py-12">
+          <div className="section-surface p-6 md:p-8 lg:p-10">
+            <div className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr] lg:items-start">
+              <div className="space-y-4">
+                <p className="premium-label">Pricing with trust</p>
+                <h2 className="text-3xl font-semibold tracking-tight text-slate-950 md:text-4xl">Clear plans, predictable credits, secure billing</h2>
+                <p className="text-base leading-7 text-slate-600 md:text-lg">
+                  Zenovee keeps billing simple: straightforward monthly plans, verified checkout, and cleaner status visibility inside your workspace.
+                </p>
+                <div className="premium-glass p-5">
+                  <div className="flex items-start gap-3">
+                    <ShieldCheck className="mt-0.5 size-5 text-emerald-600" />
+                    <div>
+                      <p className="font-semibold text-slate-900">Secure payments and verified synchronization</p>
+                      <p className="mt-1 text-sm leading-6 text-slate-600">
+                        Payments are processed through Razorpay and synchronized before credits and subscriptions update, improving confidence in every billing event.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-3">
+                {featuredPlans.map((plan) => (
+                  <Card key={plan.id} className={`overflow-hidden border-white/70 bg-white/92 ${plan.premiumLabel ? "ring-1 ring-primary/20 shadow-[0_24px_58px_-34px_rgba(79,70,229,0.28)]" : "shadow-[0_18px_46px_-34px_rgba(15,23,42,0.18)]"}`}>
+                    <CardHeader className="space-y-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <CardTitle className="text-base text-slate-950 md:text-lg">{plan.displayName}</CardTitle>
+                        {plan.premiumLabel ? (
+                          <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
+                            {plan.premiumLabel}
+                          </span>
+                        ) : null}
+                      </div>
+                      <CardDescription className="text-slate-600">{plan.credits.toLocaleString()} credits each month</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div>
+                        <p className="text-3xl font-semibold tracking-tight text-slate-950">
+                          {formatRupees(plan.monthlyPriceRupees)}
+                          <span className="ml-1 text-sm font-medium text-slate-500">/mo</span>
+                        </p>
+                        <p className="mt-2 text-sm leading-6 text-slate-600">{plan.premiumPositioning}</p>
+                      </div>
+                      <Button asChild variant={plan.premiumLabel ? "default" : "outline"} className="w-full border-slate-300 bg-white/80 text-slate-900 hover:bg-white">
+                        <Link href={user ? "/billing" : "/register"}>{plan.premiumLabel ? "Choose premium" : "Choose plan"}</Link>
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
           </div>
         </section>
 
-        {/* Final CTA Section */}
-        <section className="landing-dark border-t border-white/10 py-16 md:py-20 lg:py-24">
-          <div className="section-shell">
-            <div className="relative overflow-hidden rounded-[32px] border border-white/10 bg-gradient-to-br from-blue-600/20 via-purple-900/10 to-slate-950 p-8 md:p-12 lg:p-16">
-              {/* Animated Background */}
-              <div className="absolute inset-0 overflow-hidden rounded-[32px]">
-                <div className="absolute -top-40 -right-40 h-80 w-80 rounded-full bg-blue-500/20 opacity-20 blur-3xl" />
-                <div className="absolute -bottom-20 -left-20 h-80 w-80 rounded-full bg-purple-500/20 opacity-20 blur-3xl" />
+        <section className="section-shell py-8 md:py-10 lg:py-12">
+          <div className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
+            <div className="section-surface p-6 md:p-8">
+              <p className="premium-label">FAQ</p>
+              <h2 className="mt-4 text-3xl font-semibold tracking-tight text-slate-950">Questions teams ask before they commit</h2>
+              <p className="mt-4 text-base leading-7 text-slate-600">
+                We’ve removed the filler. These are the practical questions that matter when evaluating a premium AI platform for daily work.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              {faqItems.map((item) => (
+                <details key={item.question} className="group rounded-[24px] border border-white/70 bg-white/92 p-5 shadow-[0_18px_40px_-34px_rgba(15,23,42,0.16)] transition-all duration-200 hover:border-slate-200">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-left text-base font-semibold text-slate-900">
+                    <span>{item.question}</span>
+                    <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-500 transition-transform duration-200 group-open:rotate-45">
+                      +
+                    </span>
+                  </summary>
+                  <p className="mt-4 text-sm leading-7 text-slate-600 md:text-base">{item.answer}</p>
+                </details>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="section-shell py-10 md:py-12 lg:py-16">
+          <div className="section-surface premium-spotlight overflow-hidden p-8 md:p-10 lg:p-12">
+            <div className="relative z-10 flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+              <div className="max-w-2xl space-y-4">
+                <div className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-white/70 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-700">
+                  <Zap className="size-3.5 text-primary" />
+                  Launch-ready polish
+                </div>
+                <h2 className="text-3xl font-semibold tracking-tight text-slate-950 md:text-5xl">
+                  Upgrade from a collection of AI tools to a premium AI platform.
+                </h2>
+                <p className="text-base leading-7 text-slate-600 md:text-lg">
+                  Zenovee is built for teams who care about output quality, trust, and software that feels modern enough to use every day.
+                </p>
               </div>
 
-              <div className="relative z-10 space-y-8 text-center">
-                <div className="space-y-4">
-                  <h2 className="text-3xl font-bold tracking-tight text-white md:text-5xl">
-                    Ready to transform your content workflow?
-                  </h2>
-                  <p className="mx-auto max-w-2xl text-lg text-slate-300">
-                    Join 10,000+ creators and teams saving 20+ hours every week with Zenovee AI.
-                  </p>
-                </div>
-
-                <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-4">
-                  <Button asChild size="lg" className="bg-white text-slate-900 hover:bg-slate-100 font-semibold shadow-lg hover:shadow-xl transition-all duration-300 group min-w-fit">
-                    <Link href={user ? "/dashboard" : "/register"}>
-                      {user ? "Open Dashboard" : "Get Started"}
-                      <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
-                    </Link>
-                  </Button>
-                  <Button asChild size="lg" variant="outline" className="border-white/30 text-white hover:bg-white/10 hover:border-white/50 font-semibold">
-                    <Link href="/pricing">View All Plans</Link>
-                  </Button>
-                </div>
-
-                <p className="text-sm text-slate-400 pt-4">
-                  ✓ Enterprise-grade • ✓ Secure & encrypted • ✓ 99.9% uptime SLA
-                </p>
+              <div className="flex flex-col gap-3 sm:flex-row lg:flex-col lg:items-stretch">
+                <Button asChild size="lg">
+                  <Link href={user ? "/dashboard" : "/register"}>
+                    {user ? "Open dashboard" : "Start with Zenovee"}
+                    <ArrowRight size={18} />
+                  </Link>
+                </Button>
+                <Button asChild size="lg" variant="outline" className="border-slate-300 bg-white/75 text-slate-900 hover:bg-white">
+                  <Link href="/tools">Browse workflows</Link>
+                </Button>
               </div>
             </div>
           </div>

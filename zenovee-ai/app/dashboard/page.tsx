@@ -50,8 +50,16 @@ export default async function DashboardPage() {
 
   return (
     <div className="grid gap-5 lg:grid-cols-2 xl:grid-cols-3">
-      <Card className="border-slate-200 bg-white xl:col-span-2">
-        <CardHeader><CardTitle>Quick Actions</CardTitle></CardHeader>
+      <Card className="premium-surface-elevated border-white/70 xl:col-span-2">
+        <CardHeader>
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="premium-label">Workspace</p>
+              <CardTitle className="mt-3 text-slate-950">Quick Actions</CardTitle>
+            </div>
+            <span className="stat-chip">Launch faster</span>
+          </div>
+        </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
           <Button asChild size="sm"><Link href="/dashboard/tools">Open Tools</Link></Button>
           <Button asChild variant="secondary" size="sm"><Link href="/history">History</Link></Button>
@@ -60,10 +68,10 @@ export default async function DashboardPage() {
         </CardContent>
       </Card>
 
-      <Card className="border-slate-200 bg-white">
-        <CardHeader><CardTitle>Current Plan</CardTitle></CardHeader>
+      <Card className="premium-surface border-white/70 bg-white/92">
+        <CardHeader><CardTitle className="text-slate-950">Current Plan</CardTitle></CardHeader>
         <CardContent>
-          <p className="text-lg font-semibold">{getPlanDisplayName(billingSnapshot.plan)}</p>
+          <p className="text-lg font-semibold text-slate-950">{getPlanDisplayName(billingSnapshot.plan)}</p>
           <p className="text-xs text-muted-foreground mt-1">{billingSnapshot.subscriptionStatus ?? "Inactive"}</p>
           <p className="text-xs text-muted-foreground mt-1">
             Renewal: {billingSnapshot.renewalAt ? formatDateTime(billingSnapshot.renewalAt) : "N/A"}
@@ -72,34 +80,37 @@ export default async function DashboardPage() {
         </CardContent>
       </Card>
 
-      <Card className="border-slate-200 bg-white">
-        <CardHeader><CardTitle>Recent Generations</CardTitle></CardHeader>
+      <Card className="premium-surface border-white/70 bg-white/92">
+        <CardHeader><CardTitle className="text-slate-950">Recent Generations</CardTitle></CardHeader>
         <CardContent className="space-y-3">
           {usage.length ? usage.map((item) => (
-            <div key={item.id} className="rounded-lg border border-slate-200 px-3 py-2">
-              <p className="text-sm font-medium">{item.tool_name}</p>
+            <div key={item.id} className="rounded-2xl border border-slate-200/80 bg-slate-50/70 px-3 py-3">
+              <p className="text-sm font-medium text-slate-900">{item.tool_name}</p>
               <p className="text-xs text-muted-foreground">{formatDateTime(item.created_at)} • {item.credits_charged} credits</p>
             </div>
           )) : <p className="text-sm text-muted-foreground">No generations yet.</p>}
         </CardContent>
       </Card>
 
-      <Card className="border-slate-200 bg-white">
-        <CardHeader><CardTitle>Favorite Tools</CardTitle></CardHeader>
+      <Card className="premium-surface border-white/70 bg-white/92">
+        <CardHeader><CardTitle className="text-slate-950">Favorite Tools</CardTitle></CardHeader>
         <CardContent className="space-y-2">
           {quickAccessTools.slice(0, 3).map((tool) => (
-            <Link key={tool.id} href="/dashboard/tools" className="block rounded-lg border border-slate-200 px-3 py-2 text-sm hover:bg-slate-50">
+            <Link key={tool.id} href="/dashboard/tools" className="block rounded-2xl border border-slate-200 bg-slate-50/60 px-3 py-2 text-sm text-slate-800 transition hover:bg-slate-100">
               {tool.metadata.name}
             </Link>
           ))}
         </CardContent>
       </Card>
 
-      <Card className="border-slate-200 bg-white">
-        <CardHeader><CardTitle>Credits Remaining</CardTitle></CardHeader>
+      <Card className="premium-surface border-white/70 bg-white/92">
+        <CardHeader><CardTitle className="text-slate-950">Credits Remaining</CardTitle></CardHeader>
         <CardContent>
-          <p className="text-2xl font-semibold">{credits.toLocaleString()}</p>
+          <p className="text-2xl font-semibold text-slate-950">{credits.toLocaleString()}</p>
           <p className="mt-1 text-xs text-muted-foreground">Usage progress: {usageProgress}% ({billingSnapshot.usedCredits}/{billingSnapshot.totalCredits})</p>
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200">
+            <div className="h-full rounded-full bg-[linear-gradient(90deg,#0f172a_0%,#2563eb_100%)]" style={{ width: `${usageProgress}%` }} />
+          </div>
           <p className="mt-2 text-xs text-muted-foreground">Estimated usage runway: about {Math.max(1, Math.floor(credits / 300)).toLocaleString()} medium-tool runs remaining.</p>
           {nextPlan ? <p className="mt-2 text-xs text-primary">Upgrade suggestion: {nextPlan.displayName} unlocks {nextPlan.credits.toLocaleString()} monthly credits.</p> : null}
         </CardContent>

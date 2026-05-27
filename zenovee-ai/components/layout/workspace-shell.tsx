@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import {
   Bolt,
@@ -50,6 +50,7 @@ const workspaceTabs = [
 
 export function WorkspaceShell({ children, title, subtitle }: WorkspaceShellProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -60,7 +61,7 @@ export function WorkspaceShell({ children, title, subtitle }: WorkspaceShellProp
 
   const breadcrumb = pathname.split("/").filter(Boolean);
 
-  const isFavoritesActive = pathname === "/history";
+  const isFavoritesActive = pathname === "/history" && searchParams.get("view") === "favorites";
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,hsl(var(--primary)/0.08),transparent_35%),hsl(var(--background))] text-foreground">
@@ -174,7 +175,7 @@ export function WorkspaceShell({ children, title, subtitle }: WorkspaceShellProp
 
       {mobileOpen ? (
         <div className="fixed inset-0 z-50 bg-slate-950/55 backdrop-blur-sm lg:hidden" onClick={() => setMobileOpen(false)}>
-          <div className="h-full w-[84%] max-w-xs border-r border-slate-800 bg-slate-950 p-4 text-slate-100" onClick={(e) => e.stopPropagation()}>
+          <div className="h-full w-[84%] max-w-xs animate-slide-in border-r border-slate-800 bg-slate-950 p-4 text-slate-100" onClick={(e) => e.stopPropagation()}>
             <div className="mb-6 flex items-center justify-between">
               <p className="font-semibold tracking-tight">Zenovee</p>
               <button onClick={() => setMobileOpen(false)} className="rounded-lg border border-white/20 bg-white/10 p-2">
