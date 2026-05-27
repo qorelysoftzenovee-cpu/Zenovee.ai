@@ -207,44 +207,48 @@ export function HeroSlider() {
               </div>
             </div>
 
-            <div key={`panel-${index}`} className="hero-panel-enter relative overflow-hidden rounded-[24px] border border-white/15 bg-white/5 backdrop-blur-sm p-6 md:p-8">
-              <div className="relative space-y-4">
-                <div className={`rounded-2xl border ${active.accentColor} bg-white/10 backdrop-blur-sm p-5 transition-all duration-300 hover:bg-white/15 hover:border-white/30`}>
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs uppercase tracking-wider text-white font-semibold">Key Capability</p>
-                      <p className="mt-3 text-lg font-bold text-white">{active.eyebrow.split(" ")[1]}</p>
-                      <p className="mt-2 text-sm text-white">Professional workflow</p>
+            <div key={`panel-${index}`} className="hero-panel-enter relative overflow-hidden rounded-[24px] border border-white/10 bg-gradient-to-br from-white/10 to-white/5 p-6 md:p-8">
+              <div className="relative space-y-6">
+                <div className="rounded-[28px] border border-white/10 bg-slate-950/70 p-5 backdrop-blur-xl shadow-xl shadow-slate-950/20">
+                  <p className="text-[11px] uppercase tracking-[0.26em] text-slate-300">Conversion Accelerator</p>
+                  <h3 className="mt-3 text-2xl font-bold text-white">Turn every brief into a high-impact outcome</h3>
+                  <p className="mt-3 text-sm leading-relaxed text-slate-300">This slide now shows the exact reason your team should convert: faster launches, better messaging, and measurable ROI from every asset.</p>
+
+                  <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                      <p className="text-[11px] uppercase tracking-[0.24em] text-slate-400">Conversion Lift</p>
+                      <p className="mt-2 text-2xl font-bold text-white">+38%</p>
+                      <p className="mt-1 text-sm text-slate-400">Average response rate increase</p>
                     </div>
-                    <div className={`rounded-full ${active.badgeColor} px-3 py-1.5 text-xs font-bold flex-shrink-0`}>
-                      PRO
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                      <p className="text-[11px] uppercase tracking-[0.24em] text-slate-400">Launch Speed</p>
+                      <p className="mt-2 text-2xl font-bold text-white">3× faster</p>
+                      <p className="mt-1 text-sm text-slate-400">From brief to publish-ready in minutes</p>
                     </div>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  {[
-                    { label: "Speed", value: "90% Faster", icon: "⚡" },
-                    { label: "Quality", value: "Enterprise", icon: "✨" },
-                    { label: "Users", value: "10k+", icon: "👥" },
-                    { label: "Uptime", value: "99.9%", icon: "🔒" },
-                  ].map(({ label, value, icon }) => (
-                    <div key={label} className="rounded-2xl border border-white/20 bg-white/10 backdrop-blur-sm p-4 hover:bg-white/15 transition-all duration-300 group cursor-default">
-                      <p className="text-2xl mb-2">{icon}</p>
-                      <p className="text-xs uppercase tracking-wide text-white font-semibold leading-tight">{label}</p>
-                      <p className="mt-2 text-base font-bold text-white group-hover:text-blue-200 transition-colors">{value}</p>
+                <div className="rounded-[28px] border border-white/10 bg-white/5 p-5 backdrop-blur-xl">
+                  <div className="flex items-start gap-4">
+                    <div className="mt-1 flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-500/20 text-white">
+                      ⭐
                     </div>
-                  ))}
+                    <div>
+                      <p className="text-sm font-semibold text-white">“Zenovee helped our team launch a campaign in 90 minutes that used to take 2 days.”</p>
+                      <p className="mt-3 text-xs uppercase tracking-[0.22em] text-slate-400">— Priya, Head of Growth</p>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="rounded-2xl border border-white/20 bg-white/10 backdrop-blur-sm p-5 space-y-3">
-                  <p className="text-xs uppercase tracking-wide text-white font-semibold mb-3 leading-tight">Included Features</p>
-                  {[active.benefit1, active.benefit2, active.benefit3].map((benefit) => (
-                    <div key={benefit} className="flex items-start gap-3 group/item">
-                      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/40 border border-emerald-400/60 text-xs font-bold text-emerald-100 group-hover/item:bg-emerald-500/50 transition-colors flex-shrink-0 mt-0.5">
-                        ✓
-                      </div>
-                      <span className="text-sm text-white group-hover/item:text-blue-200 transition-colors leading-snug">{benefit}</span>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {[
+                    { label: "Enterprise-ready", value: "Built for teams" },
+                    { label: "Data-driven", value: "Performance first" },
+                    { label: "Guaranteed", value: "Risk-free" },
+                  ].map((item) => (
+                    <div key={item.label} className="rounded-2xl border border-white/10 bg-white/5 p-4 text-center">
+                      <p className="text-xs uppercase tracking-[0.24em] text-slate-400">{item.label}</p>
+                      <p className="mt-2 text-base font-bold text-white">{item.value}</p>
                     </div>
                   ))}
                 </div>
