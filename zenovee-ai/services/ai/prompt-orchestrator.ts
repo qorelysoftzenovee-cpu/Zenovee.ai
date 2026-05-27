@@ -116,6 +116,66 @@ function validateOutput(toolId: string, output: Record<string, unknown>, context
   return issues;
 }
 
+function validateOutputByCategory(tool: ToolDefinition<Record<string, unknown>, Record<string, unknown>>, output: Record<string, unknown>, context: ValidationContext) {
+  const issues: string[] = [];
+
+  switch (tool.metadata.category) {
+    case "Executive Branding": {
+      if (wordCount(output.strategicHook) < 6) issues.push("Strategic hook needs more substance.");
+      if (stringArrayLength(output.hookAnalysis) < 3) issues.push("Add more hook analysis detail.");
+      if (stringArrayLength(output.storytellingStructure) < 3) issues.push("Storytelling structure needs more depth.");
+      if (stringArrayLength(output.authorityAngles) < 3) issues.push("Provide more authority angles.");
+      if (stringArrayLength(output.audiencePsychologyTriggers) < 3) issues.push("Audience psychology triggers need more specificity.");
+      if (wordCount(output.finalDraft) < getMinWordsFromLength(context.controls.outputLength, { short: 80, medium: 140, long: 220 })) issues.push("Final draft is too thin for the selected output length.");
+      break;
+    }
+    case "B2B Sales": {
+      if (stringArrayLength(output.objectionHandlingFrames) < 3) issues.push("Add more objection-handling frames.");
+      if (stringArrayLength(output.buyerPsychologyLevers) < 3) issues.push("Buyer psychology levers need more depth.");
+      if (wordCount(output.concisePitch) < 20) issues.push("Concise pitch needs more substance.");
+      if (stringArrayLength(output.enterpriseFraming) < 2) issues.push("Enterprise framing needs more detail.");
+      if (stringArrayLength(output.conversionSequence) < 3) issues.push("Conversion sequence needs more progression.");
+      break;
+    }
+    case "Conversion Copywriting": {
+      if (objectArrayLength(output.frameworkBlocks) < 3) issues.push("Framework blocks need more complete structure.");
+      if (stringArrayLength(output.emotionalTriggers) < 3) issues.push("Add more emotional triggers.");
+      if (stringArrayLength(output.conversionAngles) < 3) issues.push("Add more conversion angles.");
+      if (stringArrayLength(output.ctaHierarchy) < 2) issues.push("CTA hierarchy needs stronger progression.");
+      if (stringArrayLength(output.scrollStoppingHooks) < 3) issues.push("Provide more scroll-stopping hooks.");
+      if (wordCount(output.finalCopy) < getMinWordsFromLength(context.controls.outputLength, { short: 90, medium: 160, long: 260 })) issues.push("Final copy is too short for the requested output length.");
+      break;
+    }
+    case "SEO & Authority": {
+      if (stringArrayLength(output.intentAnalysis) < 3) issues.push("Intent analysis needs more depth.");
+      if (objectArrayLength(output.semanticClusters) < 3) issues.push("Provide more semantic clusters.");
+      if (stringArrayLength(output.topicalAuthorityMap) < 3) issues.push("Topical authority map needs more coverage.");
+      if (objectArrayLength(output.faqBlocks) < 3) issues.push("Provide at least three FAQ blocks.");
+      if (stringArrayLength(output.internalLinkingPlan) < 3) issues.push("Internal linking plan needs more detail.");
+      if (stringArrayLength(output.contentStructure) < 4) issues.push("Content structure needs more completeness.");
+      break;
+    }
+    case "Premium Image/Brand Assets": {
+      if (wordCount(output.masterPrompt) < 25) issues.push("Master prompt needs more visual specificity.");
+      if (stringArrayLength(output.compositionInstructions) < 3) issues.push("Add more composition instructions.");
+      if (stringArrayLength(output.lightingInstructions) < 2) issues.push("Lighting instructions need more detail.");
+      if (stringArrayLength(output.cameraStyleDirection) < 2) issues.push("Camera style direction needs more detail.");
+      if (stringArrayLength(output.premiumAestheticRules) < 3) issues.push("Premium aesthetic rules need stronger coverage.");
+      if (stringArrayLength(output.variations) < 3) issues.push("Add more useful visual variations.");
+      break;
+    }
+    case "Browser Tools": {
+      if (wordCount(output.result) < getMinWordsFromLength(context.controls.outputLength, { short: 25, medium: 45, long: 70 })) issues.push("The browser-tool result is too thin for the selected output length.");
+      if (stringArrayLength(output.suggestions) < 2) issues.push("Provide more useful follow-up suggestions.");
+      break;
+    }
+    default:
+      return validateOutput(tool.id, output, context);
+  }
+
+  return issues;
+}
+
 function mapModeInstruction(mode: GenerationMode) {
   switch (mode) {
     case "regenerate":
@@ -173,8 +233,8 @@ function buildPromptBundle(params: {
   adminOverrides?: ToolPromptAdminOverrides;
   repairHint?: string;
 }) {
-  const profile = getToolPromptProfile(params.tool.id);
-  const controls = resolvePromptControls(params.tool.id, params.options.controls, params.adminOverrides);
+  const profile = getToolPromptProfile(params.tool.id, params.tool.metadata.category);
+  const controls = resolvePromptControls(params.tool.id, params.options.controls, params.adminOverrides, params.tool.metadata.category);
   const systemPrompt = [
     profile?.systemPrompt ?? "You are Zenovee's premium AI generation engine.",
     `Objective: ${profile?.objective ?? "Produce structured, premium-quality output."}`,
@@ -278,7 +338,7 @@ export async function generateToolOutput(params: {
   const retries = adminOverrides.maxValidationRetries ?? 2;
   const modelConfig = resolveModelConfiguration(
     params.tool,
-    resolvePromptControls(params.tool.id, params.options.controls, adminOverrides),
+    resolvePromptControls(params.tool.id, params.options.controls, adminOverrides, params.tool.metadata.category),
     adminOverrides
   );
 
@@ -309,7 +369,7 @@ export async function generateToolOutput(params: {
         timeoutMs: modelConfig.timeoutMs,
       }) as AIGenerateStructuredResult<Record<string, unknown>>;
 
-      const validationIssues = validateOutput(params.tool.id, aiResponse.data, {
+      const validationIssues = validateOutputByCategory(params.tool, aiResponse.data, {
         input: params.input,
         controls: bundle.controls,
         mode: params.options.mode,

@@ -121,6 +121,210 @@ const browserPromptCatalog = defaultPromptCatalog({
   },
 });
 
+const categoryPromptProfiles: Record<string, ToolPromptProfile> = {
+  "Executive Branding": {
+    toolId: "executive-branding@category",
+    version: "executive-branding@1",
+    category: "Executive Branding",
+    objective: "Create premium executive positioning, thought-leadership, and authority-building narrative outputs.",
+    complexity: "heavy",
+    outputSections: ["strategic hook", "hook analysis", "storytelling structure", "authority angles", "audience psychology triggers", "engagement score", "final draft"],
+    formattingRules: [
+      "Keep the writing sharp, publishable, and founder/executive credible.",
+      "Prefer strategic clarity over generic motivational language.",
+      "Make the final draft sound premium, trusted, and audience-aware.",
+    ],
+    qualityChecklist: [
+      "Strategic hook must feel distinct and high-signal.",
+      "Authority angles should be useful for real positioning.",
+      "Final draft should feel polished enough to publish with light edits.",
+    ],
+    controls: defaultPromptCatalog({
+      defaults: {
+        tone: "Authoritative",
+        writingStyle: "Editorial",
+        outputLength: "medium",
+        language: "English",
+      },
+    }),
+    systemPrompt: "You are Zenovee's executive branding strategist. Produce premium authority content systems for founders, executives, and consultants.",
+    userPrompt: ({ input, controls, mode, previousOutput, repairHint }) => [
+      `Task mode: ${mode}.`,
+      `Build executive-branding output using tone ${controls.tone}, style ${controls.writingStyle}, output length ${controls.outputLength}, language ${controls.language}.`,
+      "Strategic brief:",
+      formatInputSummary(input),
+      previousOutput ? `Existing draft to refine:\n${JSON.stringify(previousOutput)}` : "",
+      repairHint ? `Revision notes: ${repairHint}` : "",
+    ].filter(Boolean).join("\n\n"),
+  },
+  "B2B Sales": {
+    toolId: "b2b-sales@category",
+    version: "b2b-sales@1",
+    category: "B2B Sales",
+    objective: "Create premium B2B sales messaging systems with stronger ICP fit, objection handling, and conversion readiness.",
+    complexity: "standard",
+    outputSections: ["ICP alignment score", "objection handling frames", "buyer psychology levers", "concise pitch", "enterprise framing", "CTA score", "conversion sequence"],
+    formattingRules: [
+      "Keep copy enterprise-aware, concise, and commercially useful.",
+      "Avoid hype or generic prospecting clichés.",
+      "Output should feel deployment-ready for serious B2B teams.",
+    ],
+    qualityChecklist: [
+      "Objection handling must feel realistic and persuasive.",
+      "Concise pitch should be easy to reuse in outreach or sales calls.",
+      "Conversion sequence should demonstrate progression, not repetition.",
+    ],
+    controls: defaultPromptCatalog({
+      defaults: {
+        tone: "Professional",
+        writingStyle: "Conversion-focused",
+        outputLength: "medium",
+        language: "English",
+      },
+    }),
+    systemPrompt: "You are Zenovee's B2B revenue strategist. Produce premium outbound and sales-conversion systems for operators selling to serious buyers.",
+    userPrompt: ({ input, controls, mode, previousOutput, repairHint }) => [
+      `Task mode: ${mode}.`,
+      `Generate B2B sales output with tone ${controls.tone}, style ${controls.writingStyle}, output length ${controls.outputLength}, language ${controls.language}.`,
+      "Sales brief:",
+      formatInputSummary(input),
+      previousOutput ? `Existing sales output to improve:\n${JSON.stringify(previousOutput)}` : "",
+      repairHint ? `Revision notes: ${repairHint}` : "",
+    ].filter(Boolean).join("\n\n"),
+  },
+  "Conversion Copywriting": {
+    toolId: "conversion-copy@category",
+    version: "conversion-copy@1",
+    category: "Conversion Copywriting",
+    objective: "Create conversion-oriented messaging systems with clear frameworks, angles, triggers, and CTA structure.",
+    complexity: "heavy",
+    outputSections: ["framework blocks", "emotional triggers", "conversion angles", "CTA hierarchy", "scroll-stopping hooks", "final copy"],
+    formattingRules: [
+      "Write commercially useful copy, not generic brainstorming notes.",
+      "Maintain tight narrative flow and distinct conversion angles.",
+      "Final copy must feel polished and ready for page/campaign adaptation.",
+    ],
+    qualityChecklist: [
+      "Framework blocks should show real message progression.",
+      "Hooks and CTA hierarchy should feel distinct and testable.",
+      "Final copy should feel premium, persuasive, and clear.",
+    ],
+    controls: defaultPromptCatalog({
+      defaults: {
+        tone: "Bold",
+        writingStyle: "Conversion-focused",
+        outputLength: "long",
+        language: "English",
+      },
+    }),
+    systemPrompt: "You are Zenovee's premium conversion copy strategist. Produce persuasive copy systems with sharper structure, stronger psychology, and higher deployment quality.",
+    userPrompt: ({ input, controls, mode, previousOutput, repairHint }) => [
+      `Task mode: ${mode}.`,
+      `Generate conversion-copy output using tone ${controls.tone}, style ${controls.writingStyle}, output length ${controls.outputLength}, language ${controls.language}.`,
+      "Copy brief:",
+      formatInputSummary(input),
+      previousOutput ? `Existing copy pack to refine:\n${JSON.stringify(previousOutput)}` : "",
+      repairHint ? `Revision notes: ${repairHint}` : "",
+    ].filter(Boolean).join("\n\n"),
+  },
+  "SEO & Authority": {
+    toolId: "seo-authority@category",
+    version: "seo-authority@1",
+    category: "SEO & Authority",
+    objective: "Create structured SEO growth outputs such as intent maps, clusters, metadata, FAQs, and authority architecture.",
+    complexity: "heavy",
+    outputSections: ["intent analysis", "semantic clusters", "topical authority map", "metadata", "FAQ blocks", "internal linking plan", "content structure"],
+    formattingRules: [
+      "Favor search intent clarity and strategic topical coverage.",
+      "Outputs should help teams move directly into SEO execution.",
+      "Avoid shallow, generic keyword advice.",
+    ],
+    qualityChecklist: [
+      "Clusters should be grouped meaningfully, not randomly expanded.",
+      "Metadata should be specific and search-ready.",
+      "Internal linking and structure should feel operationally useful.",
+    ],
+    controls: defaultPromptCatalog({
+      defaults: {
+        tone: "Authoritative",
+        writingStyle: "Analytical",
+        outputLength: "long",
+        language: "English",
+      },
+    }),
+    systemPrompt: "You are Zenovee's SEO authority strategist. Produce premium search-growth systems with clear structure, intent coverage, and execution usefulness.",
+    userPrompt: ({ input, controls, mode, previousOutput, repairHint }) => [
+      `Task mode: ${mode}.`,
+      `Generate SEO authority output using tone ${controls.tone}, style ${controls.writingStyle}, output length ${controls.outputLength}, language ${controls.language}.`,
+      "SEO brief:",
+      formatInputSummary(input),
+      previousOutput ? `Existing SEO output to refine:\n${JSON.stringify(previousOutput)}` : "",
+      repairHint ? `Revision notes: ${repairHint}` : "",
+    ].filter(Boolean).join("\n\n"),
+  },
+  "Premium Image/Brand Assets": {
+    toolId: "premium-assets@category",
+    version: "premium-assets@1",
+    category: "Premium Image/Brand Assets",
+    objective: "Create premium creative direction outputs with master prompts, composition rules, lighting, and brand-consistent visual guidance.",
+    complexity: "standard",
+    outputSections: ["master prompt", "composition instructions", "lighting instructions", "camera style direction", "premium aesthetic rules", "variations"],
+    formattingRules: [
+      "Keep instructions precise enough for real image-generation or art-direction use.",
+      "Maintain a premium aesthetic with visual consistency.",
+      "Variations should be distinct, not repetitive rewordings.",
+    ],
+    qualityChecklist: [
+      "Master prompt should be robust and visually specific.",
+      "Aesthetic rules should reinforce consistency.",
+      "Variations should feel usable for campaign iteration.",
+    ],
+    controls: defaultPromptCatalog({
+      defaults: {
+        tone: "Professional",
+        writingStyle: "Concise",
+        outputLength: "medium",
+        language: "English",
+      },
+    }),
+    systemPrompt: "You are Zenovee's premium visual direction strategist. Produce polished creative prompts and brand-safe art-direction systems for marketing assets.",
+    userPrompt: ({ input, controls, mode, previousOutput, repairHint }) => [
+      `Task mode: ${mode}.`,
+      `Generate premium visual direction output using tone ${controls.tone}, style ${controls.writingStyle}, output length ${controls.outputLength}, language ${controls.language}.`,
+      "Creative brief:",
+      formatInputSummary(input),
+      previousOutput ? `Existing visual direction to refine:\n${JSON.stringify(previousOutput)}` : "",
+      repairHint ? `Revision notes: ${repairHint}` : "",
+    ].filter(Boolean).join("\n\n"),
+  },
+  "Browser Tools": {
+    toolId: "browser-tools@category",
+    version: "browser-tools@1",
+    category: "Browser Tools",
+    objective: "Assist live page workflows with concise, context-aware browser outputs.",
+    complexity: "light",
+    outputSections: ["result", "suggestions"],
+    formattingRules: [
+      "Be concise, practical, and page-context aware.",
+      "Avoid filler and preserve user intent.",
+    ],
+    qualityChecklist: [
+      "Primary result should be directly usable.",
+      "Suggestions should be actionable and relevant.",
+    ],
+    controls: browserPromptCatalog,
+    systemPrompt: "You are Zenovee's browser productivity assistant. Produce concise, useful, context-aware results for in-page workflows.",
+    userPrompt: ({ input, controls, mode, previousOutput, repairHint }) => [
+      `Task mode: ${mode}.`,
+      `Generate browser-tool output using tone ${controls.tone}, style ${controls.writingStyle}, output length ${controls.outputLength}, language ${controls.language}.`,
+      "Page context:",
+      formatInputSummary(input),
+      previousOutput ? `Existing browser-tool output to refine:\n${JSON.stringify(previousOutput)}` : "",
+      repairHint ? `Revision notes: ${repairHint}` : "",
+    ].filter(Boolean).join("\n\n"),
+  },
+};
+
 const toolPromptProfiles: Record<string, ToolPromptProfile> = {
   "seo-article-generator": {
     toolId: "seo-article-generator",
@@ -413,21 +617,22 @@ export function parseToolPromptAdminOverrides(value: unknown): ToolPromptAdminOv
       };
 }
 
-export function getToolPromptProfile(toolId: string) {
-  return toolPromptProfiles[toolId];
+export function getToolPromptProfile(toolId: string, toolCategory?: string) {
+  return toolPromptProfiles[toolId] ?? (toolCategory ? categoryPromptProfiles[toolCategory] : undefined);
 }
 
-export function getToolPromptControlCatalog(toolId: string): PromptControlCatalog | null {
-  const profile = getToolPromptProfile(toolId);
+export function getToolPromptControlCatalog(toolId: string, toolCategory?: string): PromptControlCatalog | null {
+  const profile = getToolPromptProfile(toolId, toolCategory);
   return profile?.controls ?? null;
 }
 
 export function resolvePromptControls(
   toolId: string,
   controls?: PromptRuntimeControls,
-  adminOverrides?: ToolPromptAdminOverrides
+  adminOverrides?: ToolPromptAdminOverrides,
+  toolCategory?: string
 ): ResolvedPromptControls {
-  const profile = getToolPromptProfile(toolId);
+  const profile = getToolPromptProfile(toolId, toolCategory);
   const defaults = profile?.controls.defaults ?? {
     tone: "Professional",
     writingStyle: "Publish-ready",

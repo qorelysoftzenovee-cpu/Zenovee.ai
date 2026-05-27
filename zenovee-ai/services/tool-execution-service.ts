@@ -1,6 +1,6 @@
 import { getToolDefinition, listToolDefinitions } from "@/definitions";
 import { AIProtectionError, AIProtectionService } from "@/services/ai/protection";
-import { generationExecutionOptionsSchema, getToolPromptControlCatalog } from "@/services/ai/prompt-system";
+import { generationExecutionOptionsSchema, getToolPromptControlCatalog, getToolPromptProfile } from "@/services/ai/prompt-system";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/supabase/types";
 import type { ToolDefinition } from "@/types/tools";
@@ -67,7 +67,7 @@ export class ToolExecutionService {
 
     return defs.map((d) => {
       const price = map.get(d.id);
-      const generationControls = getToolPromptControlCatalog(d.id);
+      const generationControls = getToolPromptControlCatalog(d.id, d.metadata.category);
       return {
         id: d.id,
         metadata: d.metadata,
@@ -137,6 +137,22 @@ export class ToolExecutionService {
     const tool = getToolDefinition(args.toolId);
     if (!tool) throw new Error("Requested tool was not found.");
     if (tool.metadata.availability === "coming_soon") throw new Error(tool.metadata.disabledReason ?? "Tool unavailable.");
+
+    const promptProfile = getToolPromptProfile(tool.id, tool.metadata.category);
+    serverLog({
+      level: "info",
+      route: "services/tool-execution-service.execute",
+      message: "Tool execution pipeline starting",
+      metadata: {
+        toolId: tool.id,
+        category: tool.metadata.category,
+        workspaceId: args.workspaceId ?? null,
+        moduleId: args.moduleId ?? null,
+        hasPromptProfile: Boolean(promptProfile),
+        promptProfileVersion: promptProfile?.version ?? null,
+        fieldCount: tool.fields.length,
+      },
+    });
 
     const toolAccess = await canUseTool(args.userId, tool.id);
     if (!toolAccess.allowed) {
@@ -219,6 +235,16 @@ export class ToolExecutionService {
     const sanitizedInput = AIProtectionService.sanitizeInput(args.rawInput);
     const validatedInput = tool.inputSchema.parse(sanitizedInput) as Record<string, unknown>;
     const executionOptions = generationExecutionOptionsSchema.parse(args.options ?? {});
+    serverLog({
+      level: "info",
+      route: "services/tool-execution-service.execute",
+      message: "Tool input validated",
+      metadata: {
+        toolId: tool.id,
+        inputKeys: Object.keys(validatedInput),
+        mode: executionOptions.mode,
+      },
+    });
     const promptPayload = PromptBuilderService.buildOptimizedPrompt({
       tool: tool as ToolDefinition<Record<string, unknown>, Record<string, unknown>>,
       input: validatedInput,
@@ -417,6 +443,19 @@ export class ToolExecutionService {
       return { executionId: execution.id, output: premiumOutput, usage: aiResponse.usage, remainingCredits: creditsAfter, replay: false, meta: { ...meta, retries: executionMetrics.retries } };
     } catch (error) {
       const message = error instanceof Error ? error.message : "Tool execution failed.";
+      serverLog({
+        level: "error",
+        route: "services/tool-execution-service.execute",
+        message: "Tool execution pipeline failed",
+        error,
+        metadata: {
+          toolId: tool.id,
+          category: tool.metadata.category,
+          workspaceId: args.workspaceId ?? null,
+          moduleId: args.moduleId ?? null,
+          promptProfileVersion: promptProfile?.version ?? null,
+        },
+      });
 
       if (debitTxId) {
         const { error: refundError } = await supabaseRpc.rpc("refund_user_credits", {
