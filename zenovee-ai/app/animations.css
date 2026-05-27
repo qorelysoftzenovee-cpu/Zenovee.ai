@@ -1,0 +1,237 @@
+/* Ultra-smooth, GPU-accelerated animations */
+
+/* Enable GPU acceleration for smooth animations */
+* {
+  backface-visibility: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Slide In Animations - Ultra Smooth */
+@keyframes slideInUpSmooth {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 20px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes slideInRightSmooth {
+  from {
+    opacity: 0;
+    transform: translate3d(30px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes slideInLeftSmooth {
+  from {
+    opacity: 0;
+    transform: translate3d(-30px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes fadeInSmooth {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scaleInSmooth {
+  from {
+    opacity: 0;
+    transform: scale3d(0.95, 0.95, 0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale3d(1, 1, 1);
+  }
+}
+
+@keyframes slideUpSmooth {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 30px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+/* Hover effects - smooth transitions */
+@keyframes glow {
+  0% {
+    box-shadow: 0 0 5px rgba(59, 130, 246, 0);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+  }
+  100% {
+    box-shadow: 0 0 5px rgba(59, 130, 246, 0);
+  }
+}
+
+/* Smooth transitions for interactive elements */
+button,
+a,
+[role="button"] {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform, box-shadow, background-color;
+}
+
+/* Card hover animations */
+.card-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform, box-shadow;
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+}
+
+/* Fade and scale for hero content */
+.hero-content-enter {
+  animation: slideInUpSmooth 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  will-change: transform, opacity;
+}
+
+.hero-content-enter.delay-1 {
+  animation-delay: 0.08s;
+}
+
+.hero-content-enter.delay-2 {
+  animation-delay: 0.16s;
+}
+
+.hero-content-enter.delay-3 {
+  animation-delay: 0.24s;
+}
+
+.hero-panel-enter {
+  animation: slideInRightSmooth 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  will-change: transform, opacity;
+}
+
+/* Smooth section reveals */
+.section-reveal {
+  animation: fadeInSmooth 0.6s ease-out forwards;
+  opacity: 0;
+}
+
+.section-reveal.delay-1 {
+  animation-delay: 0.1s;
+}
+
+.section-reveal.delay-2 {
+  animation-delay: 0.2s;
+}
+
+/* Smooth number counter animations */
+@keyframes countUp {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.count-up {
+  animation: countUp 0.6s ease-out forwards;
+}
+
+/* Ultra-smooth progress bar */
+.progress-bar {
+  will-change: width;
+  transition: width 75ms linear;
+}
+
+/* Smooth button states */
+button:active {
+  transform: scale(0.98);
+}
+
+button:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.2);
+  outline-offset: 2px;
+}
+
+/* Smooth text selection */
+::selection {
+  background-color: rgba(59, 130, 246, 0.3);
+  color: inherit;
+}
+
+/* Performance optimization - reduce motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Smooth accordion animations */
+details {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+details[open] summary {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+summary {
+  transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Smooth visibility for lazy-loaded elements */
+[data-visible="false"] {
+  opacity: 0;
+  transform: translate3d(0, 20px, 0);
+}
+
+[data-visible="true"] {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+  transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Tab transitions */
+[role="tabpanel"] {
+  animation: fadeInSmooth 0.3s ease-out forwards;
+}
+
+/* Smooth gradient animations */
+.gradient-shift {
+  background-size: 200% 200%;
+  animation: gradientShift 15s ease infinite;
+}
+
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}

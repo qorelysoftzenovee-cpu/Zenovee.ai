@@ -170,7 +170,7 @@ export async function POST(request: Request) {
     const checkoutPlan = plan ? buildCheckoutPayload(plan.id) : null;
     const isScalePlan = normalizedPlanId === "scale";
 
-    if (!plan || !plan.active) {
+    if (!plan || !plan.active || !checkoutPlan) {
       return jsonError("The selected plan is no longer available. Refresh the page and choose an active plan.", 404, { code: "PLAN_NOT_FOUND" });
     }
 
