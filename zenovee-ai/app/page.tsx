@@ -471,7 +471,7 @@ export default async function LandingPage() {
                         variant={plan.premiumLabel ? "default" : "outline"}
                         className="w-full border-slate-300 bg-white/80 text-slate-900 hover:bg-white"
                       >
-                        <Link href={user ? "/billing" : "/register"}>{plan.premiumLabel ? "Choose premium" : "Choose plan"}</Link>
+                        <Link href={user ? "/billing" : "/register"}>{`Choose ${plan.displayName}`}</Link>
                       </Button>
                     </CardContent>
                   </Card>
