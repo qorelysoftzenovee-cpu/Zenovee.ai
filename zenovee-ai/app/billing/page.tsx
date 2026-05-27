@@ -63,16 +63,6 @@ export default async function BillingPage() {
               <p className="mt-2 text-lg font-bold text-foreground">{(payments ?? []).length}</p>
             </div>
           </div>
-          <div className="mt-6 rounded-2xl border border-primary/40 bg-gradient-to-r from-primary/10 to-primary/5 p-5 shadow-md">
-            <div className="flex items-start gap-3">
-              <div className="mt-1 h-5 w-5 rounded-full bg-primary/20 flex-shrink-0"></div>
-              <div>
-                <p className="font-bold text-foreground">Secure Checkout • Enterprise-Grade Protection</p>
-                <p className="mt-2 text-sm leading-relaxed text-foreground/80">All payments are encrypted and verified via Razorpay before access is activated. Your billing information remains protected with industry-leading security protocols.</p>
-                <p className="mt-2 text-xs font-medium text-foreground/70">Questions? Contact <span className="font-semibold text-primary">{SUPPORT_EMAIL}</span> and our support team will resolve any billing inquiries within 24 hours.</p>
-              </div>
-            </div>
-          </div>
         </section>
         <section>
           <div className="mb-6 flex items-center gap-3">
