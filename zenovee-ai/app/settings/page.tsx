@@ -31,21 +31,9 @@ export default async function SettingsPage() {
           </CardContent>
         </Card>
 
-        <Card className="premium-surface">
-          <CardHeader><CardTitle>Password Reset</CardTitle></CardHeader>
-          <CardContent>
-            <Link href="/auth/callback" className="rounded-md border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">
-              Start Password Reset
-            </Link>
-          </CardContent>
-        </Card>
-
-        <Card className="premium-surface">
-          <CardHeader><CardTitle>Theme Toggle</CardTitle></CardHeader>
-          <CardContent>
-            <SettingsClient />
-          </CardContent>
-        </Card>
+        <div className="lg:col-span-2">
+          <SettingsClient email={user.email} />
+        </div>
 
         <Card className="premium-surface lg:col-span-2">
           <CardHeader><CardTitle>Support</CardTitle></CardHeader>

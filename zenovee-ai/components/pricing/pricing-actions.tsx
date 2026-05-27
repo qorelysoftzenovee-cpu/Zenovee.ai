@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BadgeCheck, Headphones, LockKeyhole, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Script from "next/script";
 
@@ -312,31 +311,6 @@ export function PricingActions({
   return (
     <div className="space-y-3">
       <Script src="https://checkout.razorpay.com/v1/checkout.js" onLoad={() => setIsScriptReady(true)} onError={() => setIsScriptReady(false)} />
-      <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-3 text-left shadow-sm dark:border-white/10 dark:bg-white/5">
-        <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-600 dark:text-slate-300">
-          <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300">
-            <ShieldCheck className="h-3.5 w-3.5" />
-            Secure checkout
-          </span>
-          <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
-            <BadgeCheck className="h-3.5 w-3.5" />
-            Powered by Razorpay
-          </span>
-        </div>
-        <p className="mt-2 text-xs leading-5 text-slate-600 dark:text-slate-300">
-          Secure payments are processed through Razorpay. Depending on your bank or UPI app, the payment receiver name may appear differently during checkout.
-        </p>
-        <div className="mt-2 grid gap-2 text-xs text-slate-500 dark:text-slate-400 sm:grid-cols-2">
-          <div className="flex items-start gap-2">
-            <LockKeyhole className="mt-0.5 h-3.5 w-3.5 flex-none text-slate-500 dark:text-slate-300" />
-            <span>Encrypted payment flow with protected order verification before plan activation.</span>
-          </div>
-          <div className="flex items-start gap-2">
-            <Headphones className="mt-0.5 h-3.5 w-3.5 flex-none text-slate-500 dark:text-slate-300" />
-            <span>If a payment succeeds but access takes a moment to reflect, Zenovee support will help verify and resolve eligible issues promptly.</span>
-          </div>
-        </div>
-      </div>
       <Button className="w-full min-h-11" onClick={handleCheckout} disabled={loading} aria-label={`Checkout ${planName} plan`}>
         {loading ? "Preparing secure checkout..." : `Continue with ${planName}`}
       </Button>

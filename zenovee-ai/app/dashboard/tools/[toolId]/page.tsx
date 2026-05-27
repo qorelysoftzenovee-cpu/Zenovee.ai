@@ -6,11 +6,22 @@ import type { ToolDefinition } from "@/types/tools";
 import { ToolRunner } from "@/components/tools/tool-runner";
 import { serverLog } from "@/lib/logger";
 
-export default async function DashboardToolRunnerPage({ params }: { params: Promise<{ toolId: string }> }) {
+export default async function DashboardToolRunnerPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ toolId: string }>;
+  searchParams: Promise<{ workspaceId?: string; moduleId?: string }>;
+}) {
   let clientTool: Pick<ToolDefinition, "id" | "metadata" | "fields" | "creditCost" | "presets" | "examples"> | null = null;
+  let workspaceId: string | null = null;
+  let moduleId: string | null = null;
   try {
     await requireStandardUser();
     const { toolId } = await params;
+    const routeSearchParams = await searchParams;
+    workspaceId = routeSearchParams.workspaceId?.trim() || null;
+    moduleId = routeSearchParams.moduleId?.trim() || null;
     serverLog({
       level: "info",
       route: "app/dashboard/tools/[toolId]/page",
@@ -79,5 +90,5 @@ export default async function DashboardToolRunnerPage({ params }: { params: Prom
     );
   }
 
-  return <ToolRunner tool={clientTool} />;
+  return <ToolRunner tool={clientTool} workspaceId={workspaceId} moduleId={moduleId} />;
 }

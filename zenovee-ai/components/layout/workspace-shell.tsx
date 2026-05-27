@@ -5,6 +5,8 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import {
   Bolt,
+  Check,
+  ChevronsUpDown,
   ChevronLeft,
   ChevronRight,
   CreditCard,
@@ -22,6 +24,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LogoutButton } from "@/components/auth/logout-button";
+import { listWorkspaceConfigs } from "@/services/workspaces/registry";
 
 type WorkspaceShellProps = {
   children: React.ReactNode;
@@ -53,6 +56,7 @@ export function WorkspaceShell({ children, title, subtitle }: WorkspaceShellProp
   const searchParams = useSearchParams();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false);
 
   const activeTitle = useMemo(() => {
     const active = primaryNav.find((item) => pathname === item.href || pathname.startsWith(`${item.href}/`));
@@ -62,6 +66,44 @@ export function WorkspaceShell({ children, title, subtitle }: WorkspaceShellProp
   const breadcrumb = pathname.split("/").filter(Boolean);
 
   const isFavoritesActive = pathname === "/history" && searchParams.get("view") === "favorites";
+  const workspaceConfigs = useMemo(() => listWorkspaceConfigs(), []);
+  const currentToolId = useMemo(() => {
+    const parts = pathname.split("/").filter(Boolean);
+    return parts[0] === "dashboard" && parts[1] === "tools" && parts[2] ? parts[2] : null;
+  }, [pathname]);
+
+  const workspaceItems = useMemo(
+    () =>
+      workspaceConfigs
+        .map((workspace) => {
+          const firstModule = workspace.modules.find((module) => module.toolId);
+          return {
+            id: workspace.id,
+            name: workspace.name,
+            icon: workspace.icon,
+            tagline: workspace.tagline,
+            href: firstModule?.toolId
+              ? `/dashboard/tools/${firstModule.toolId}?workspaceId=${workspace.id}&moduleId=${firstModule.id}`
+              : "/dashboard/tools",
+            toolIds: workspace.modules.map((module) => module.toolId).filter((toolId): toolId is string => Boolean(toolId)),
+          };
+        })
+        .filter((workspace) => workspace.href),
+    [workspaceConfigs]
+  );
+
+  const currentWorkspace = useMemo(() => {
+    const selectedWorkspaceId = searchParams.get("workspaceId");
+    if (selectedWorkspaceId) {
+      return workspaceItems.find((workspace) => workspace.id === selectedWorkspaceId) ?? null;
+    }
+
+    if (currentToolId) {
+      return workspaceItems.find((workspace) => workspace.toolIds.includes(currentToolId)) ?? null;
+    }
+
+    return workspaceItems[0] ?? null;
+  }, [currentToolId, searchParams, workspaceItems]);
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,hsl(var(--primary)/0.08),transparent_35%),hsl(var(--background))] text-foreground">
@@ -141,7 +183,60 @@ export function WorkspaceShell({ children, title, subtitle }: WorkspaceShellProp
                 {subtitle ? <p className="truncate text-xs text-muted-foreground">{subtitle}</p> : null}
               </div>
             </div>
-            <div className="hidden text-xs text-muted-foreground md:block">Zenovee Workspace</div>
+            <div className="hidden md:block">
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setWorkspaceMenuOpen((value) => !value)}
+                  className="flex min-w-[240px] items-center justify-between gap-3 rounded-2xl border border-border/70 bg-card px-3 py-2 text-left shadow-sm transition hover:bg-muted/50"
+                  aria-haspopup="menu"
+                  aria-expanded={workspaceMenuOpen}
+                >
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Current workspace</p>
+                    <div className="mt-1 flex items-center gap-2">
+                      <span className="text-base">{currentWorkspace?.icon ?? "✨"}</span>
+                      <span className="truncate text-sm font-semibold text-foreground">{currentWorkspace?.name ?? "Workspace hub"}</span>
+                    </div>
+                  </div>
+                  <ChevronsUpDown className="size-4 shrink-0 text-muted-foreground" />
+                </button>
+
+                {workspaceMenuOpen ? (
+                  <div className="absolute right-0 top-[calc(100%+0.5rem)] z-40 w-[320px] rounded-3xl border border-border/70 bg-background/98 p-2 shadow-[0_24px_54px_-28px_rgba(15,23,42,0.28)] backdrop-blur-xl">
+                    <div className="px-3 py-2">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Workspace switcher</p>
+                      <p className="mt-1 text-xs text-muted-foreground">Jump directly into a premium execution system.</p>
+                    </div>
+                    <div className="space-y-1">
+                      {workspaceItems.map((workspace) => {
+                        const isActive = currentWorkspace?.id === workspace.id;
+                        return (
+                          <Link
+                            key={workspace.id}
+                            href={workspace.href}
+                            onClick={() => setWorkspaceMenuOpen(false)}
+                            className={cn(
+                              "flex items-start gap-3 rounded-2xl px-3 py-3 transition",
+                              isActive ? "bg-primary/10 text-primary" : "hover:bg-muted/60"
+                            )}
+                          >
+                            <span className="mt-0.5 text-lg">{workspace.icon}</span>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                <p className="truncate text-sm font-semibold text-foreground">{workspace.name}</p>
+                                {isActive ? <Check className="size-4 text-primary" /> : null}
+                              </div>
+                              <p className="mt-1 text-xs leading-5 text-muted-foreground">{workspace.tagline}</p>
+                            </div>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            </div>
           </div>
           <div className="border-t border-border/60 px-4 py-2.5 md:px-6 lg:px-8">
             <div className="no-scrollbar flex gap-2 overflow-x-auto">

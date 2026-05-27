@@ -6,6 +6,7 @@ import { getPublicEnv, isSupabaseConfigured } from "@/lib/runtime";
 type MinimalServerSupabaseLikeClient = {
   auth: {
     getUser: () => Promise<{ data: { user: null }; error: null }>;
+    exchangeCodeForSession: (_code: string) => Promise<{ data: { session: null }; error: null }>;
   };
   from: () => {
     select: () => {
@@ -20,6 +21,7 @@ function createFallbackServerClient(): MinimalServerSupabaseLikeClient {
   return {
     auth: {
       getUser: async () => ({ data: { user: null }, error: null }),
+      exchangeCodeForSession: async () => ({ data: { session: null }, error: null }),
     },
     from: () => ({
       select: () => ({

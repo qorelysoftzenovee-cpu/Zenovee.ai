@@ -14,9 +14,11 @@ type ToolRunnerTool = Pick<ToolDefinition, "id" | "metadata" | "fields" | "credi
 
 type Props = {
   tool: ToolRunnerTool;
+  workspaceId?: string | null;
+  moduleId?: string | null;
 };
 
-export function ToolRunner({ tool }: Props) {
+export function ToolRunner({ tool, workspaceId = null, moduleId = null }: Props) {
   const [input, setInput] = useState<Record<string, unknown>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -68,7 +70,7 @@ export function ToolRunner({ tool }: Props) {
       const res = await fetch("/api/tools", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ toolId: tool.id, input: payloadInput }),
+        body: JSON.stringify({ toolId: tool.id, input: payloadInput, workspaceId, moduleId }),
       });
       const json = await res.json();
       if (!res.ok || !json?.success) {

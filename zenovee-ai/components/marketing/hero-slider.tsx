@@ -41,7 +41,7 @@ const slides = [
     headline: "Turn SEO work into a system of briefs, clusters, and authority maps",
     subtext: "Zenovee helps teams structure search strategy with better clarity, stronger discoverability, and fewer disconnected content tasks.",
     cta: "Launch SEO workspace",
-    href: "/tools/seo-article-generator",
+    href: "/tools/semantic-keyword-clusterer",
     ctaSecondary: "See dashboard",
     hrefSecondary: "/dashboard",
     benefit1: "Topic architecture",

@@ -52,8 +52,16 @@ function CopyButton({ value, copied, onCopied, label = "Copy" }: { value: string
       variant={copied ? "secondary" : "outline"}
       className="h-8 rounded-full px-3 text-xs"
       onClick={async () => {
-        await navigator.clipboard.writeText(value);
-        onCopied();
+        if (typeof navigator === "undefined" || !navigator.clipboard?.writeText) {
+          return;
+        }
+
+        try {
+          await navigator.clipboard.writeText(value);
+          onCopied();
+        } catch {
+          // Ignore clipboard failures so output rendering never crashes.
+        }
       }}
     >
       {copied ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Clipboard className="h-3.5 w-3.5" />}
@@ -213,7 +221,29 @@ export function OutputRenderer({ value, className }: OutputRendererProps) {
   }
 
   if (value && typeof value === "object" && !Array.isArray(value)) {
-    const entries = Object.entries(value as Record<string, unknown>);
+    const entries = Object.entries(value as Record<string, unknown>).filter(([key]) => key !== "raw");
+
+    if (entries.length === 0) {
+      return (
+        <div className={className}>
+          <div className="overflow-hidden rounded-[1.5rem] border border-white/10 bg-white/[0.04] shadow-xl shadow-black/10">
+            <div className="flex items-center justify-between gap-3 border-b border-white/10 px-5 py-4">
+              <div className="flex items-center gap-3 text-sm font-semibold text-white">
+                <span className="flex size-8 items-center justify-center rounded-2xl bg-primary/15 text-primary">
+                  <FileText className="h-4 w-4" />
+                </span>
+                Generated response
+              </div>
+              <CopyButton value={content} copied={copied === "content"} onCopied={() => markCopied("content")} />
+            </div>
+            <div className="bg-white/[0.96] p-5 text-slate-900 dark:bg-slate-950/70 dark:text-slate-100">
+              <pre className="whitespace-pre-wrap text-sm leading-7">{content}</pre>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className={className}>
         <div className="grid gap-4">
