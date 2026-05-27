@@ -41,46 +41,76 @@ export default async function BillingPage() {
 
   return (
     <WorkspaceShell title="Billing">
-      <div className="space-y-6">
-        <section className="premium-surface-elevated p-5 md:p-6">
-          <p className="premium-label">Billing</p>
-          <h2 className="mt-2 text-2xl font-semibold tracking-tight">Plans, renewals, and payment history</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Your active plan, billing status, and transaction ledger are centralized here with a protected, premium checkout experience.</p>
-          <div className="mt-3 flex flex-wrap gap-2 text-xs">
-            <span className="stat-chip">Active plan: {currentPlan?.displayName ?? "None"}</span>
-            <span className="stat-chip">Subscription: {normalizedStatus || "inactive"}</span>
-            <span className="stat-chip">Payments: {(payments ?? []).length}</span>
+      <div className="space-y-8">
+        <section className="premium-surface-elevated rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/5 to-transparent p-8 md:p-10 shadow-lg">
+          <div className="flex items-center gap-3">
+            <div className="h-1 w-16 rounded-full bg-gradient-to-r from-primary to-primary/40"></div>
+            <p className="premium-label text-xs font-bold uppercase tracking-widest text-primary">Billing & Payments</p>
           </div>
-          <div className="mt-4 rounded-2xl border border-border/70 bg-background/70 p-4 text-sm text-muted-foreground shadow-sm">
-            <p className="font-medium text-foreground">Secure checkout protected by Razorpay</p>
-            <p className="mt-1">Payments are encrypted and verified before access is activated. Depending on your bank or UPI app, the receiver name shown during checkout may vary.</p>
-            <p className="mt-2 text-xs">If a payment succeeds and your billing state does not refresh immediately, contact {SUPPORT_EMAIL} and Zenovee support will help verify and resolve eligible issues promptly.</p>
+          <h2 className="mt-4 text-4xl font-bold tracking-tight text-foreground">Plans, Renewals & Payment History</h2>
+          <p className="mt-3 max-w-2xl text-base font-medium leading-relaxed text-foreground/85">Your active plan, billing status, and complete transaction ledger are centralized here within our protected, enterprise-grade checkout experience.</p>
+          <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="rounded-xl border border-primary/30 bg-white/5 backdrop-blur px-4 py-3">
+              <p className="text-xs font-semibold uppercase tracking-wider text-primary">Active Plan</p>
+              <p className="mt-2 text-lg font-bold text-foreground">{currentPlan?.displayName ?? "None"}</p>
+            </div>
+            <div className="rounded-xl border border-primary/30 bg-white/5 backdrop-blur px-4 py-3">
+              <p className="text-xs font-semibold uppercase tracking-wider text-primary">Subscription Status</p>
+              <p className="mt-2 text-lg font-bold capitalize text-foreground">{normalizedStatus || "Inactive"}</p>
+            </div>
+            <div className="rounded-xl border border-primary/30 bg-white/5 backdrop-blur px-4 py-3">
+              <p className="text-xs font-semibold uppercase tracking-wider text-primary">Total Payments</p>
+              <p className="mt-2 text-lg font-bold text-foreground">{(payments ?? []).length}</p>
+            </div>
+          </div>
+          <div className="mt-6 rounded-2xl border border-primary/40 bg-gradient-to-r from-primary/10 to-primary/5 p-5 shadow-md">
+            <div className="flex items-start gap-3">
+              <div className="mt-1 h-5 w-5 rounded-full bg-primary/20 flex-shrink-0"></div>
+              <div>
+                <p className="font-bold text-foreground">Secure Checkout • Enterprise-Grade Protection</p>
+                <p className="mt-2 text-sm leading-relaxed text-foreground/80">All payments are encrypted and verified via Razorpay before access is activated. Your billing information remains protected with industry-leading security protocols.</p>
+                <p className="mt-2 text-xs font-medium text-foreground/70">Questions? Contact <span className="font-semibold text-primary">{SUPPORT_EMAIL}</span> and our support team will resolve any billing inquiries within 24 hours.</p>
+              </div>
+            </div>
           </div>
         </section>
         <section>
-          <h2 className="mb-3 text-lg font-semibold">Subscription Plans</h2>
-          <div className="grid gap-4 lg:grid-cols-3">
+          <div className="mb-6 flex items-center gap-3">
+            <div className="h-1 w-12 rounded-full bg-gradient-to-r from-primary to-primary/40"></div>
+            <h2 className="text-3xl font-bold text-foreground">Premium Subscription Plans</h2>
+          </div>
+          <div className="grid gap-6 lg:grid-cols-3">
           {subscriptionPlans.map((plan) => {
             const active = Boolean(activePlanId) && plan.id === activePlanId;
             return (
-              <Card key={plan.id} className={active ? "premium-surface border-primary" : "premium-surface"}>
-                <CardHeader>
+              <Card key={plan.id} className={active ? "premium-surface relative overflow-hidden border-2 border-primary shadow-lg shadow-primary/20" : "premium-surface border border-primary/20 transition-all duration-300 hover:border-primary/50 hover:shadow-lg"}>
+                {active && (
+                  <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-primary/80 to-primary/20"></div>
+                )}
+                <CardHeader className="pb-4">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <CardTitle>{plan.displayName}</CardTitle>
-                      {plan.premiumLabel ? <span className="rounded-full border px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">{plan.premiumLabel}</span> : null}
+                    <div className="flex items-center gap-3">
+                      <CardTitle className="text-2xl font-bold text-foreground">{plan.displayName}</CardTitle>
+                      {plan.premiumLabel ? <span className="rounded-full border-2 border-primary/40 bg-primary/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-primary">{plan.premiumLabel}</span> : null}
                     </div>
-                    {active ? <span className="text-xs font-semibold text-slate-500">Current</span> : null}
+                    {active ? <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary">● Active</span> : null}
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <p className="text-2xl font-semibold">{formatRupees(plan.monthlyPriceRupees)}<span className="text-sm text-muted-foreground">/month</span></p>
-                  <p className="text-sm text-muted-foreground">{plan.credits} credits included</p>
-                  <p className="text-sm font-medium text-foreground/90">{plan.premiumPositioning}</p>
-                  <ul className="space-y-1 text-sm text-muted-foreground">
-                    {plan.features.map((feature) => <li key={feature}>• {feature}</li>)}
-                    <li>• {getPlanSupportText(plan.id)}</li>
-                  </ul>
+                <CardContent className="space-y-5">
+                  <div className="rounded-xl bg-gradient-to-br from-primary/5 to-transparent p-4 border border-primary/20">
+                    <p className="text-4xl font-bold text-foreground">{formatRupees(plan.monthlyPriceRupees)}<span className="text-sm font-medium text-foreground/70">/mo</span></p>
+                  </div>
+                  <div className="rounded-lg bg-primary/5 p-3 border border-primary/20">
+                    <p className="text-sm font-bold uppercase tracking-wider text-primary">Credits Included</p>
+                    <p className="mt-1 text-2xl font-bold text-foreground">{plan.credits.toLocaleString()}</p>
+                  </div>
+                  <div className="pt-2">
+                    <p className="text-sm font-bold leading-relaxed text-foreground">{plan.premiumPositioning}</p>
+                  </div>
+                  <div className="space-y-2 pt-2 border-t border-primary/20">
+                    {plan.features.map((feature) => <p key={feature} className="flex items-center gap-2 text-sm font-medium text-foreground"><span className="inline-block h-1.5 w-1.5 rounded-full bg-primary"></span> {feature}</p>)}
+                    <p className="flex items-center gap-2 text-sm font-medium text-foreground"><span className="inline-block h-1.5 w-1.5 rounded-full bg-primary"></span> {getPlanSupportText(plan.id)}</p>
+                  </div>
                   <PricingActions planId={plan.id} planName={plan.displayName} />
                 </CardContent>
               </Card>
@@ -89,25 +119,52 @@ export default async function BillingPage() {
           </div>
         </section>
 
-        <Card className="premium-surface">
-          <CardHeader><CardTitle>Payment History</CardTitle></CardHeader>
-          <CardContent className="overflow-x-auto">
-            <div className="mb-4 rounded-xl border border-border/60 bg-background/60 p-3 text-xs text-muted-foreground">
-              Each successful payment is verified before credits and subscription access are updated, helping keep your billing history accurate and secure.
+        <Card className="premium-surface border border-primary/20 shadow-lg">
+          <CardHeader className="border-b border-primary/20 pb-6">
+            <div className="flex items-center gap-3">
+              <div className="h-1 w-10 rounded-full bg-gradient-to-r from-primary to-primary/40"></div>
+              <CardTitle className="text-2xl font-bold text-foreground">Payment History</CardTitle>
             </div>
-            <table className="w-full min-w-[700px] text-sm">
-              <thead className="text-left text-xs text-muted-foreground">
-                <tr><th className="pb-3">Date</th><th className="pb-3">Amount</th><th className="pb-3">Plan</th><th className="pb-3">Status</th></tr>
+          </CardHeader>
+          <CardContent className="overflow-x-auto pt-6">
+            <div className="mb-5 rounded-xl border-l-4 border-primary bg-gradient-to-r from-primary/10 to-transparent p-4">
+              <p className="text-sm font-bold text-foreground">Verified & Secure Transactions</p>
+              <p className="mt-1 text-sm leading-relaxed text-foreground/80">Each payment is verified through Razorpay before credits and subscription access are updated, ensuring your billing history remains accurate and protected.</p>
+            </div>
+            <table className="w-full min-w-[700px]">
+              <thead>
+                <tr className="border-b-2 border-primary/20 bg-primary/5">
+                  <th className="px-4 py-4 text-left text-xs font-bold uppercase tracking-wider text-primary">Date</th>
+                  <th className="px-4 py-4 text-left text-xs font-bold uppercase tracking-wider text-primary">Amount</th>
+                  <th className="px-4 py-4 text-left text-xs font-bold uppercase tracking-wider text-primary">Plan</th>
+                  <th className="px-4 py-4 text-left text-xs font-bold uppercase tracking-wider text-primary">Status</th>
+                </tr>
               </thead>
               <tbody>
-                {(payments ?? []).map((payment) => (
-                  <tr key={payment.id} className="border-t border-border/60">
-                    <td className="py-3">{formatDate(payment.created_at)}</td>
-                    <td className="py-3">{formatMoney(Number(payment.payment_amount ?? 0), payment.currency ?? "INR")}</td>
-                    <td className="py-3">{getPlanDisplayName(payment.plan)}</td>
-                    <td className="py-3">{payment.status}</td>
+                {(payments ?? []).length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-4 py-8 text-center text-sm font-medium text-foreground/60">No payment history yet</td>
                   </tr>
-                ))}
+                ) : (
+                  (payments ?? []).map((payment) => (
+                    <tr key={payment.id} className="border-b border-primary/10 transition-colors hover:bg-primary/5">
+                      <td className="px-4 py-4 text-sm font-medium text-foreground">{formatDate(payment.created_at)}</td>
+                      <td className="px-4 py-4 text-sm font-bold text-foreground">{formatMoney(Number(payment.payment_amount ?? 0), payment.currency ?? "INR")}</td>
+                      <td className="px-4 py-4 text-sm font-medium text-foreground">{getPlanDisplayName(payment.plan)}</td>
+                      <td className="px-4 py-4">
+                        <span className={`inline-flex rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider ${
+                          payment.status?.toLowerCase() === 'success' 
+                            ? 'bg-green-500/20 text-green-600' 
+                            : payment.status?.toLowerCase() === 'failed'
+                            ? 'bg-red-500/20 text-red-600'
+                            : 'bg-yellow-500/20 text-yellow-600'
+                        }`}>
+                          {payment.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </CardContent>
