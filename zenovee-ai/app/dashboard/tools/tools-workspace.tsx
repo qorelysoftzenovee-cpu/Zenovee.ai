@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, Clock3, Flame, Search, Sparkles, Star, TrendingUp, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -97,19 +97,6 @@ function writeStoredToolIds(storageKey: string, value: string[]) {
   window.localStorage.setItem(storageKey, raw);
   toolStorageCache.set(storageKey, { raw, value });
   window.dispatchEvent(new CustomEvent(TOOL_STORAGE_SYNC_EVENT, { detail: { key: storageKey } }));
-}
-
-function subscribeToStorage(callback: () => void) {
-  if (typeof window === "undefined") return () => {};
-
-  const handleStorage = () => callback();
-  const handleLocalSync = () => callback();
-  window.addEventListener("storage", handleStorage);
-  window.addEventListener(TOOL_STORAGE_SYNC_EVENT, handleLocalSync);
-  return () => {
-    window.removeEventListener("storage", handleStorage);
-    window.removeEventListener(TOOL_STORAGE_SYNC_EVENT, handleLocalSync);
-  };
 }
 
 function useDebouncedValue<T>(value: T, delayMs: number) {
@@ -317,20 +304,43 @@ export function ToolsWorkspace() {
   const debouncedQuery = useDebouncedValue(query, 180);
   const [activeCategory, setActiveCategory] = useState<string>("All");
   const [filterMode, setFilterMode] = useState<FilterMode>("all");
-  const favoriteIds = useSyncExternalStore(
-    subscribeToStorage,
-    () => readStoredToolIds(FAVORITES_KEY),
-    () => EMPTY_TOOL_IDS
-  );
-  const recentIds = useSyncExternalStore(
-    subscribeToStorage,
-    () => readStoredToolIds(RECENTS_KEY),
-    () => EMPTY_TOOL_IDS
-  );
+  const [favoriteIds, setFavoriteIds] = useState<string[]>(EMPTY_TOOL_IDS);
+  const [recentIds, setRecentIds] = useState<string[]>(EMPTY_TOOL_IDS);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(CATEGORY_ORDER.map((category, index) => [category, index < 2]))
   );
+
+  useEffect(() => {
+    const syncFromStorage = () => {
+      setFavoriteIds(readStoredToolIds(FAVORITES_KEY));
+      setRecentIds(readStoredToolIds(RECENTS_KEY));
+    };
+
+    syncFromStorage();
+
+    const handleStorage = (event: StorageEvent) => {
+      if (!event.key || event.key === FAVORITES_KEY || event.key === RECENTS_KEY) {
+        syncFromStorage();
+      }
+    };
+
+    const handleLocalSync = (event: Event) => {
+      const customEvent = event as CustomEvent<{ key?: string }>;
+      const key = customEvent.detail?.key;
+      if (!key || key === FAVORITES_KEY || key === RECENTS_KEY) {
+        syncFromStorage();
+      }
+    };
+
+    window.addEventListener("storage", handleStorage);
+    window.addEventListener(TOOL_STORAGE_SYNC_EVENT, handleLocalSync);
+
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener(TOOL_STORAGE_SYNC_EVENT, handleLocalSync);
+    };
+  }, []);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -441,14 +451,14 @@ export function ToolsWorkspace() {
     [filteredTools]
   );
 
-  const toggleFavorite = (id: string) => {
+  const toggleFavorite = useCallback((id: string) => {
     const next = favoriteIdSet.has(id) ? favoriteIds.filter((value) => value !== id) : [id, ...favoriteIds].slice(0, 24);
     writeStoredToolIds(FAVORITES_KEY, next);
-  };
+  }, [favoriteIdSet, favoriteIds]);
 
-  const toggleCategory = (category: string) => {
+  const toggleCategory = useCallback((category: string) => {
     setExpandedCategories((prev) => ({ ...prev, [category]: !prev[category] }));
-  };
+  }, []);
 
   return (
     <div className="space-y-8">
