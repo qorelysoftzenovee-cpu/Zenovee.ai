@@ -74,6 +74,13 @@ export async function assignPlanCredits(userId: string, appPlanId: string, refer
     .eq("id", userId);
 
   if (userErr) throw new Error(userErr.message);
+
+  return {
+    allocatedCredits: activation.credits,
+    nextBalance,
+    planId: appPlanId,
+    reference,
+  };
 }
 
 export async function addTopupCredits(userId: string, topupId: string, credits: number, reference: string) {

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -44,6 +45,17 @@ export async function POST(request: Request) {
 
     const body = verifyPayloadSchema.parse(await request.json());
 
+    serverLog({
+      level: "info",
+      route: "api/billing/verify",
+      message: "Payment verification started",
+      metadata: {
+        userId: user.id,
+        orderId: body.razorpay_order_id,
+        paymentId: body.razorpay_payment_id,
+      },
+    });
+
     const valid = verifyCheckoutSignature({
       razorpay_order_id: body.razorpay_order_id,
       razorpay_payment_id: body.razorpay_payment_id,
@@ -76,6 +88,18 @@ export async function POST(request: Request) {
     const supabaseAdmin = getSupabaseAdmin();
 
     const payment = await razorpay.payments.fetch(body.razorpay_payment_id);
+    serverLog({
+      level: "info",
+      route: "api/billing/verify",
+      message: "Razorpay payment fetched for verification",
+      metadata: {
+        userId: user.id,
+        orderId: body.razorpay_order_id,
+        paymentId: body.razorpay_payment_id,
+        razorpayStatus: payment?.status,
+      },
+    });
+
     if (!payment || payment.order_id !== body.razorpay_order_id || payment.status !== "captured") {
       await supabaseAdmin
         .from("payments")
@@ -135,26 +159,103 @@ export async function POST(request: Request) {
       throw new Error(paymentError.message);
     }
 
-    const { error: subscriptionError } = await supabaseAdmin
+    serverLog({
+      level: "info",
+      route: "api/billing/verify",
+      message: "Payment marked as SUCCESS",
+      metadata: {
+        userId: user.id,
+        orderId: body.razorpay_order_id,
+        paymentId: body.razorpay_payment_id,
+        paymentRowId: pendingPayment.id,
+      },
+    });
+
+    const { data: subscriptionUpsert, error: subscriptionError } = await supabaseAdmin
       .from("subscriptions")
-      .update({
-        status: "ACTIVE",
-        plan_name: plan.id,
-        renewal_date: nextRenewal,
-        current_period_end: nextRenewal,
-        next_renewal_at: nextRenewal,
-        last_payment_at: nowIso,
-        grace_until: null,
-        cancel_at_period_end: false,
-        updated_at: nowIso,
-      } as never)
-      .eq("user_id", user.id);
+      .upsert(
+        {
+          user_id: user.id,
+          plan_name: plan.id,
+          status: "ACTIVE",
+          renewal_date: nextRenewal,
+          current_period_end: nextRenewal,
+          next_renewal_at: nextRenewal,
+          last_payment_at: nowIso,
+          grace_until: null,
+          cancel_at_period_end: false,
+          billing_cycle: "monthly",
+          updated_at: nowIso,
+        } as never,
+        { onConflict: "user_id" }
+      )
+      .select("id,user_id,plan_name,status,next_renewal_at")
+      .maybeSingle<{ id: string; user_id: string; plan_name: string; status: string; next_renewal_at: string | null }>();
 
     if (subscriptionError) {
       throw new Error(subscriptionError.message);
     }
 
-    await assignPlanCredits(user.id, plan.id, `subscription:${body.razorpay_payment_id}`);
+    serverLog({
+      level: "info",
+      route: "api/billing/verify",
+      message: "Subscription upsert completed",
+      metadata: {
+        userId: user.id,
+        orderId: body.razorpay_order_id,
+        paymentId: body.razorpay_payment_id,
+        subscriptionId: subscriptionUpsert?.id ?? null,
+        subscriptionStatus: subscriptionUpsert?.status ?? null,
+        subscriptionPlan: subscriptionUpsert?.plan_name ?? null,
+      },
+    });
+
+    const creditResult = await assignPlanCredits(user.id, plan.id, `subscription:${body.razorpay_payment_id}`);
+
+    serverLog({
+      level: "info",
+      route: "api/billing/verify",
+      message: "Credits assignment completed",
+      metadata: {
+        userId: user.id,
+        orderId: body.razorpay_order_id,
+        paymentId: body.razorpay_payment_id,
+        allocatedCredits: creditResult.allocatedCredits,
+        nextBalance: creditResult.nextBalance,
+        reference: creditResult.reference,
+      },
+    });
+
+    let entitlementRefreshResult: "ok" | "failed" = "ok";
+    try {
+      revalidatePath("/billing");
+      revalidatePath("/dashboard");
+    } catch (refreshError) {
+      entitlementRefreshResult = "failed";
+      serverLog({
+        level: "warn",
+        route: "api/billing/verify",
+        message: "Entitlement refresh revalidation failed",
+        error: refreshError,
+        metadata: {
+          userId: user.id,
+          orderId: body.razorpay_order_id,
+          paymentId: body.razorpay_payment_id,
+        },
+      });
+    }
+
+    serverLog({
+      level: "info",
+      route: "api/billing/verify",
+      message: "Entitlement refresh completed",
+      metadata: {
+        userId: user.id,
+        orderId: body.razorpay_order_id,
+        paymentId: body.razorpay_payment_id,
+        entitlementRefreshResult,
+      },
+    });
 
     serverLog({
       level: "info",
@@ -168,6 +269,12 @@ export async function POST(request: Request) {
         premiumLabel: activation.premiumLabel,
         paymentId: body.razorpay_payment_id,
         orderId: body.razorpay_order_id,
+        subscriptionUpsertResult: subscriptionUpsert?.status ?? null,
+        creditsAssignmentResult: {
+          allocatedCredits: creditResult.allocatedCredits,
+          nextBalance: creditResult.nextBalance,
+        },
+        entitlementRefreshResult,
       },
     });
 
