@@ -10,6 +10,17 @@ import { JsonLd } from "@/components/seo/json-ld";
 import { createBreadcrumbSchema, createFAQSchema, createMetadata, createSoftwareSchema } from "@/lib/seo/site";
 import { getToolSeoEntry, getToolsBySlugs, toolSeoPages } from "@/lib/seo/content";
 
+const ALLOWED_BADGES = new Set(["new", "most popular", "recommended"]);
+
+function resolveToolBadge(tool: { premiumBadge?: string | null; featured?: boolean; trending?: boolean; recommended?: boolean }): string | null {
+  const badge = tool.premiumBadge?.trim();
+  if (badge && ALLOWED_BADGES.has(badge.toLowerCase())) return badge;
+  if (tool.featured) return "Most Popular";
+  if (tool.trending) return "New";
+  if (tool.recommended) return "Recommended";
+  return null;
+}
+
 export async function generateStaticParams() {
   return toolSeoPages.map((tool) => ({ slug: tool.slug }));
 }
@@ -59,11 +70,12 @@ export default async function ToolSeoPage({ params }: { params: Promise<{ slug: 
                 </Button>
               </div>
               <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                <span className="rounded-full border px-3 py-1">{tool.creditCost} credits</span>
-                {tool.complexity ? <span className="rounded-full border px-3 py-1 uppercase">{tool.complexity}</span> : null}
-                {tool.premiumBadge ? <span className="rounded-full border border-primary/30 bg-primary/5 px-3 py-1 text-primary">{tool.premiumBadge}</span> : null}
+                <span className="rounded-full border px-3 py-1">Category: {tool.category}</span>
+                <span className="rounded-full border px-3 py-1">Cost: {tool.creditCost} credits</span>
+                {tool.complexity ? <span className="rounded-full border px-3 py-1 uppercase">Complexity: {tool.complexity}</span> : null}
+                {resolveToolBadge(tool) ? <span className="rounded-full border border-primary/30 bg-primary/5 px-3 py-1 text-primary">{resolveToolBadge(tool)}</span> : null}
               </div>
-              {tool.expectedOutputValue ? <p className="text-sm text-muted-foreground">{tool.expectedOutputValue}</p> : null}
+              {tool.expectedOutputValue ? <p className="text-sm text-muted-foreground">Estimated output: {tool.expectedOutputValue}</p> : null}
               {tool.creditTooltip ? <p className="text-xs text-muted-foreground">{tool.creditTooltip}</p> : null}
             </div>
           </div>

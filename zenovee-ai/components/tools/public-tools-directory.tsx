@@ -16,10 +16,22 @@ type ToolSeoItem = {
   trending?: boolean;
   creditCost?: number;
   premiumBadge?: string;
+  recommended?: boolean;
   complexity?: "light" | "medium" | "heavy";
   expectedOutputValue?: string;
   creditTooltip?: string;
 };
+
+const ALLOWED_BADGES = new Set(["new", "most popular", "recommended"]);
+
+function resolveToolBadge(tool: ToolSeoItem): string | null {
+  const badge = tool.premiumBadge?.trim();
+  if (badge && ALLOWED_BADGES.has(badge.toLowerCase())) return badge;
+  if (tool.featured) return "Most Popular";
+  if (tool.trending) return "New";
+  if (tool.recommended) return "Recommended";
+  return null;
+}
 
 export function PublicToolsDirectory({ tools }: { tools: ToolSeoItem[] }) {
   const [query, setQuery] = useState("");
@@ -60,12 +72,12 @@ export function PublicToolsDirectory({ tools }: { tools: ToolSeoItem[] }) {
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">{tool.heroDescription}</p>
             <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-              <span className="rounded-full border px-2 py-1">{tool.category}</span>
-              <span className="rounded-full border px-2 py-1">{tool.creditCost ?? 0} credits</span>
+              <span className="rounded-full border px-2 py-1">Category: {tool.category}</span>
+              <span className="rounded-full border px-2 py-1">Cost: {tool.creditCost ?? 0} credits</span>
               {tool.complexity ? <span className="rounded-full border px-2 py-1 uppercase">{tool.complexity}</span> : null}
-              {tool.premiumBadge ? <span className="rounded-full border border-primary/30 bg-primary/5 px-2 py-1 text-primary">{tool.premiumBadge}</span> : null}
+              {resolveToolBadge(tool) ? <span className="rounded-full border border-primary/30 bg-primary/5 px-2 py-1 text-primary">{resolveToolBadge(tool)}</span> : null}
             </div>
-            {tool.expectedOutputValue ? <p className="text-xs text-foreground/80">{tool.expectedOutputValue}</p> : null}
+            {tool.expectedOutputValue ? <p className="text-xs text-foreground/80">Estimated output: {tool.expectedOutputValue}</p> : null}
             {tool.creditTooltip ? <p className="text-xs text-muted-foreground">{tool.creditTooltip}</p> : null}
             <div className="flex items-center justify-end">
               <Button asChild>
@@ -81,7 +93,7 @@ export function PublicToolsDirectory({ tools }: { tools: ToolSeoItem[] }) {
   return (
     <div className="space-y-8">
       <div className="space-y-4">
-        <Input placeholder="Search premium tools" value={query} onChange={(e) => setQuery(e.target.value)} />
+        <Input placeholder="Search tools" value={query} onChange={(e) => setQuery(e.target.value)} />
         <div className="flex flex-wrap gap-2">
           {categories.map((category) => (
             <button
@@ -102,7 +114,7 @@ export function PublicToolsDirectory({ tools }: { tools: ToolSeoItem[] }) {
       {trending.length ? <section className="space-y-4"><h2 className="text-xl font-semibold tracking-tight">Trending tools</h2>{renderCards(trending)}</section> : null}
 
       <section className="space-y-4">
-        <h2 className="text-xl font-semibold tracking-tight">All premium tools</h2>
+        <h2 className="text-xl font-semibold tracking-tight">All tools</h2>
         <div className="space-y-4">
           {renderCards(paginated)}
           <div className="flex items-center justify-between text-sm text-muted-foreground">

@@ -35,7 +35,7 @@ const CATEGORY_COPY = {
     badge: "Search growth",
   },
   "Premium Image/Brand Assets": {
-    description: "Plan polished visuals, premium campaign assets, and consistent brand direction at enterprise quality.",
+    description: "Plan polished visuals, campaign assets, and consistent brand direction at enterprise quality.",
     accent: "from-rose-500/12 via-pink-500/8 to-transparent",
     badge: "Visual studio",
   },
@@ -56,7 +56,9 @@ type WorkspaceTool = {
   icon: string;
   featured: boolean;
   trending: boolean;
+  complexity?: string;
   estimatedTimeSeconds?: number;
+  expectedOutputValue?: string;
   tags: string[];
   searchIndex: string;
 };
@@ -163,7 +165,7 @@ function getSearchScore(tool: WorkspaceTool, tokens: string[]) {
 
 function getBenefit(description: string) {
   const clean = description.trim();
-  if (!clean) return "Premium system for faster, higher-quality execution.";
+  if (!clean) return "Structured system for faster, higher-quality execution.";
   return clean.length > 110 ? `${clean.slice(0, 110)}…` : clean;
 }
 
@@ -224,14 +226,11 @@ function ToolCard({
             <div className="space-y-2">
               <div className="flex flex-wrap items-center gap-2">
                 <CardTitle className="text-base md:text-lg">{tool.name}</CardTitle>
-                <span className="rounded-full border border-slate-200 bg-white/90 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-600">
-                  Premium
-                </span>
               </div>
               <div className="flex flex-wrap items-center gap-2 text-[11px]">
                 <span className={`rounded-full border px-2.5 py-1 font-semibold ${theme.label}`}>{tool.category}</span>
-                {tool.featured ? <span className="rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 font-semibold text-violet-700">Featured</span> : null}
-                {tool.trending ? <span className="rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 font-semibold text-rose-700">Trending</span> : null}
+                {tool.featured ? <span className="rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 font-semibold text-violet-700">Most Popular</span> : null}
+                {tool.trending ? <span className="rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 font-semibold text-rose-700">New</span> : null}
               </div>
             </div>
           </div>
@@ -256,15 +255,20 @@ function ToolCard({
 
         <div className="grid gap-2 sm:grid-cols-2">
           <div className="rounded-2xl border border-slate-200/80 bg-white/85 p-3">
-            <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-400">Credits</p>
+            <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-400">Credit cost</p>
             <p className="mt-1 text-sm font-semibold text-slate-900">{tool.creditCost} per run</p>
           </div>
           <div className="rounded-2xl border border-slate-200/80 bg-white/85 p-3">
-            <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-400">Value</p>
+            <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-400">Estimated output size</p>
             <p className="mt-1 text-sm font-semibold text-slate-900">
-              {tool.estimatedTimeSeconds ? `~${tool.estimatedTimeSeconds}s output` : "Fast premium output"}
+              {tool.expectedOutputValue ?? (tool.estimatedTimeSeconds ? `~${tool.estimatedTimeSeconds}s output` : "Standard")}
             </p>
           </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2 text-[11px]">
+          {tool.complexity ? <span className="rounded-full border border-slate-200 bg-white/90 px-2.5 py-1 font-semibold text-slate-700 uppercase">Complexity: {tool.complexity}</span> : null}
+          <span className="rounded-full border border-slate-200 bg-white/90 px-2.5 py-1 font-semibold text-slate-700">Category: {tool.category}</span>
         </div>
 
         <div className="flex items-center justify-between gap-3">
@@ -309,7 +313,9 @@ export function ToolsWorkspace() {
           icon: tool.metadata.icon || "✨",
           featured: Boolean(tool.metadata.featured),
           trending: Boolean(tool.metadata.trending),
+          complexity: tool.metadata.complexity,
           estimatedTimeSeconds: tool.metadata.estimatedTimeSeconds,
+          expectedOutputValue: tool.metadata.expectedOutputValue,
           tags: tool.metadata.tags ?? [],
           searchIndex: buildSearchIndex({
             id: tool.id,
@@ -495,7 +501,7 @@ export function ToolsWorkspace() {
                 Calm, category-driven AI workflows for enterprise execution.
               </h1>
               <p className="max-w-3xl text-sm leading-7 text-muted-foreground md:text-base">
-                Discover premium tools by business function, surface the systems that matter most, and expand categories only when you need them.
+                Discover tools by business function, surface the systems that matter most, and expand categories only when you need them.
               </p>
             </div>
           </div>

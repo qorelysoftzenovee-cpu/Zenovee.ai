@@ -10,6 +10,14 @@ import type { ToolDefinition, ToolPreset } from "@/types/tools";
 import { AlertDialog } from "@/components/ui/dialogs";
 import { ArrowRight, Clock3, Sparkles, RefreshCcw, ShieldCheck } from "lucide-react";
 
+const ALLOWED_BADGES = new Set(["new", "most popular", "recommended"]);
+
+function resolveToolBadge(badge?: string | null): string | null {
+  const normalized = badge?.trim();
+  if (!normalized) return null;
+  return ALLOWED_BADGES.has(normalized.toLowerCase()) ? normalized : null;
+}
+
 type ToolRunnerTool = Pick<ToolDefinition, "id" | "metadata" | "fields" | "creditCost" | "presets" | "examples">;
 const TOOL_STORAGE_SYNC_EVENT = "zenovee-tool-storage-sync";
 
@@ -190,12 +198,16 @@ export function ToolRunner({ tool, workspaceId = null, moduleId = null }: Props)
                 <div className="rounded-3xl bg-white/10 p-4 text-sm">
                   <p className="text-xs uppercase tracking-[0.2em] text-slate-300">Complexity</p>
                   <p className="mt-2 text-base font-semibold text-white">{complexity ?? "STANDARD"}</p>
-                  <p className="mt-2 text-xs text-slate-300">{estimatedTime ?? "Fast premium output"}</p>
+                  <p className="mt-2 text-xs text-slate-300">{estimatedTime ?? "Fast output"}</p>
                 </div>
               </div>
 
               <div className="flex flex-wrap items-center gap-2 text-xs">
-                {tool.metadata.premiumBadge ? <span className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1 font-semibold text-primary-foreground/90">{tool.metadata.premiumBadge}</span> : null}
+                {resolveToolBadge(tool.metadata.premiumBadge) ? (
+                  <span className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1 font-semibold text-primary-foreground/90">
+                    {resolveToolBadge(tool.metadata.premiumBadge)}
+                  </span>
+                ) : null}
                 {tool.metadata.expectedOutputValue ? <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-slate-200">{tool.metadata.expectedOutputValue}</span> : null}
               </div>
             </div>
@@ -267,7 +279,7 @@ export function ToolRunner({ tool, workspaceId = null, moduleId = null }: Props)
           {!error && validationError ? <p className="text-sm text-muted-foreground">{validationError}</p> : null}
           <div className="flex flex-wrap gap-3">
             <Button onClick={() => void run()} disabled={loading || !canRun} className="min-w-[180px]">
-              {loading ? "Generating…" : "Generate premium output"}
+              {loading ? "Generating…" : "Generate output"}
             </Button>
             <Button variant="secondary" onClick={() => void run(lastPayload ?? undefined)} disabled={loading || !lastPayload}>
               Retry last
@@ -287,7 +299,7 @@ export function ToolRunner({ tool, workspaceId = null, moduleId = null }: Props)
         <Card>
           <CardHeader>
             <CardTitle>Presets</CardTitle>
-            <p className="text-sm text-muted-foreground">Quick-start templates for faster premium results.</p>
+            <p className="text-sm text-muted-foreground">Quick-start templates for faster results.</p>
           </CardHeader>
           <CardContent className="grid gap-3">
             {tool.presets.map((preset) => (
@@ -347,7 +359,7 @@ export function ToolRunner({ tool, workspaceId = null, moduleId = null }: Props)
               {loading ? (
                 <div className="flex h-full flex-col items-center justify-center gap-3 text-slate-300">
                   <div className="h-3 w-48 rounded-full bg-white/10 animate-pulse" />
-                  <p className="text-sm text-slate-400">Your premium output is being crafted with precision.</p>
+                  <p className="text-sm text-slate-400">Your output is being crafted with precision.</p>
                   <div className="flex h-2 w-full max-w-xs overflow-hidden rounded-full bg-white/10">
                     <div className="h-full w-1/3 animate-pulse bg-primary" />
                   </div>

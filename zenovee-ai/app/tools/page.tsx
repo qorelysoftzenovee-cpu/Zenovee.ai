@@ -8,9 +8,9 @@ import { PublicToolsDirectory } from "@/components/tools/public-tools-directory"
 
 export const metadata: Metadata = createMetadata({
   title: "Tools",
-  description: "Explore 50 enterprise-grade premium AI tools across branding, sales, conversion, SEO, and brand assets.",
+  description: "Explore 50 enterprise-grade AI tools across branding, sales, conversion, SEO, and brand assets.",
   path: "/tools",
-  keywords: ["premium AI tools", "enterprise AI platform", "B2B sales AI", "SEO authority AI", "conversion copy AI"],
+  keywords: ["enterprise AI tools", "enterprise AI platform", "B2B sales AI", "SEO authority AI", "conversion copy AI"],
 });
 
 export default function ToolsDirectoryPage() {
@@ -25,7 +25,7 @@ export default function ToolsDirectoryPage() {
           <p className="premium-label">Tools</p>
           <h1 className="text-4xl font-semibold tracking-tight md:text-5xl">Enterprise AI tools ecosystem</h1>
           <p className="text-base text-muted-foreground md:text-lg">
-            Discover all premium tools with category filters, featured picks, and trending systems.
+            Discover all tools with category filters, featured picks, and trending systems.
           </p>
         </div>
 
