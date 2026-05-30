@@ -36,14 +36,15 @@ export default async function BillingPage() {
 
   const subscriptionState = normalizeSubscriptionState(subscription);
   const normalizedStatus = subscriptionState.normalizedStatus;
-  const activePlanId = subscriptionState.planId;
+  const latestSuccessfulPaymentPlan = (payments ?? []).find((payment) => payment.status?.toLowerCase() === "success")?.plan ?? null;
+  const activePlanId = subscriptionState.planId ?? latestSuccessfulPaymentPlan;
   const currentPlan = getSubscriptionPlanRecord(subscription);
   const paymentRows = payments ?? [];
   const successfulPayments = paymentRows.filter((payment) => payment.status?.toLowerCase() === "success").length;
   const statusToneClass =
     normalizedStatus === "active"
       ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
-      : normalizedStatus === "cancelled" || normalizedStatus === "canceled"
+      : normalizedStatus === "cancelled"
       ? "bg-amber-500/15 text-amber-700 dark:text-amber-300"
       : "bg-muted text-muted-foreground";
 
@@ -67,7 +68,7 @@ export default async function BillingPage() {
           <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <div className="rounded-2xl border border-border/70 bg-card p-4">
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Current Plan</p>
-              <p className="mt-1 text-lg font-semibold text-foreground">{currentPlan?.displayName ?? subscriptionState.planName ?? "No active plan"}</p>
+              <p className="mt-1 text-lg font-semibold text-foreground">{currentPlan?.displayName ?? getPlanDisplayName(activePlanId) ?? subscriptionState.planName ?? "No active plan"}</p>
             </div>
             <div className="rounded-2xl border border-border/70 bg-card p-4">
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Plan Status</p>

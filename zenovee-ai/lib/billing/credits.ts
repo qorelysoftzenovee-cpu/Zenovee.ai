@@ -131,7 +131,7 @@ export async function canUseTool(userId: string, toolId: string): Promise<{
 
 export async function getBillingSnapshot(userId: string): Promise<BillingSnapshot> {
   const supabase = getSupabaseAdmin();
-  const [{ data: sub }, { data: credits }] = await Promise.all([
+  const [{ data: sub }, { data: credits }, { data: latestSuccessfulPayment }] = await Promise.all([
     supabase
       .from("subscriptions")
       .select("plan_id,plan_name,status,next_renewal_at")
@@ -144,10 +144,20 @@ export async function getBillingSnapshot(userId: string): Promise<BillingSnapsho
       .select("available_credits,total_credits,used_credits")
       .eq("user_id", userId)
       .maybeSingle<{ available_credits: number; total_credits: number; used_credits: number }>(),
+    supabase
+      .from("payments")
+      .select("plan,status")
+      .eq("user_id", userId)
+      .eq("status", "SUCCESS")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle<{ plan: string; status: string }>(),
   ]);
 
+  const resolvedPlan = sub?.plan_id ?? sub?.plan_name ?? latestSuccessfulPayment?.plan ?? null;
+
   return {
-    plan: sub?.plan_id ?? sub?.plan_name ?? null,
+    plan: resolvedPlan,
     subscriptionStatus: sub?.status ?? null,
     hasActiveSubscription: sub?.status === "ACTIVE" || sub?.status === "PAST_DUE",
     renewalAt: sub?.next_renewal_at ?? null,
