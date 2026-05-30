@@ -88,17 +88,17 @@ export class BillingSyncService {
   }
 
   private async findSubscriptionContext(subscriptionId: string | null) {
-    if (!subscriptionId) return { userId: null as string | null, planName: null as string | null };
+    if (!subscriptionId) return { userId: null as string | null, planId: null as string | null };
     const { data } = await this.supabase
       .from("subscriptions")
-      .select("user_id,plan_name")
+      .select("user_id,plan_id")
       .eq("razorpay_subscription_id", subscriptionId)
-      .maybeSingle<{ user_id: string; plan_name: string }>();
-    return { userId: data?.user_id ?? null, planName: data?.plan_name ?? null };
+      .maybeSingle<{ user_id: string; plan_id: string }>();
+    return { userId: data?.user_id ?? null, planId: data?.plan_id ?? null };
   }
 
   private async findOrderPaymentContext(orderId: string | null, paymentId: string | null) {
-    if (!orderId && !paymentId) return { userId: null as string | null, planName: null as string | null, paymentRowId: null as string | null };
+    if (!orderId && !paymentId) return { userId: null as string | null, planId: null as string | null, paymentRowId: null as string | null };
 
     let query = this.supabase
       .from("payments")
@@ -113,7 +113,7 @@ export class BillingSyncService {
     }
 
     const { data } = await query.maybeSingle<{ id: string; user_id: string; plan: string }>();
-    return { userId: data?.user_id ?? null, planName: data?.plan ?? null, paymentRowId: data?.id ?? null };
+    return { userId: data?.user_id ?? null, planId: data?.plan ?? null, paymentRowId: data?.id ?? null };
   }
 
   private async paymentAlreadySuccessful(razorpayPaymentId: string | null) {
@@ -161,11 +161,11 @@ export class BillingSyncService {
       const subscriptionContext = await this.findSubscriptionContext(razorpaySubscriptionId);
       const orderPaymentContext = !subscriptionContext.userId
         ? await this.findOrderPaymentContext(razorpayOrderId, razorpayPaymentId)
-        : { userId: null, planName: null, paymentRowId: null };
+        : { userId: null, planId: null, paymentRowId: null };
       const userId = subscriptionContext.userId ?? orderPaymentContext.userId;
-      const planName = subscriptionContext.planName ?? orderPaymentContext.planName;
+      const planId = subscriptionContext.planId ?? orderPaymentContext.planId;
       const nowIso = new Date().toISOString();
-      const resolvedPlanId = resolvePlanId(planName);
+      const resolvedPlanId = resolvePlanId(planId);
 
       if (!userId || !resolvedPlanId) {
         await this.markEventSuccess(eventId, null, "ignored");
@@ -199,21 +199,53 @@ export class BillingSyncService {
             : await this.supabase.from("payments").upsert(paymentRecord, { onConflict: "razorpay_transaction_id" });
           if (paymentErr) throw new Error(`Payment upsert failed: ${paymentErr.message}`);
 
-          await this.supabase
-            .from("subscriptions")
-            .update({
-              status: "ACTIVE",
-              renewal_date: nextRenewal,
-              current_period_end: nextRenewal,
-              next_renewal_at: nextRenewal,
-              last_payment_at: nowIso,
-              grace_until: null,
-              cancel_at_period_end: false,
-              updated_at: nowIso,
-            } as never)
-            .eq("user_id", userId);
+          const subscriptionUpsertPayload = {
+            user_id: userId,
+            plan_id: activation.planId,
+            status: "ACTIVE",
+            billing_cycle: "monthly",
+            razorpay_subscription_id: razorpaySubscriptionId,
+            renewal_date: nextRenewal,
+            current_period_end: nextRenewal,
+            next_renewal_at: nextRenewal,
+            last_payment_at: nowIso,
+            grace_until: null,
+            cancel_at_period_end: false,
+            updated_at: nowIso,
+          };
 
-          await assignPlanCredits(userId, activation.planId, `subscription:${razorpayPaymentId}`);
+          const { error: subscriptionUpsertError } = await this.supabase
+            .from("subscriptions")
+            .upsert(subscriptionUpsertPayload as never, { onConflict: "user_id" });
+          if (subscriptionUpsertError) {
+            throw new Error(`Subscription upsert failed: ${subscriptionUpsertError.message}`);
+          }
+
+          serverLog({
+            level: "info",
+            route: "lib/billing/sync-service",
+            message: "Subscription upserted from webhook",
+            metadata: {
+              userId,
+              planId: activation.planId,
+              razorpaySubscriptionId,
+              sourceEventType: eventType,
+            },
+          });
+
+          const creditResult = await assignPlanCredits(userId, activation.planId, `subscription:${razorpayPaymentId}`);
+          serverLog({
+            level: "info",
+            route: "lib/billing/sync-service",
+            message: "Credits assigned from webhook",
+            metadata: {
+              userId,
+              planId: activation.planId,
+              razorpayPaymentId,
+              creditResult,
+              sourceEventType: eventType,
+            },
+          });
         }
       }
 
@@ -265,18 +297,28 @@ export class BillingSyncService {
       if (eventType === "subscription.activated") {
         const currentPeriodEnd = isoFromUnix((subscriptionEntity.current_end as number | undefined) ?? undefined);
         const nextRenewal = currentPeriodEnd ?? computeNextRenewalDate();
-        await this.supabase
+        const activationPlanId = resolvedPlanId;
+        const { error: activationUpsertError } = await this.supabase
           .from("subscriptions")
-          .update({
-            status: "ACTIVE",
-            renewal_date: nextRenewal,
-            current_period_end: currentPeriodEnd ?? nextRenewal,
-            next_renewal_at: nextRenewal,
-            grace_until: null,
-            cancel_at_period_end: false,
-            updated_at: nowIso,
-          } as never)
-          .eq("user_id", userId);
+          .upsert(
+            {
+              user_id: userId,
+              plan_id: activationPlanId,
+              status: "ACTIVE",
+              billing_cycle: "monthly",
+              razorpay_subscription_id: razorpaySubscriptionId,
+              renewal_date: nextRenewal,
+              current_period_end: currentPeriodEnd ?? nextRenewal,
+              next_renewal_at: nextRenewal,
+              grace_until: null,
+              cancel_at_period_end: false,
+              updated_at: nowIso,
+            } as never,
+            { onConflict: "user_id" }
+          );
+        if (activationUpsertError) {
+          throw new Error(`Subscription activation upsert failed: ${activationUpsertError.message}`);
+        }
       }
 
       if (eventType === "subscription.cancelled") {
