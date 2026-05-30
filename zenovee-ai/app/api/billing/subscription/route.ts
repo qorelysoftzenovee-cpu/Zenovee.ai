@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getPlanById } from "@/lib/billing/plans";
+import { normalizeSubscriptionState } from "@/lib/billing/subscription-state";
 import { getRazorpayClient } from "@/lib/razorpay/client";
 
 const subscriptionActionSchema = z.object({
@@ -33,7 +34,10 @@ export async function GET() {
       .limit(20),
   ]);
 
-  return NextResponse.json({ subscription, payments: payments ?? [] });
+  return NextResponse.json({
+    subscription: normalizeSubscriptionState(subscription),
+    payments: payments ?? [],
+  });
 }
 
 export async function PATCH(request: Request) {

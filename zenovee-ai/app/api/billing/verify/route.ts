@@ -88,6 +88,7 @@ export async function POST(request: Request) {
     const supabaseAdmin = getSupabaseAdmin();
 
     const payment = await razorpay.payments.fetch(body.razorpay_payment_id);
+    const razorpaySubscriptionId = typeof payment?.subscription_id === "string" ? payment.subscription_id : null;
     serverLog({
       level: "info",
       route: "api/billing/verify",
@@ -97,6 +98,7 @@ export async function POST(request: Request) {
         orderId: body.razorpay_order_id,
         paymentId: body.razorpay_payment_id,
         razorpayStatus: payment?.status,
+        razorpaySubscriptionId,
       },
     });
 
@@ -150,6 +152,7 @@ export async function POST(request: Request) {
       .update({
         status: "SUCCESS",
         razorpay_transaction_id: body.razorpay_payment_id,
+        subscription_id: razorpaySubscriptionId,
         updated_at: nowIso,
       } as never)
       .eq("id", pendingPayment.id)
@@ -177,6 +180,7 @@ export async function POST(request: Request) {
         {
           user_id: user.id,
           plan_id: plan.id,
+          plan_name: plan.id,
           status: "ACTIVE",
           renewal_date: nextRenewal,
           current_period_end: nextRenewal,
@@ -185,6 +189,7 @@ export async function POST(request: Request) {
           grace_until: null,
           cancel_at_period_end: false,
           billing_cycle: "monthly",
+          razorpay_subscription_id: razorpaySubscriptionId,
           updated_at: nowIso,
         } as never,
         { onConflict: "user_id" }
@@ -207,6 +212,7 @@ export async function POST(request: Request) {
         subscriptionId: subscriptionUpsert?.id ?? null,
         subscriptionStatus: subscriptionUpsert?.status ?? null,
         subscriptionPlan: subscriptionUpsert?.plan_id ?? null,
+        razorpaySubscriptionId,
       },
     });
 
@@ -220,6 +226,7 @@ export async function POST(request: Request) {
         userId: user.id,
         orderId: body.razorpay_order_id,
         paymentId: body.razorpay_payment_id,
+        razorpaySubscriptionId,
         allocatedCredits: creditResult.allocatedCredits,
         nextBalance: creditResult.nextBalance,
         reference: creditResult.reference,
@@ -269,6 +276,7 @@ export async function POST(request: Request) {
         premiumLabel: activation.premiumLabel,
         paymentId: body.razorpay_payment_id,
         orderId: body.razorpay_order_id,
+        razorpaySubscriptionId,
         subscriptionUpsertResult: subscriptionUpsert?.status ?? null,
         creditsAssignmentResult: {
           allocatedCredits: creditResult.allocatedCredits,

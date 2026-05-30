@@ -2,7 +2,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PricingActions } from "@/components/pricing/pricing-actions";
 import { requireStandardUser } from "@/lib/auth";
 import { WorkspaceShell } from "@/components/layout/workspace-shell";
-import { getActivePlans, formatRupees, getPlanById, getPlanDisplayName, getPlanSupportText } from "@/lib/billing/plans";
+import { getActivePlans, formatRupees, getPlanDisplayName, getPlanSupportText } from "@/lib/billing/plans";
+import { getSubscriptionPlanRecord, normalizeSubscriptionState } from "@/lib/billing/subscription-state";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 function formatDate(value?: string | null) {
@@ -22,7 +23,7 @@ export default async function BillingPage() {
   const [{ data: subscription }, { data: payments }] = await Promise.all([
     supabase
       .from("subscriptions")
-      .select("plan_id,plan_name,status")
+      .select("plan_id,plan_name,status,current_period_end,next_renewal_at,grace_until,cancel_at_period_end,razorpay_subscription_id")
       .eq("user_id", user.id)
       .maybeSingle(),
     supabase
@@ -33,12 +34,10 @@ export default async function BillingPage() {
       .limit(10),
   ]);
 
-  const normalizedStatus = String(subscription?.status ?? "").toLowerCase();
-  const hasActiveSubscription = normalizedStatus === "active";
-  const activePlanId = hasActiveSubscription
-    ? String(subscription?.plan_id ?? subscription?.plan_name ?? "").trim().toLowerCase()
-    : null;
-  const currentPlan = activePlanId ? getPlanById(activePlanId) ?? null : null;
+  const subscriptionState = normalizeSubscriptionState(subscription);
+  const normalizedStatus = subscriptionState.normalizedStatus;
+  const activePlanId = subscriptionState.planId;
+  const currentPlan = getSubscriptionPlanRecord(subscription);
   const paymentRows = payments ?? [];
   const successfulPayments = paymentRows.filter((payment) => payment.status?.toLowerCase() === "success").length;
   const statusToneClass =
@@ -68,11 +67,11 @@ export default async function BillingPage() {
           <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <div className="rounded-2xl border border-border/70 bg-card p-4">
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Current Plan</p>
-              <p className="mt-1 text-lg font-semibold text-foreground">{currentPlan?.displayName ?? (hasActiveSubscription ? getPlanDisplayName(activePlanId) : "No active plan")}</p>
+              <p className="mt-1 text-lg font-semibold text-foreground">{currentPlan?.displayName ?? subscriptionState.planName ?? "No active plan"}</p>
             </div>
             <div className="rounded-2xl border border-border/70 bg-card p-4">
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Plan Status</p>
-              <p className="mt-1 text-lg font-semibold capitalize text-foreground">{normalizedStatus || "inactive"}</p>
+              <p className="mt-1 text-lg font-semibold capitalize text-foreground">{normalizedStatus}</p>
             </div>
             <div className="rounded-2xl border border-border/70 bg-card p-4">
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Payments Logged</p>

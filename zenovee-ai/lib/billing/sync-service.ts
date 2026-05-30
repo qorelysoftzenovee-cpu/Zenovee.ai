@@ -8,6 +8,8 @@ type SyncResult = {
   userId: string | null;
   subscriptionId: string | null;
   paymentId: string | null;
+  creditDecision?: "allocated" | "skipped_duplicate_payment" | "skipped_duplicate_credit" | "skipped_missing_context" | "not_applicable";
+  skipReason?: string | null;
 };
 
 type RazorpayWebhookEvent = {
@@ -127,6 +129,17 @@ export class BillingSyncService {
     return Boolean(data?.id);
   }
 
+  private async creditAlreadyAllocated(reference: string) {
+    const { data } = await this.supabase
+      .from("credit_transactions")
+      .select("id")
+      .eq("transaction_type", "subscription_credit")
+      .eq("reference", reference)
+      .maybeSingle<{ id: string }>();
+
+    return Boolean(data?.id);
+  }
+
   async process(event: RazorpayWebhookEvent): Promise<SyncResult> {
     const eventType = event.event;
     const payload = objectValue(event.payload);
@@ -166,74 +179,126 @@ export class BillingSyncService {
       const planId = subscriptionContext.planId ?? orderPaymentContext.planId;
       const nowIso = new Date().toISOString();
       const resolvedPlanId = resolvePlanId(planId);
+      const creditReference = razorpayPaymentId ? `subscription:${razorpayPaymentId}` : null;
 
       if (!userId || !resolvedPlanId) {
         await this.markEventSuccess(eventId, null, "ignored");
-        return { status: "ignored", userId: null, subscriptionId: razorpaySubscriptionId, paymentId: razorpayPaymentId };
+        serverLog({
+          level: "warn",
+          route: "lib/billing/sync-service",
+          message: "Billing webhook ignored due to missing subscription context",
+          metadata: {
+            eventType,
+            razorpayPaymentId,
+            razorpayOrderId,
+            razorpaySubscriptionId,
+            subscriptionContext,
+            orderPaymentContext,
+          },
+        });
+        return {
+          status: "ignored",
+          userId: null,
+          subscriptionId: razorpaySubscriptionId,
+          paymentId: razorpayPaymentId,
+          creditDecision: "skipped_missing_context",
+          skipReason: "MISSING_SUBSCRIPTION_CONTEXT",
+        };
       }
 
       if (eventType === "payment.captured" || eventType === "subscription.charged") {
         if (!razorpayPaymentId) throw new Error("Missing razorpay payment id");
 
         const duplicatePayment = await this.paymentAlreadySuccessful(razorpayPaymentId);
-        if (!duplicatePayment) {
-          const activation = buildActivationPayload(resolvedPlanId);
-          const nextRenewal =
-            isoFromUnix((subscriptionEntity.current_end as number | undefined) ?? undefined) ?? computeNextRenewalDate();
+        const activation = buildActivationPayload(resolvedPlanId);
+        const nextRenewal =
+          isoFromUnix((subscriptionEntity.current_end as number | undefined) ?? undefined) ?? computeNextRenewalDate();
 
-          const paymentRecord = {
-            user_id: userId,
-            payment_amount: Number(paymentEntity.amount ? Number(paymentEntity.amount) / 100 : 0),
-            plan: activation.planId,
-            currency: (paymentEntity.currency as string | undefined) ?? "INR",
-            status: "SUCCESS",
-            razorpay_transaction_id: razorpayPaymentId,
-            order_id: razorpayOrderId,
-            subscription_id: razorpaySubscriptionId,
-            invoice_id: (paymentEntity.invoice_id as string | undefined) ?? null,
-            updated_at: nowIso,
-          } as never;
+        const paymentRecord = {
+          user_id: userId,
+          payment_amount: Number(paymentEntity.amount ? Number(paymentEntity.amount) / 100 : 0),
+          plan: activation.planId,
+          currency: (paymentEntity.currency as string | undefined) ?? "INR",
+          status: "SUCCESS",
+          razorpay_transaction_id: razorpayPaymentId,
+          order_id: razorpayOrderId,
+          subscription_id: razorpaySubscriptionId,
+          invoice_id: (paymentEntity.invoice_id as string | undefined) ?? null,
+          updated_at: nowIso,
+        } as never;
 
-          const { error: paymentErr } = orderPaymentContext.paymentRowId
-            ? await this.supabase.from("payments").update(paymentRecord).eq("id", orderPaymentContext.paymentRowId)
-            : await this.supabase.from("payments").upsert(paymentRecord, { onConflict: "razorpay_transaction_id" });
-          if (paymentErr) throw new Error(`Payment upsert failed: ${paymentErr.message}`);
+        const { error: paymentErr } = orderPaymentContext.paymentRowId
+          ? await this.supabase.from("payments").update(paymentRecord).eq("id", orderPaymentContext.paymentRowId)
+          : await this.supabase.from("payments").upsert(paymentRecord, { onConflict: "razorpay_transaction_id" });
+        if (paymentErr) throw new Error(`Payment upsert failed: ${paymentErr.message}`);
 
-          const subscriptionUpsertPayload = {
-            user_id: userId,
-            plan_id: activation.planId,
-            status: "ACTIVE",
-            billing_cycle: "monthly",
-            razorpay_subscription_id: razorpaySubscriptionId,
-            renewal_date: nextRenewal,
-            current_period_end: nextRenewal,
-            next_renewal_at: nextRenewal,
-            last_payment_at: nowIso,
-            grace_until: null,
-            cancel_at_period_end: false,
-            updated_at: nowIso,
-          };
+        const subscriptionUpsertPayload = {
+          user_id: userId,
+          plan_id: activation.planId,
+          plan_name: activation.planId,
+          status: "ACTIVE",
+          billing_cycle: "monthly",
+          razorpay_subscription_id: razorpaySubscriptionId,
+          renewal_date: nextRenewal,
+          current_period_end: nextRenewal,
+          next_renewal_at: nextRenewal,
+          last_payment_at: nowIso,
+          grace_until: null,
+          cancel_at_period_end: false,
+          updated_at: nowIso,
+        };
 
-          const { error: subscriptionUpsertError } = await this.supabase
-            .from("subscriptions")
-            .upsert(subscriptionUpsertPayload as never, { onConflict: "user_id" });
-          if (subscriptionUpsertError) {
-            throw new Error(`Subscription upsert failed: ${subscriptionUpsertError.message}`);
-          }
+        const { error: subscriptionUpsertError } = await this.supabase
+          .from("subscriptions")
+          .upsert(subscriptionUpsertPayload as never, { onConflict: "user_id" });
+        if (subscriptionUpsertError) {
+          throw new Error(`Subscription upsert failed: ${subscriptionUpsertError.message}`);
+        }
 
+        serverLog({
+          level: "info",
+          route: "lib/billing/sync-service",
+          message: "Subscription upserted from webhook",
+          metadata: {
+            userId,
+            planId: activation.planId,
+            razorpaySubscriptionId,
+            razorpayPaymentId,
+            sourceEventType: eventType,
+          },
+        });
+
+        if (duplicatePayment) {
           serverLog({
             level: "info",
             route: "lib/billing/sync-service",
-            message: "Subscription upserted from webhook",
+            message: "Credits skipped because payment was already finalized",
             metadata: {
               userId,
               planId: activation.planId,
+              razorpayPaymentId,
               razorpaySubscriptionId,
               sourceEventType: eventType,
+              creditDecision: "skipped_duplicate_payment",
             },
           });
-
-          const creditResult = await assignPlanCredits(userId, activation.planId, `subscription:${razorpayPaymentId}`);
+        } else if (creditReference && (await this.creditAlreadyAllocated(creditReference))) {
+          serverLog({
+            level: "info",
+            route: "lib/billing/sync-service",
+            message: "Credits skipped because reference already exists",
+            metadata: {
+              userId,
+              planId: activation.planId,
+              razorpayPaymentId,
+              razorpaySubscriptionId,
+              sourceEventType: eventType,
+              creditReference,
+              creditDecision: "skipped_duplicate_credit",
+            },
+          });
+        } else {
+          const creditResult = await assignPlanCredits(userId, activation.planId, creditReference ?? `subscription:${eventId}`);
           serverLog({
             level: "info",
             route: "lib/billing/sync-service",
@@ -242,6 +307,9 @@ export class BillingSyncService {
               userId,
               planId: activation.planId,
               razorpayPaymentId,
+              razorpaySubscriptionId,
+              creditReference,
+              creditDecision: "allocated",
               creditResult,
               sourceEventType: eventType,
             },
@@ -304,6 +372,7 @@ export class BillingSyncService {
             {
               user_id: userId,
               plan_id: activationPlanId,
+              plan_name: activationPlanId,
               status: "ACTIVE",
               billing_cycle: "monthly",
               razorpay_subscription_id: razorpaySubscriptionId,

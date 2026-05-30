@@ -2,12 +2,9 @@
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { normalizeSubscriptionState, type RawSubscriptionLike } from "@/lib/billing/subscription-state";
 
-type Subscription = {
-  plan_id?: string | null;
-  plan_name?: string | null;
-  status: string;
-} | null;
+type Subscription = ReturnType<typeof normalizeSubscriptionState> | null;
 
 type BillingContextValue = {
   subscription: Subscription;
@@ -40,11 +37,11 @@ export function BillingProvider({ children }: { children: ReactNode }) {
 
       const { data } = await supabase
         .from("subscriptions")
-        .select("plan_id,plan_name,status")
+        .select("plan_id,plan_name,status,current_period_end,next_renewal_at,grace_until,cancel_at_period_end,razorpay_subscription_id")
         .eq("user_id", session.user.id)
-        .maybeSingle<Subscription>();
+        .maybeSingle<RawSubscriptionLike>();
 
-      setSubscription(data ?? null);
+      setSubscription(data ? normalizeSubscriptionState(data) : null);
     } catch {
       // Subscription load error; continue with null subscription
       setSubscription(null);
