@@ -155,11 +155,13 @@ export async function getBillingSnapshot(userId: string): Promise<BillingSnapsho
   ]);
 
   const resolvedPlan = sub?.plan_id ?? sub?.plan_name ?? latestSuccessfulPayment?.plan ?? null;
+  const fallbackActive = !sub?.status && Boolean(resolvedPlan) && Number(credits?.available_credits ?? 0) > 0;
+  const effectiveStatus = sub?.status ?? (fallbackActive ? "ACTIVE" : null);
 
   return {
     plan: resolvedPlan,
-    subscriptionStatus: sub?.status ?? null,
-    hasActiveSubscription: sub?.status === "ACTIVE" || sub?.status === "PAST_DUE",
+    subscriptionStatus: effectiveStatus,
+    hasActiveSubscription: effectiveStatus === "ACTIVE" || effectiveStatus === "PAST_DUE",
     renewalAt: sub?.next_renewal_at ?? null,
     availableCredits: Number(credits?.available_credits ?? 0),
     totalCredits: Number(credits?.total_credits ?? 0),

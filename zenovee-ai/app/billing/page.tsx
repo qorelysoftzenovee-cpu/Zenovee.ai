@@ -34,10 +34,13 @@ export default async function BillingPage() {
       .limit(10),
   ]);
 
-  const subscriptionState = normalizeSubscriptionState(subscription);
-  const normalizedStatus = subscriptionState.normalizedStatus;
   const latestSuccessfulPaymentPlan = (payments ?? []).find((payment) => payment.status?.toLowerCase() === "success")?.plan ?? null;
+  const subscriptionState = normalizeSubscriptionState(subscription);
   const activePlanId = subscriptionState.planId ?? latestSuccessfulPaymentPlan;
+  const normalizedStatus =
+    subscriptionState.normalizedStatus === "inactive" && activePlanId
+      ? "active"
+      : subscriptionState.normalizedStatus;
   const currentPlan = getSubscriptionPlanRecord(subscription);
   const paymentRows = payments ?? [];
   const successfulPayments = paymentRows.filter((payment) => payment.status?.toLowerCase() === "success").length;
