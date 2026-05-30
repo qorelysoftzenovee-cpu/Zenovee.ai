@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, Clock3, Flame, Search, Sparkles, Star, TrendingUp, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -62,7 +62,25 @@ type WorkspaceTool = {
 };
 
 const EMPTY_TOOL_IDS: string[] = [];
-const toolStorageCache = new Map<string, { raw: string | null; value: string[] }>();
+const STORAGE_SYNC_DEBUG = process.env.NODE_ENV === "development";
+
+function logStorageSync(message: string, metadata?: Record<string, unknown>) {
+  if (!STORAGE_SYNC_DEBUG) return;
+  if (metadata) {
+    console.debug(`[tools-workspace] ${message}`, metadata);
+    return;
+  }
+  console.debug(`[tools-workspace] ${message}`);
+}
+
+function arraysAreEqual(a: string[], b: string[]) {
+  if (a === b) return true;
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i += 1) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
+}
 
 function parseStoredToolIds(raw: string | null) {
   if (!raw) return EMPTY_TOOL_IDS;
@@ -77,26 +95,23 @@ function parseStoredToolIds(raw: string | null) {
 
 function readStoredToolIds(storageKey: string) {
   if (typeof window === "undefined") return EMPTY_TOOL_IDS;
-
-  const raw = window.localStorage.getItem(storageKey);
-  const cached = toolStorageCache.get(storageKey);
-
-  if (cached && cached.raw === raw) {
-    return cached.value;
-  }
-
-  const value = parseStoredToolIds(raw);
-  toolStorageCache.set(storageKey, { raw, value });
-  return value;
+  return parseStoredToolIds(window.localStorage.getItem(storageKey));
 }
 
-function writeStoredToolIds(storageKey: string, value: string[]) {
+function writeStoredToolIds(storageKey: string, value: string[], source?: string) {
   if (typeof window === "undefined") return;
 
   const raw = JSON.stringify(value);
+  const existingRaw = window.localStorage.getItem(storageKey);
+
+  if (existingRaw === raw) {
+    logStorageSync("storage write skipped because values equal", { storageKey, source, size: value.length });
+    return;
+  }
+
+  logStorageSync("storage write", { storageKey, source, size: value.length });
   window.localStorage.setItem(storageKey, raw);
-  toolStorageCache.set(storageKey, { raw, value });
-  window.dispatchEvent(new CustomEvent(TOOL_STORAGE_SYNC_EVENT, { detail: { key: storageKey } }));
+  window.dispatchEvent(new CustomEvent(TOOL_STORAGE_SYNC_EVENT, { detail: { key: storageKey, source } }));
 }
 
 function useDebouncedValue<T>(value: T, delayMs: number) {
@@ -306,15 +321,53 @@ export function ToolsWorkspace() {
   const [filterMode, setFilterMode] = useState<FilterMode>("all");
   const [favoriteIds, setFavoriteIds] = useState<string[]>(EMPTY_TOOL_IDS);
   const [recentIds, setRecentIds] = useState<string[]>(EMPTY_TOOL_IDS);
+  const favoritesRef = useRef<string[]>(EMPTY_TOOL_IDS);
+  const recentsRef = useRef<string[]>(EMPTY_TOOL_IDS);
+  const syncSourceRef = useRef(`tools-workspace-${Math.random().toString(36).slice(2, 10)}`);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(CATEGORY_ORDER.map((category, index) => [category, index < 2]))
   );
 
   useEffect(() => {
+    favoritesRef.current = favoriteIds;
+  }, [favoriteIds]);
+
+  useEffect(() => {
+    recentsRef.current = recentIds;
+  }, [recentIds]);
+
+  useEffect(() => {
     const syncFromStorage = () => {
-      setFavoriteIds(readStoredToolIds(FAVORITES_KEY));
-      setRecentIds(readStoredToolIds(RECENTS_KEY));
+      const nextFavorites = readStoredToolIds(FAVORITES_KEY);
+      const nextRecents = readStoredToolIds(RECENTS_KEY);
+      const favoritesChanged = !arraysAreEqual(nextFavorites, favoritesRef.current);
+      const recentsChanged = !arraysAreEqual(nextRecents, recentsRef.current);
+
+      logStorageSync("storage sync received", {
+        favoritesChanged,
+        recentsChanged,
+        nextFavoritesSize: nextFavorites.length,
+        nextRecentsSize: nextRecents.length,
+      });
+
+      if (!favoritesChanged && !recentsChanged) {
+        logStorageSync("sync skipped because values equal");
+        return;
+      }
+
+      startTransition(() => {
+        if (favoritesChanged) {
+          favoritesRef.current = nextFavorites;
+          logStorageSync("favorites changed", { size: nextFavorites.length });
+          setFavoriteIds(nextFavorites);
+        }
+        if (recentsChanged) {
+          recentsRef.current = nextRecents;
+          logStorageSync("recents changed", { size: nextRecents.length });
+          setRecentIds(nextRecents);
+        }
+      });
     };
 
     syncFromStorage();
@@ -326,8 +379,15 @@ export function ToolsWorkspace() {
     };
 
     const handleLocalSync = (event: Event) => {
-      const customEvent = event as CustomEvent<{ key?: string }>;
+      const customEvent = event as CustomEvent<{ key?: string; source?: string }>;
       const key = customEvent.detail?.key;
+      const source = customEvent.detail?.source;
+
+      if (source && source === syncSourceRef.current) {
+        logStorageSync("local sync ignored (same source)", { key, source });
+        return;
+      }
+
       if (!key || key === FAVORITES_KEY || key === RECENTS_KEY) {
         syncFromStorage();
       }
@@ -452,9 +512,22 @@ export function ToolsWorkspace() {
   );
 
   const toggleFavorite = useCallback((id: string) => {
-    const next = favoriteIdSet.has(id) ? favoriteIds.filter((value) => value !== id) : [id, ...favoriteIds].slice(0, 24);
-    writeStoredToolIds(FAVORITES_KEY, next);
-  }, [favoriteIdSet, favoriteIds]);
+    const currentFavorites = favoritesRef.current;
+    const next = currentFavorites.includes(id)
+      ? currentFavorites.filter((value) => value !== id)
+      : [id, ...currentFavorites].slice(0, 24);
+
+    if (arraysAreEqual(next, currentFavorites)) {
+      logStorageSync("favorites toggle skipped because values equal", { id });
+      return;
+    }
+
+    favoritesRef.current = next;
+    startTransition(() => {
+      setFavoriteIds(next);
+    });
+    writeStoredToolIds(FAVORITES_KEY, next, syncSourceRef.current);
+  }, []);
 
   const toggleCategory = useCallback((category: string) => {
     setExpandedCategories((prev) => ({ ...prev, [category]: !prev[category] }));
