@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -20,6 +20,7 @@ type Props = {
 };
 
 export function ToolRunner({ tool, workspaceId = null, moduleId = null }: Props) {
+  const formUid = useId();
   const [input, setInput] = useState<Record<string, unknown>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -201,7 +202,7 @@ export function ToolRunner({ tool, workspaceId = null, moduleId = null }: Props)
           </CardHeader>
         </Card>
 
-      <Card>
+      <Card className="border-border/80 bg-card/95 shadow-sm">
         <CardHeader>
           <CardTitle>Tool Builder</CardTitle>
           <p className="text-sm text-muted-foreground">Configure your input, use presets, and generate polished results with a single click.</p>
@@ -210,11 +211,14 @@ export function ToolRunner({ tool, workspaceId = null, moduleId = null }: Props)
           <div className="grid gap-5">
             {tool.fields.map((field) => {
               const value = String(input[field.name] ?? "");
+              const fieldId = `${formUid}-${field.name}`;
               return (
-                <div key={field.name} className="rounded-3xl border border-border/70 bg-background p-5 shadow-sm transition-shadow hover:shadow-md">
+                <section key={field.name} className="rounded-3xl border border-border/70 bg-background/95 p-5 shadow-sm transition-shadow hover:shadow-md">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-sm font-semibold text-foreground">{field.label}</p>
+                      <label htmlFor={fieldId} className="text-sm font-semibold text-foreground">
+                        {field.label}
+                      </label>
                       <p className="mt-1 text-sm text-muted-foreground">{field.helperText ?? `Provide a strong ${field.label.toLowerCase()} to guide your output.`}</p>
                     </div>
                     {field.required ? <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">Required</span> : null}
@@ -222,7 +226,9 @@ export function ToolRunner({ tool, workspaceId = null, moduleId = null }: Props)
                   <div className="mt-4">
                     {field.type === "select" ? (
                       <select
-                        className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                        id={fieldId}
+                        aria-label={field.label}
+                        className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm font-medium text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
                         value={value}
                         onChange={(e) => setInput((prev) => ({ ...prev, [field.name]: e.target.value }))}
                       >
@@ -235,21 +241,25 @@ export function ToolRunner({ tool, workspaceId = null, moduleId = null }: Props)
                       </select>
                     ) : field.type === "textarea" ? (
                       <Textarea
+                        id={fieldId}
+                        aria-label={field.label}
                         value={value}
                         onChange={(e) => setInput((prev) => ({ ...prev, [field.name]: e.target.value }))}
                         placeholder={field.placeholder ?? `Add your ${field.label.toLowerCase()} here...`}
-                        className="min-h-[140px] rounded-2xl border border-border bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                        className="min-h-[140px] rounded-2xl border border-border bg-background px-4 py-3 text-sm font-medium text-foreground placeholder:text-muted-foreground/80 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
                       />
                     ) : (
                       <Input
+                        id={fieldId}
+                        aria-label={field.label}
                         value={value}
                         onChange={(e) => setInput((prev) => ({ ...prev, [field.name]: e.target.value }))}
                         placeholder={field.placeholder ?? `Type your ${field.label.toLowerCase()}...`}
-                        className="rounded-2xl border border-border bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                        className="rounded-2xl border border-border bg-background px-4 py-3 text-sm font-medium text-foreground placeholder:text-muted-foreground/80 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
                       />
                     )}
                   </div>
-                </div>
+                </section>
               );
             })}
           </div>

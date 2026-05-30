@@ -46,6 +46,7 @@ const CATEGORY_ORDER = Object.keys(CATEGORY_COPY) as Array<keyof typeof CATEGORY
 
 type FilterMode = "all" | "favorites" | "recent";
 type WorkspaceCategory = keyof typeof CATEGORY_COPY;
+const WORKSPACE_CATEGORY_SET = new Set<WorkspaceCategory>(CATEGORY_ORDER);
 
 type WorkspaceTool = {
   id: string;
@@ -96,6 +97,15 @@ function parseStoredToolIds(raw: string | null) {
 function readStoredToolIds(storageKey: string) {
   if (typeof window === "undefined") return EMPTY_TOOL_IDS;
   return parseStoredToolIds(window.localStorage.getItem(storageKey));
+}
+
+function sanitizeToolIds(ids: string[], validIds: Set<string>) {
+  if (!ids.length) return EMPTY_TOOL_IDS;
+  const deduped = new Set<string>();
+  for (const id of ids) {
+    if (validIds.has(id)) deduped.add(id);
+  }
+  return Array.from(deduped);
 }
 
 function writeStoredToolIds(storageKey: string, value: string[], source?: string) {
@@ -323,11 +333,42 @@ export function ToolsWorkspace() {
   const [recentIds, setRecentIds] = useState<string[]>(EMPTY_TOOL_IDS);
   const favoritesRef = useRef<string[]>(EMPTY_TOOL_IDS);
   const recentsRef = useRef<string[]>(EMPTY_TOOL_IDS);
-  const syncSourceRef = useRef(`tools-workspace-${Math.random().toString(36).slice(2, 10)}`);
+  const syncSourceRef = useRef("tools-workspace");
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(CATEGORY_ORDER.map((category, index) => [category, index < 2]))
   );
+
+  const tools = useMemo<WorkspaceTool[]>(
+    () =>
+      listToolDefinitions()
+        .filter((tool) => tool.metadata.availability === "active" && (tool.metadata.visibility ?? "public") === "public")
+        .filter((tool): tool is typeof tool & { metadata: typeof tool.metadata & { category: WorkspaceCategory } } =>
+          WORKSPACE_CATEGORY_SET.has(tool.metadata.category as WorkspaceCategory)
+        )
+        .map((tool) => ({
+          id: tool.id,
+          name: tool.metadata.name,
+          description: tool.metadata.description,
+          creditCost: tool.creditCost,
+          category: tool.metadata.category,
+          icon: tool.metadata.icon || "✨",
+          featured: Boolean(tool.metadata.featured),
+          trending: Boolean(tool.metadata.trending),
+          estimatedTimeSeconds: tool.metadata.estimatedTimeSeconds,
+          tags: tool.metadata.tags ?? [],
+          searchIndex: buildSearchIndex({
+            id: tool.id,
+            name: tool.metadata.name,
+            description: tool.metadata.description,
+            category: tool.metadata.category,
+            tags: tool.metadata.tags ?? [],
+          }),
+        })),
+    []
+  );
+
+  const validToolIdSet = useMemo(() => new Set(tools.map((tool) => tool.id)), [tools]);
 
   useEffect(() => {
     favoritesRef.current = favoriteIds;
@@ -339,8 +380,8 @@ export function ToolsWorkspace() {
 
   useEffect(() => {
     const syncFromStorage = () => {
-      const nextFavorites = readStoredToolIds(FAVORITES_KEY);
-      const nextRecents = readStoredToolIds(RECENTS_KEY);
+      const nextFavorites = sanitizeToolIds(readStoredToolIds(FAVORITES_KEY), validToolIdSet);
+      const nextRecents = sanitizeToolIds(readStoredToolIds(RECENTS_KEY), validToolIdSet);
       const favoritesChanged = !arraysAreEqual(nextFavorites, favoritesRef.current);
       const recentsChanged = !arraysAreEqual(nextRecents, recentsRef.current);
 
@@ -400,7 +441,7 @@ export function ToolsWorkspace() {
       window.removeEventListener("storage", handleStorage);
       window.removeEventListener(TOOL_STORAGE_SYNC_EVENT, handleLocalSync);
     };
-  }, []);
+  }, [validToolIdSet]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -424,33 +465,6 @@ export function ToolsWorkspace() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [query]);
-
-  const tools = useMemo<WorkspaceTool[]>(
-    () =>
-      listToolDefinitions()
-        .filter((tool) => tool.metadata.availability === "active" && (tool.metadata.visibility ?? "public") === "public")
-        .filter((tool): tool is typeof tool & { metadata: typeof tool.metadata & { category: WorkspaceCategory } } => tool.metadata.category in CATEGORY_COPY)
-        .map((tool) => ({
-          id: tool.id,
-          name: tool.metadata.name,
-          description: tool.metadata.description,
-          creditCost: tool.creditCost,
-          category: tool.metadata.category,
-          icon: tool.metadata.icon || "✨",
-          featured: Boolean(tool.metadata.featured),
-          trending: Boolean(tool.metadata.trending),
-          estimatedTimeSeconds: tool.metadata.estimatedTimeSeconds,
-          tags: tool.metadata.tags ?? [],
-          searchIndex: buildSearchIndex({
-            id: tool.id,
-            name: tool.metadata.name,
-            description: tool.metadata.description,
-            category: tool.metadata.category,
-            tags: tool.metadata.tags ?? [],
-          }),
-        })),
-    []
-  );
 
   const toolMap = useMemo(() => new Map(tools.map((tool) => [tool.id, tool])), [tools]);
   const recentTools = useMemo(() => recentIds.map((id) => toolMap.get(id)).filter((tool): tool is WorkspaceTool => Boolean(tool)), [recentIds, toolMap]);
@@ -481,14 +495,15 @@ export function ToolsWorkspace() {
   const featuredTools = useMemo(() => tools.filter((tool) => tool.featured).slice(0, 6), [tools]);
   const trendingTools = useMemo(() => tools.filter((tool) => tool.trending).slice(0, 6), [tools]);
   const categories = useMemo(() => ["All", ...CATEGORY_ORDER.filter((category) => tools.some((tool) => tool.category === category))], [tools]);
+  const effectiveActiveCategory = categories.includes(activeCategory) ? activeCategory : "All";
   const normalizedQuery = useMemo(() => normalizeSearchValue(debouncedQuery), [debouncedQuery]);
   const queryTokens = useMemo(() => normalizedQuery.split(" ").filter(Boolean), [normalizedQuery]);
-  const isSearchActive = queryTokens.length > 0 || activeCategory !== "All" || filterMode !== "all";
+  const isSearchActive = queryTokens.length > 0 || effectiveActiveCategory !== "All" || filterMode !== "all";
 
   const filteredTools = useMemo(() => {
     return tools
       .filter((tool) => {
-        const passCategory = activeCategory === "All" || tool.category === activeCategory;
+        const passCategory = effectiveActiveCategory === "All" || tool.category === effectiveActiveCategory;
         const passMode =
           filterMode === "all" ||
           (filterMode === "favorites" && favoriteIdSet.has(tool.id)) ||
@@ -504,7 +519,7 @@ export function ToolsWorkspace() {
         if (a.trending !== b.trending) return Number(b.trending) - Number(a.trending);
         return a.name.localeCompare(b.name);
       });
-  }, [tools, activeCategory, filterMode, favoriteIdSet, recentIdSet, queryTokens]);
+  }, [tools, effectiveActiveCategory, filterMode, favoriteIdSet, recentIdSet, queryTokens]);
 
   const groupedCategories = useMemo(
     () => CATEGORY_ORDER.map((category) => ({ category, tools: filteredTools.filter((tool) => tool.category === category) })).filter((group) => group.tools.length > 0),
@@ -512,6 +527,7 @@ export function ToolsWorkspace() {
   );
 
   const toggleFavorite = useCallback((id: string) => {
+    if (!validToolIdSet.has(id)) return;
     const currentFavorites = favoritesRef.current;
     const next = currentFavorites.includes(id)
       ? currentFavorites.filter((value) => value !== id)
@@ -527,7 +543,7 @@ export function ToolsWorkspace() {
       setFavoriteIds(next);
     });
     writeStoredToolIds(FAVORITES_KEY, next, syncSourceRef.current);
-  }, []);
+  }, [validToolIdSet]);
 
   const toggleCategory = useCallback((category: string) => {
     setExpandedCategories((prev) => ({ ...prev, [category]: !prev[category] }));
@@ -614,7 +630,7 @@ export function ToolsWorkspace() {
             type="button"
             onClick={() => setActiveCategory(category)}
             className={`rounded-full border px-3.5 py-2 text-xs font-medium transition ${
-              activeCategory === category
+              effectiveActiveCategory === category
                 ? "border-slate-900 bg-slate-900 text-white"
                 : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
             }`}
