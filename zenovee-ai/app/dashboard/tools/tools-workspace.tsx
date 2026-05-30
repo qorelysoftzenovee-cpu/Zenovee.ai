@@ -1,9 +1,8 @@
 "use client";
 
-import type { ReactNode } from "react";
 import Link from "next/link";
 import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, Clock3, Flame, Search, Sparkles, Star, TrendingUp, Wand2 } from "lucide-react";
+import { ChevronDown, Search, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -279,51 +278,6 @@ function ToolCard({
   );
 }
 
-function SpotlightRail({
-  title,
-  description,
-  icon,
-  tools,
-  emptyMessage,
-  favoriteIds,
-  onToggleFavorite,
-}: {
-  title: string;
-  description: string;
-  icon: ReactNode;
-  tools: WorkspaceTool[];
-  emptyMessage: string;
-  favoriteIds: string[];
-  onToggleFavorite: (toolId: string) => void;
-}) {
-  return (
-    <section className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-            {icon}
-            <span>{title}</span>
-          </div>
-          <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-        </div>
-        <span className="stat-chip">{tools.length} tools</span>
-      </div>
-
-      {tools.length ? (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {tools.map((tool) => (
-            <ToolCard key={`${title}-${tool.id}`} tool={tool} isFavorite={favoriteIds.includes(tool.id)} onToggleFavorite={onToggleFavorite} />
-          ))}
-        </div>
-      ) : (
-        <Card className="border-dashed border-slate-200 bg-white/70">
-          <CardContent className="p-6 text-sm text-muted-foreground">{emptyMessage}</CardContent>
-        </Card>
-      )}
-    </section>
-  );
-}
-
 export function ToolsWorkspace() {
   const [query, setQuery] = useState("");
   const debouncedQuery = useDebouncedValue(query, 180);
@@ -467,33 +421,10 @@ export function ToolsWorkspace() {
   }, [query]);
 
   const toolMap = useMemo(() => new Map(tools.map((tool) => [tool.id, tool])), [tools]);
-  const recentTools = useMemo(() => recentIds.map((id) => toolMap.get(id)).filter((tool): tool is WorkspaceTool => Boolean(tool)), [recentIds, toolMap]);
   const favoriteTools = useMemo(() => favoriteIds.map((id) => toolMap.get(id)).filter((tool): tool is WorkspaceTool => Boolean(tool)), [favoriteIds, toolMap]);
   const favoriteIdSet = useMemo(() => new Set(favoriteIds), [favoriteIds]);
   const recentIdSet = useMemo(() => new Set(recentIds), [recentIds]);
 
-  const mostUsedTools = useMemo(() => {
-    const recencyScore = new Map<string, number>();
-    recentIds.forEach((id, index) => {
-      recencyScore.set(id, 12 - index);
-    });
-
-    return [...tools]
-      .map((tool) => ({
-        tool,
-        score:
-          (tool.featured ? 3 : 0) +
-          (tool.trending ? 2 : 0) +
-          (favoriteIdSet.has(tool.id) ? 4 : 0) +
-          (recencyScore.get(tool.id) ?? 0),
-      }))
-      .sort((a, b) => b.score - a.score || a.tool.name.localeCompare(b.tool.name))
-      .slice(0, 6)
-      .map(({ tool }) => tool);
-  }, [tools, favoriteIdSet, recentIds]);
-
-  const featuredTools = useMemo(() => tools.filter((tool) => tool.featured).slice(0, 6), [tools]);
-  const trendingTools = useMemo(() => tools.filter((tool) => tool.trending).slice(0, 6), [tools]);
   const categories = useMemo(() => ["All", ...CATEGORY_ORDER.filter((category) => tools.some((tool) => tool.category === category))], [tools]);
   const effectiveActiveCategory = categories.includes(activeCategory) ? activeCategory : "All";
   const normalizedQuery = useMemo(() => normalizeSearchValue(debouncedQuery), [debouncedQuery]);
@@ -525,6 +456,7 @@ export function ToolsWorkspace() {
     () => CATEGORY_ORDER.map((category) => ({ category, tools: filteredTools.filter((tool) => tool.category === category) })).filter((group) => group.tools.length > 0),
     [filteredTools]
   );
+  const isCategoryFocused = effectiveActiveCategory !== "All";
 
   const toggleFavorite = useCallback((id: string) => {
     if (!validToolIdSet.has(id)) return;
@@ -640,99 +572,23 @@ export function ToolsWorkspace() {
         ))}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <Card className="border-violet-200/80 bg-gradient-to-br from-violet-50 to-white">
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-violet-500">Discovery mode</p>
-                <p className="mt-2 text-lg font-semibold text-slate-950">Progressive</p>
-              </div>
-              <Wand2 className="size-5 text-violet-500" />
-            </div>
-            <p className="mt-3 text-sm text-slate-600">Expand only the categories you want instead of scanning a noisy all-tools wall.</p>
-          </CardContent>
-        </Card>
+      {!isCategoryFocused ? (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-2">
+          <Card className="border-violet-200/80 bg-gradient-to-br from-violet-50 to-white">
+            <CardContent className="p-5">
+              <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Workspace tools</p>
+              <p className="mt-2 text-2xl font-semibold text-slate-950">{tools.length}</p>
+            </CardContent>
+          </Card>
 
-        <Card className="border-sky-200/80 bg-gradient-to-br from-sky-50 to-white">
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-sky-500">Featured tools</p>
-                <p className="mt-2 text-lg font-semibold text-slate-950">{featuredTools.length}</p>
-              </div>
-              <Sparkles className="size-5 text-sky-500" />
-            </div>
-            <p className="mt-3 text-sm text-slate-600">Curated premium systems surfaced first for faster workspace orientation.</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-amber-200/80 bg-gradient-to-br from-amber-50 to-white">
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-amber-500">Favorites ready</p>
-                <p className="mt-2 text-lg font-semibold text-slate-950">{favoriteTools.length}</p>
-              </div>
-              <Star className="size-5 text-amber-500" />
-            </div>
-            <p className="mt-3 text-sm text-slate-600">Pin your highest-value systems for one-click access across busy sessions.</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-emerald-200/80 bg-gradient-to-br from-emerald-50 to-white">
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-emerald-500">Recent context</p>
-                <p className="mt-2 text-lg font-semibold text-slate-950">{recentTools.length}</p>
-              </div>
-              <Clock3 className="size-5 text-emerald-500" />
-            </div>
-            <p className="mt-3 text-sm text-slate-600">Resume momentum quickly with recently used tools brought back to the top.</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <SpotlightRail
-        title="Featured tools"
-        description="Best entry points into the Zenovee workspace for premium, high-confidence execution."
-        icon={<Sparkles className="size-4 text-violet-500" />}
-        tools={isSearchActive ? featuredTools.filter((tool) => filteredTools.some((match) => match.id === tool.id)) : featuredTools}
-        emptyMessage="No featured tools match your current filters. Try broadening search or switching back to all tools."
-        favoriteIds={favoriteIds}
-        onToggleFavorite={toggleFavorite}
-      />
-
-      <SpotlightRail
-        title="Most-used tools"
-        description="Smartly prioritized from recent activity, favorites, and premium prominence signals."
-        icon={<TrendingUp className="size-4 text-sky-500" />}
-        tools={isSearchActive ? mostUsedTools.filter((tool) => filteredTools.some((match) => match.id === tool.id)) : mostUsedTools}
-        emptyMessage="Most-used tools will appear here as your workspace activity grows."
-        favoriteIds={favoriteIds}
-        onToggleFavorite={toggleFavorite}
-      />
-
-      <SpotlightRail
-        title="Recently used tools"
-        description="Jump back into the exact systems you used most recently without rescanning the directory."
-        icon={<Clock3 className="size-4 text-emerald-500" />}
-        tools={isSearchActive ? recentTools.filter((tool) => filteredTools.some((match) => match.id === tool.id)).slice(0, 6) : recentTools.slice(0, 6)}
-        emptyMessage="Your recently used tools will appear here after you run tools from the workspace."
-        favoriteIds={favoriteIds}
-        onToggleFavorite={toggleFavorite}
-      />
-
-      <SpotlightRail
-        title="Trending tools"
-        description="High-attention systems that are especially useful for current workspace demand."
-        icon={<Flame className="size-4 text-rose-500" />}
-        tools={isSearchActive ? trendingTools.filter((tool) => filteredTools.some((match) => match.id === tool.id)) : trendingTools}
-        emptyMessage="No trending tools match the current filter set."
-        favoriteIds={favoriteIds}
-        onToggleFavorite={toggleFavorite}
-      />
+          <Card className="border-amber-200/80 bg-gradient-to-br from-amber-50 to-white">
+            <CardContent className="p-5">
+              <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Saved favorites</p>
+              <p className="mt-2 text-2xl font-semibold text-slate-950">{favoriteTools.length}</p>
+            </CardContent>
+          </Card>
+        </div>
+      ) : null}
 
       {isSearchActive ? (
         <section className="space-y-4">

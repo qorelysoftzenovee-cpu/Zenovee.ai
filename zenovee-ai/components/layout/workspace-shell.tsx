@@ -45,7 +45,7 @@ const primaryNav = [
 const workspaceTabs = [
   { label: "Tools", href: "/dashboard/tools", icon: Wrench },
   { label: "History", href: "/history", icon: History },
-  { label: "Favorites", href: "/history?view=favorites", icon: Star },
+  { label: "Favorites", href: "/favorites", icon: Star },
   { label: "Exports", href: "/exports", icon: Upload },
   { label: "Billing", href: "/billing", icon: CreditCard },
   { label: "Settings", href: "/settings", icon: Settings2 },
@@ -65,7 +65,6 @@ export function WorkspaceShell({ children, title, subtitle }: WorkspaceShellProp
 
   const breadcrumb = pathname.split("/").filter(Boolean);
 
-  const isFavoritesActive = pathname === "/history" && searchParams.get("view") === "favorites";
   const workspaceConfigs = useMemo(() => listWorkspaceConfigs(), []);
   const currentToolId = useMemo(() => {
     const parts = pathname.split("/").filter(Boolean);
@@ -242,10 +241,7 @@ export function WorkspaceShell({ children, title, subtitle }: WorkspaceShellProp
             <div className="no-scrollbar flex gap-2 overflow-x-auto">
               {workspaceTabs.map((tab) => {
                 const Icon = tab.icon;
-                const active =
-                  tab.label === "Favorites"
-                    ? isFavoritesActive
-                    : pathname === tab.href || pathname.startsWith(`${tab.href}/`);
+                const active = pathname === tab.href || pathname.startsWith(`${tab.href}/`);
                 return (
                   <Link
                     key={tab.label}
