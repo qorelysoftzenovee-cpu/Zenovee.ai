@@ -176,7 +176,7 @@ export async function POST(request: Request) {
       .upsert(
         {
           user_id: user.id,
-          plan_name: plan.id,
+          plan_id: plan.id,
           status: "ACTIVE",
           renewal_date: nextRenewal,
           current_period_end: nextRenewal,
@@ -189,8 +189,8 @@ export async function POST(request: Request) {
         } as never,
         { onConflict: "user_id" }
       )
-      .select("id,user_id,plan_name,status,next_renewal_at")
-      .maybeSingle<{ id: string; user_id: string; plan_name: string; status: string; next_renewal_at: string | null }>();
+      .select("id,user_id,plan_id,status,next_renewal_at")
+      .maybeSingle<{ id: string; user_id: string; plan_id: string; status: string; next_renewal_at: string | null }>();
 
     if (subscriptionError) {
       throw new Error(subscriptionError.message);
@@ -206,7 +206,7 @@ export async function POST(request: Request) {
         paymentId: body.razorpay_payment_id,
         subscriptionId: subscriptionUpsert?.id ?? null,
         subscriptionStatus: subscriptionUpsert?.status ?? null,
-        subscriptionPlan: subscriptionUpsert?.plan_name ?? null,
+        subscriptionPlan: subscriptionUpsert?.plan_id ?? null,
       },
     });
 

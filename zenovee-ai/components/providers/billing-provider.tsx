@@ -4,7 +4,8 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type Subscription = {
-  plan_name: string;
+  plan_id?: string | null;
+  plan_name?: string | null;
   status: string;
 } | null;
 
@@ -39,7 +40,7 @@ export function BillingProvider({ children }: { children: ReactNode }) {
 
       const { data } = await supabase
         .from("subscriptions")
-        .select("plan_name,status")
+        .select("plan_id,plan_name,status")
         .eq("user_id", session.user.id)
         .maybeSingle<Subscription>();
 

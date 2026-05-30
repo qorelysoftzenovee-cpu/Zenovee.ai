@@ -22,7 +22,7 @@ export async function GET() {
   const [{ data: subscription }, { data: payments }] = await Promise.all([
     supabaseAdmin
       .from("subscriptions")
-      .select("plan_name,status,current_period_end,next_renewal_at,grace_until,cancel_at_period_end,razorpay_subscription_id")
+      .select("plan_id,plan_name,status,current_period_end,next_renewal_at,grace_until,cancel_at_period_end,razorpay_subscription_id")
       .eq("user_id", user.id)
       .maybeSingle(),
     supabaseAdmin
@@ -46,9 +46,9 @@ export async function PATCH(request: Request) {
 
     const { data: sub } = await supabaseAdmin
       .from("subscriptions")
-      .select("status,plan_name,razorpay_subscription_id")
+      .select("status,plan_id,plan_name,razorpay_subscription_id")
       .eq("user_id", user.id)
-      .maybeSingle<{ status: string; plan_name: string; razorpay_subscription_id: string | null }>();
+      .maybeSingle<{ status: string; plan_id?: string | null; plan_name?: string | null; razorpay_subscription_id: string | null }>();
 
     if (!sub || !["ACTIVE", "PAST_DUE", "PENDING"].includes(sub.status)) {
       return jsonError("No active subscription", 404, "SUBSCRIPTION_NOT_FOUND");
@@ -69,7 +69,7 @@ export async function PATCH(request: Request) {
     if (body.action === "upgrade") {
       const plan = body.planId ? getPlanById(body.planId) : undefined;
       if (!plan || !plan.active) return jsonError("Invalid plan", 400, "INVALID_PLAN");
-      if (plan.id === sub.plan_name) return jsonError("You are already on this plan", 409, "PLAN_UNCHANGED");
+      if (plan.id === (sub.plan_id ?? sub.plan_name)) return jsonError("You are already on this plan", 409, "PLAN_UNCHANGED");
 
       await supabaseAdmin
         .from("subscriptions")

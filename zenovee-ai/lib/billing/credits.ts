@@ -134,11 +134,11 @@ export async function getBillingSnapshot(userId: string): Promise<BillingSnapsho
   const [{ data: sub }, { data: credits }] = await Promise.all([
     supabase
       .from("subscriptions")
-      .select("plan_name,status,next_renewal_at")
+      .select("plan_id,plan_name,status,next_renewal_at")
       .eq("user_id", userId)
       .order("updated_at", { ascending: false })
       .limit(1)
-      .maybeSingle<{ plan_name: string; status: string; next_renewal_at: string | null }>(),
+      .maybeSingle<{ plan_id?: string | null; plan_name?: string | null; status: string; next_renewal_at: string | null }>(),
     supabase
       .from("user_credits")
       .select("available_credits,total_credits,used_credits")
@@ -147,7 +147,7 @@ export async function getBillingSnapshot(userId: string): Promise<BillingSnapsho
   ]);
 
   return {
-    plan: sub?.plan_name ?? null,
+    plan: sub?.plan_id ?? sub?.plan_name ?? null,
     subscriptionStatus: sub?.status ?? null,
     hasActiveSubscription: sub?.status === "ACTIVE" || sub?.status === "PAST_DUE",
     renewalAt: sub?.next_renewal_at ?? null,
