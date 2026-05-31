@@ -156,13 +156,20 @@ export async function getBillingSnapshot(userId: string): Promise<BillingSnapsho
   ]);
 
   const resolvedPlan = sub?.plan_id ?? sub?.plan_name ?? latestSuccessfulPayment?.plan ?? null;
-  const fallbackActive = !sub?.status && Boolean(resolvedPlan) && Number(credits?.available_credits ?? 0) > 0;
-  const effectiveStatus = sub?.status ?? (fallbackActive ? "ACTIVE" : null);
+  const hasSuccessfulPayment = latestSuccessfulPayment?.status === "SUCCESS";
+  const rawSubscriptionStatus = String(sub?.status ?? "").trim().toUpperCase();
+  const subscriptionIsAlreadyUsable = rawSubscriptionStatus === "ACTIVE" || rawSubscriptionStatus === "PAST_DUE";
+  const fallbackActive = Boolean(resolvedPlan) && hasSuccessfulPayment && !subscriptionIsAlreadyUsable;
+  const effectiveStatus = subscriptionIsAlreadyUsable
+    ? rawSubscriptionStatus
+    : fallbackActive
+    ? "ACTIVE"
+    : rawSubscriptionStatus || null;
   const planRecord = resolvedPlan ? getPlanById(resolvedPlan) ?? null : null;
   const rawAvailableCredits = Number(credits?.available_credits ?? 0);
   const rawTotalCredits = Number(credits?.total_credits ?? 0);
   const rawUsedCredits = Number(credits?.used_credits ?? 0);
-  const shouldInferCredits = effectiveStatus === "ACTIVE" && Boolean(planRecord) && rawTotalCredits === 0 && rawAvailableCredits === 0;
+  const shouldInferCredits = Boolean(planRecord) && hasSuccessfulPayment && rawTotalCredits === 0 && rawAvailableCredits === 0;
   const inferredTotalCredits = shouldInferCredits ? Number(planRecord?.credits ?? 0) : rawTotalCredits;
   const inferredAvailableCredits = shouldInferCredits ? Math.max(0, inferredTotalCredits - rawUsedCredits) : rawAvailableCredits;
 
