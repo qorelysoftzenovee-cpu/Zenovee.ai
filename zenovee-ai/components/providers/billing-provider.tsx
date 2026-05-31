@@ -6,6 +6,15 @@ import { normalizeSubscriptionState, type RawSubscriptionLike } from "@/lib/bill
 
 type Subscription = ReturnType<typeof normalizeSubscriptionState> | null;
 
+type BillingSubscriptionResponse = {
+  billing?: {
+    plan: string | null;
+    subscriptionStatus: string | null;
+    hasActiveSubscription: boolean;
+  };
+  subscription?: RawSubscriptionLike | null;
+};
+
 type BillingContextValue = {
   subscription: Subscription;
   isLoading: boolean;
@@ -35,13 +44,30 @@ export function BillingProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      const { data } = await supabase
-        .from("subscriptions")
-        .select("plan_id,plan_name,status,current_period_end,next_renewal_at,grace_until,cancel_at_period_end,razorpay_subscription_id")
-        .eq("user_id", session.user.id)
-        .maybeSingle<RawSubscriptionLike>();
+      const response = await fetch("/api/billing/subscription", { method: "GET", credentials: "include" });
+      if (!response.ok) {
+        setSubscription(null);
+        return;
+      }
 
-      setSubscription(data ? normalizeSubscriptionState(data) : null);
+      const payload = (await response.json()) as BillingSubscriptionResponse;
+      if (payload.subscription) {
+        setSubscription(normalizeSubscriptionState(payload.subscription));
+        return;
+      }
+
+      if (payload.billing?.plan || payload.billing?.subscriptionStatus) {
+        setSubscription(
+          normalizeSubscriptionState({
+            plan_id: payload.billing?.plan ?? null,
+            plan_name: payload.billing?.plan ?? null,
+            status: payload.billing?.subscriptionStatus ?? null,
+          })
+        );
+        return;
+      }
+
+      setSubscription(null);
     } catch {
       // Subscription load error; continue with null subscription
       setSubscription(null);
@@ -60,6 +86,12 @@ export function BillingProvider({ children }: { children: ReactNode }) {
     const channel = supabase
       .channel("billing-sync")
       .on("postgres_changes", { event: "*", schema: "public", table: "subscriptions" }, () => {
+        setTimeout(() => void loadSubscription(), 0);
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "payments" }, () => {
+        setTimeout(() => void loadSubscription(), 0);
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "user_credits" }, () => {
         setTimeout(() => void loadSubscription(), 0);
       })
       .subscribe();

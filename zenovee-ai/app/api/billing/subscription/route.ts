@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { getBillingSnapshot } from "@/lib/billing/credits";
 import { getPlanById } from "@/lib/billing/plans";
 import { normalizeSubscriptionState } from "@/lib/billing/subscription-state";
 import { getRazorpayClient } from "@/lib/razorpay/client";
@@ -20,7 +21,7 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const supabaseAdmin = getSupabaseAdmin();
-  const [{ data: subscription }, { data: payments }] = await Promise.all([
+  const [{ data: subscription }, { data: payments }, billingSnapshot] = await Promise.all([
     supabaseAdmin
       .from("subscriptions")
       .select("plan_id,plan_name,status,current_period_end,next_renewal_at,grace_until,cancel_at_period_end,razorpay_subscription_id")
@@ -32,9 +33,11 @@ export async function GET() {
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(20),
+    getBillingSnapshot(user.id),
   ]);
 
   return NextResponse.json({
+    billing: billingSnapshot,
     subscription: normalizeSubscriptionState(subscription),
     payments: payments ?? [],
   });

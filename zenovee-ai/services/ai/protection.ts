@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import type { BillingSnapshot } from "@/lib/billing/credits";
 import { CreditService } from "@/lib/services/CreditService";
 import type { Json } from "@/lib/supabase/types";
 import { getPlanLimits, resolvePlanId } from "@/lib/billing/plans";
@@ -41,17 +42,11 @@ export type ProtectionContext = {
   prompt: string;
   input: Record<string, unknown>;
   ipAddress: string;
+  entitlement?: BillingSnapshot;
 };
 
-async function getPlan(userId: string): Promise<PlanId> {
-  const { data } = await supabaseAdmin
-    .from("subscriptions")
-    .select("plan_id,plan_name,status")
-    .eq("user_id", userId)
-    .eq("status", "ACTIVE")
-    .maybeSingle<{ plan_id: string; plan_name: string; status: string }>();
-
-  const raw = resolvePlanId(data?.plan_id ?? data?.plan_name);
+function getPlanFromEntitlement(entitlement?: BillingSnapshot): PlanId {
+  const raw = resolvePlanId(entitlement?.plan ?? null);
   if (raw === "growth" || raw === "scale") return raw;
   return "starter";
 }
@@ -157,13 +152,13 @@ export class AIProtectionService {
       throw new AIProtectionError("Prompt exceeds allowed size. Please shorten and retry.", 400, "PROMPT_TOO_LARGE");
     }
 
-    const credits = await CreditService.getCredits(context.userId);
+    const credits = context.entitlement?.availableCredits ?? (await CreditService.getCredits(context.userId));
     if (credits <= 0) {
       throw new AIProtectionError("Insufficient credits for generation.", 402, "CREDITS_REQUIRED");
     }
 
     const [planId, accountAgeDays] = await Promise.all([
-      getPlan(context.userId),
+      Promise.resolve(getPlanFromEntitlement(context.entitlement)),
       getAccountAgeDays(context.userId),
     ]);
 

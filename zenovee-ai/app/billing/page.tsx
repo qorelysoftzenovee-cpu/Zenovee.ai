@@ -2,8 +2,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PricingActions } from "@/components/pricing/pricing-actions";
 import { requireStandardUser } from "@/lib/auth";
 import { WorkspaceShell } from "@/components/layout/workspace-shell";
-import { getActivePlans, formatRupees, getPlanDisplayName, getPlanSupportText } from "@/lib/billing/plans";
-import { getSubscriptionPlanRecord, normalizeSubscriptionState } from "@/lib/billing/subscription-state";
+import { getActivePlans, formatRupees, getPlanById, getPlanDisplayName, getPlanSupportText } from "@/lib/billing/plans";
+import { getBillingSnapshot } from "@/lib/billing/credits";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 function formatDate(value?: string | null) {
@@ -20,12 +20,8 @@ export default async function BillingPage() {
   const supabase = await createSupabaseServerClient();
   const subscriptionPlans = getActivePlans();
 
-  const [{ data: subscription }, { data: payments }] = await Promise.all([
-    supabase
-      .from("subscriptions")
-      .select("plan_id,plan_name,status,current_period_end,next_renewal_at,grace_until,cancel_at_period_end,razorpay_subscription_id")
-      .eq("user_id", user.id)
-      .maybeSingle(),
+  const [billingSnapshot, { data: payments }] = await Promise.all([
+    getBillingSnapshot(user.id),
     supabase
       .from("payments")
       .select("id,payment_amount,currency,status,plan,created_at")
@@ -34,14 +30,9 @@ export default async function BillingPage() {
       .limit(10),
   ]);
 
-  const latestSuccessfulPaymentPlan = (payments ?? []).find((payment) => payment.status?.toLowerCase() === "success")?.plan ?? null;
-  const subscriptionState = normalizeSubscriptionState(subscription);
-  const activePlanId = subscriptionState.planId ?? latestSuccessfulPaymentPlan;
-  const normalizedStatus =
-    subscriptionState.normalizedStatus === "inactive" && activePlanId
-      ? "active"
-      : subscriptionState.normalizedStatus;
-  const currentPlan = getSubscriptionPlanRecord(subscription);
+  const activePlanId = billingSnapshot.plan;
+  const normalizedStatus = billingSnapshot.hasActiveSubscription ? "active" : (billingSnapshot.subscriptionStatus?.toLowerCase() ?? "inactive");
+  const currentPlan = activePlanId ? getPlanById(activePlanId) : null;
   const paymentRows = payments ?? [];
   const successfulPayments = paymentRows.filter((payment) => payment.status?.toLowerCase() === "success").length;
   const statusToneClass =
@@ -71,7 +62,7 @@ export default async function BillingPage() {
           <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <div className="rounded-2xl border border-border/70 bg-card p-4">
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Current Plan</p>
-              <p className="mt-1 text-lg font-semibold text-foreground">{currentPlan?.displayName ?? getPlanDisplayName(activePlanId) ?? subscriptionState.planName ?? "No active plan"}</p>
+              <p className="mt-1 text-lg font-semibold text-foreground">{currentPlan?.displayName ?? getPlanDisplayName(activePlanId) ?? "No active plan"}</p>
             </div>
             <div className="rounded-2xl border border-border/70 bg-card p-4">
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Plan Status</p>
@@ -137,7 +128,7 @@ export default async function BillingPage() {
                       planId={plan.id}
                       planName={plan.displayName}
                       activePlanId={activePlanId}
-                      isActiveSubscription={normalizedStatus === "active"}
+                      isActiveSubscription={billingSnapshot.hasActiveSubscription}
                     />
                   </div>
                 </CardContent>

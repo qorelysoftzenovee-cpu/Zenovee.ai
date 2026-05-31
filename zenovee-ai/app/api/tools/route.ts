@@ -8,6 +8,7 @@ import { jsonApiError, safeErrorMessage, withApiErrorHandling } from "@/lib/runt
 import { serverLog } from "@/lib/logger";
 import { z } from "zod";
 import { checkRateLimit, resolveClientIp } from "@/lib/rate-limit";
+import { getBillingSnapshot } from "@/lib/billing/credits";
 
 const executeToolSchema = z.object({
   toolId: z.string().min(1, "Tool id is required"),
@@ -53,16 +54,35 @@ function classifyExecutionError(error: unknown): { message: string; code: string
 
 export async function POST(req: Request) {
   return withApiErrorHandling("/api/tools:POST", async () => {
+    let userId: string | null = null;
+    let requestedToolId: string | null = null;
     try {
       const user = await getCurrentUser();
       if (!user) {
         return jsonApiError("Unauthorized", 401);
       }
+      userId = user.id;
 
       const payload = executeToolSchema.parse(await req.json());
       const { toolId, input, options, workspaceId, moduleId } = payload;
+      requestedToolId = toolId;
       const creditsBefore = await ToolExecutionService.getCredits(user.id);
       const ipAddress = resolveClientIp(req);
+      const billingSnapshot = await getBillingSnapshot(user.id);
+      serverLog({
+        level: "info",
+        route: "/api/tools:POST",
+        message: "Generate clicked",
+        metadata: {
+          userId: user.id,
+          toolId,
+          planId: billingSnapshot.plan,
+          status: billingSnapshot.subscriptionStatus,
+          credits: billingSnapshot.availableCredits,
+          subscriptionLookupResult: billingSnapshot.subscriptionLookupResult,
+          accessDeniedReason: null,
+        },
+      });
       const rateLimit = checkRateLimit(`tools:${user.id}:${ipAddress}`, 20, 60_000);
       if (!rateLimit.allowed) {
         return NextResponse.json(
@@ -110,6 +130,37 @@ export async function POST(req: Request) {
         );
       }
       const classified = classifyExecutionError(error);
+      const billingSnapshot = userId
+        ? await getBillingSnapshot(userId)
+        : {
+            plan: null,
+            subscriptionStatus: null,
+            hasActiveSubscription: false,
+            renewalAt: null,
+            availableCredits: 0,
+            totalCredits: 0,
+            usedCredits: 0,
+            subscriptionLookupResult: {
+              subscriptionFound: false,
+              paymentFound: false,
+              rawSubscriptionStatus: null,
+              fallbackActive: false,
+            },
+          };
+      serverLog({
+        level: "warn",
+        route: "/api/tools:POST",
+        message: "Generate denied",
+        metadata: {
+          userId,
+          toolId: requestedToolId,
+          planId: billingSnapshot.plan,
+          status: billingSnapshot.subscriptionStatus,
+          credits: billingSnapshot.availableCredits,
+          subscriptionLookupResult: billingSnapshot.subscriptionLookupResult,
+          accessDeniedReason: classified.code,
+        },
+      });
       return NextResponse.json(
         { success: false, error: classified.message, code: classified.code },
         { status: classified.status }

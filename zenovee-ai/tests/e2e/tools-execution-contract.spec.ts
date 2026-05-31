@@ -1,6 +1,9 @@
 import { expect, test } from "@playwright/test";
+import fs from "node:fs";
+import path from "node:path";
 
 const API_BASE_URL = process.env.PLAYWRIGHT_TEST_BASE_URL ?? "http://127.0.0.1:3000";
+const PROJECT_ROOT = path.resolve(process.cwd(), "zenovee-ai");
 
 async function isServerReachable(url: string) {
   try {
@@ -26,5 +29,24 @@ test.describe("Tools API execution contract", () => {
     const json = await response.json();
     expect(json).toHaveProperty("success", false);
     expect(String(json.error ?? "").toLowerCase()).toContain("unauthorized");
+  });
+
+  test("uses canonical billing snapshot for entitlement fallback and generate logging", async () => {
+    const billingCredits = fs.readFileSync(path.join(PROJECT_ROOT, "lib", "billing", "credits.ts"), "utf8");
+    const executionService = fs.readFileSync(path.join(PROJECT_ROOT, "services", "tool-execution-service.ts"), "utf8");
+    const toolsRoute = fs.readFileSync(path.join(PROJECT_ROOT, "app", "api", "tools", "route.ts"), "utf8");
+    const extensionRoute = fs.readFileSync(path.join(PROJECT_ROOT, "app", "api", "extension", "generate", "route.ts"), "utf8");
+
+    expect(billingCredits).toMatch(/fallbackActive\s*=\s*Boolean\(resolvedPlan\)\s*&&\s*hasSuccessfulPayment/);
+    expect(billingCredits).toMatch(/hasActiveSubscription:\s*effectiveStatus\s*===\s*"ACTIVE"\s*\|\|\s*effectiveStatus\s*===\s*"PAST_DUE"/);
+    expect(billingCredits).toMatch(/export\s+async\s+function\s+canUseTool[\s\S]*getBillingSnapshot\(userId\)/);
+
+    expect(executionService).toMatch(/const toolAccess = await canUseTool\(args\.userId, tool\.id\)/);
+    expect(executionService).not.toMatch(/from\("subscriptions"\)[\s\S]*select\("status,grace_until"\)/);
+
+    expect(toolsRoute).toMatch(/message:\s*"Generate clicked"/);
+    expect(toolsRoute).toMatch(/accessDeniedReason/);
+    expect(extensionRoute).toMatch(/message:\s*"Generate clicked"/);
+    expect(extensionRoute).toMatch(/accessDeniedReason/);
   });
 });

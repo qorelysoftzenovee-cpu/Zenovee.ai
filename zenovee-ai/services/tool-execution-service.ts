@@ -155,6 +155,22 @@ export class ToolExecutionService {
     });
 
     const toolAccess = await canUseTool(args.userId, tool.id);
+    serverLog({
+      level: toolAccess.allowed ? "info" : "warn",
+      route: "services/tool-execution-service.execute",
+      message: "Tool entitlement evaluated",
+      metadata: {
+        userId: args.userId,
+        toolId: tool.id,
+        allowed: toolAccess.allowed,
+        code: toolAccess.code,
+        denialReason: toolAccess.denialReason ?? null,
+        planId: toolAccess.billing.plan,
+        status: toolAccess.billing.subscriptionStatus,
+        credits: toolAccess.remainingCredits,
+        subscriptionLookupResult: toolAccess.billing.subscriptionLookupResult,
+      },
+    });
     if (!toolAccess.allowed) {
       if (toolAccess.code === "SUBSCRIPTION_REQUIRED") throw new Error("Active subscription required.");
       if (toolAccess.code === "INSUFFICIENT_CREDITS") throw new Error("Insufficient credits for this tool execution.");
@@ -162,20 +178,13 @@ export class ToolExecutionService {
       if (toolAccess.code === "TOOL_DISABLED") throw new Error("This tool is temporarily disabled by admin.");
     }
 
-    const [{ data: priceRaw }, { data: subscriptionRaw }] = await Promise.all([
-      supabase.from("tool_pricing").select("credits_cost,is_active,cooldown_seconds,metadata").eq("tool_id", tool.id).maybeSingle<{ credits_cost: number; is_active: boolean; cooldown_seconds: number; metadata: Record<string, unknown> | null }>(),
-      supabase
-        .from("subscriptions")
-        .select("status,grace_until")
-        .eq("user_id", args.userId)
-        .in("status", ["ACTIVE", "PAST_DUE"])
-        .maybeSingle<{ status: string; grace_until: string | null }>(),
-    ]);
+    const { data: priceRaw } = await supabase
+      .from("tool_pricing")
+      .select("credits_cost,is_active,cooldown_seconds,metadata")
+      .eq("tool_id", tool.id)
+      .maybeSingle<{ credits_cost: number; is_active: boolean; cooldown_seconds: number; metadata: Record<string, unknown> | null }>();
 
     const price = priceRaw as { credits_cost: number; is_active: boolean; cooldown_seconds: number; metadata: Record<string, unknown> | null } | null;
-    const subscription = subscriptionRaw as { status: string; grace_until: string | null } | null;
-
-    if (!subscription) throw new Error("Active subscription required.");
     if (price && price.is_active === false) throw new Error("This tool is temporarily disabled by admin.");
 
     const idempotencyKey = args.idempotencyKey ?? null;
@@ -259,6 +268,7 @@ export class ToolExecutionService {
       prompt: promptPayload.prompt,
       input: validatedInput,
       ipAddress: args.ipAddress,
+      entitlement: toolAccess.billing,
     });
 
     const toolRule = await getToolCreditRule(tool.id);

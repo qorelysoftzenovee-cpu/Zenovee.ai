@@ -25,6 +25,23 @@ export type BillingSnapshot = {
   availableCredits: number;
   totalCredits: number;
   usedCredits: number;
+  subscriptionLookupResult: {
+    subscriptionFound: boolean;
+    paymentFound: boolean;
+    rawSubscriptionStatus: string | null;
+    fallbackActive: boolean;
+  };
+};
+
+export type ToolEntitlementResult = {
+  allowed: boolean;
+  code: BillingGateCode;
+  message?: string;
+  denialReason?: string;
+  creditCost: number;
+  remainingCredits: number;
+  cooldownRemainingSeconds: number;
+  billing: BillingSnapshot;
 };
 
 export async function getToolCreditRule(toolId: string): Promise<ToolCreditRule> {
@@ -47,14 +64,8 @@ export async function getToolCreditRule(toolId: string): Promise<ToolCreditRule>
 }
 
 export async function hasActiveSubscription(userId: string): Promise<boolean> {
-  const supabase = getSupabaseAdmin();
-  const { data } = await supabase
-    .from("subscriptions")
-    .select("status")
-    .eq("user_id", userId)
-    .in("status", ["ACTIVE", "PAST_DUE"])
-    .maybeSingle<{ status: string }>();
-  return Boolean(data);
+  const snapshot = await getBillingSnapshot(userId);
+  return snapshot.hasActiveSubscription;
 }
 
 export async function getRemainingCredits(userId: string): Promise<number> {
@@ -77,29 +88,49 @@ export async function requireCredits(userId: string, required: number) {
   return remaining;
 }
 
-export async function canUseTool(userId: string, toolId: string): Promise<{
-  allowed: boolean;
-  code: BillingGateCode;
-  message?: string;
-  creditCost: number;
-  remainingCredits: number;
-  cooldownRemainingSeconds: number;
-}> {
+export async function canUseTool(userId: string, toolId: string): Promise<ToolEntitlementResult> {
   const supabase = getSupabaseAdmin();
-  const [rule, subscribed, remaining] = await Promise.all([
+  const [rule, billing] = await Promise.all([
     getToolCreditRule(toolId),
-    hasActiveSubscription(userId),
-    getRemainingCredits(userId),
+    getBillingSnapshot(userId),
   ]);
+  const remaining = billing.availableCredits;
 
   if (!rule.active) {
-    return { allowed: false, code: "TOOL_DISABLED", message: "This tool is temporarily disabled.", creditCost: rule.creditCost, remainingCredits: remaining, cooldownRemainingSeconds: 0 };
+    return {
+      allowed: false,
+      code: "TOOL_DISABLED",
+      message: "This tool is temporarily disabled.",
+      denialReason: "tool_disabled",
+      creditCost: rule.creditCost,
+      remainingCredits: remaining,
+      cooldownRemainingSeconds: 0,
+      billing,
+    };
   }
-  if (!subscribed) {
-    return { allowed: false, code: "SUBSCRIPTION_REQUIRED", message: "An active subscription is required.", creditCost: rule.creditCost, remainingCredits: remaining, cooldownRemainingSeconds: 0 };
+  if (!billing.hasActiveSubscription) {
+    return {
+      allowed: false,
+      code: "SUBSCRIPTION_REQUIRED",
+      message: "An active subscription is required.",
+      denialReason: billing.subscriptionLookupResult.fallbackActive ? "subscription_not_marked_active_despite_fallback" : "no_active_subscription",
+      creditCost: rule.creditCost,
+      remainingCredits: remaining,
+      cooldownRemainingSeconds: 0,
+      billing,
+    };
   }
   if (remaining < rule.creditCost) {
-    return { allowed: false, code: "INSUFFICIENT_CREDITS", message: "You don't have enough credits.", creditCost: rule.creditCost, remainingCredits: remaining, cooldownRemainingSeconds: 0 };
+    return {
+      allowed: false,
+      code: "INSUFFICIENT_CREDITS",
+      message: "You don't have enough credits.",
+      denialReason: "insufficient_credits",
+      creditCost: rule.creditCost,
+      remainingCredits: remaining,
+      cooldownRemainingSeconds: 0,
+      billing,
+    };
   }
 
   if (rule.cooldownSeconds > 0) {
@@ -121,14 +152,16 @@ export async function canUseTool(userId: string, toolId: string): Promise<{
         allowed: false,
         code: "COOLDOWN_ACTIVE",
         message: `Please wait ${retryAfterSeconds}s before running this tool again.`,
+        denialReason: "cooldown_active",
         creditCost: rule.creditCost,
         remainingCredits: remaining,
         cooldownRemainingSeconds: retryAfterSeconds,
+        billing,
       };
     }
   }
 
-  return { allowed: true, code: "OK", creditCost: rule.creditCost, remainingCredits: remaining, cooldownRemainingSeconds: 0 };
+  return { allowed: true, code: "OK", creditCost: rule.creditCost, remainingCredits: remaining, cooldownRemainingSeconds: 0, billing };
 }
 
 export async function getBillingSnapshot(userId: string): Promise<BillingSnapshot> {
@@ -184,5 +217,11 @@ export async function getBillingSnapshot(userId: string): Promise<BillingSnapsho
     availableCredits: inferredAvailableCredits,
     totalCredits: inferredTotalCredits,
     usedCredits: rawUsedCredits,
+    subscriptionLookupResult: {
+      subscriptionFound: Boolean(sub),
+      paymentFound: Boolean(latestSuccessfulPayment),
+      rawSubscriptionStatus: rawSubscriptionStatus || null,
+      fallbackActive,
+    },
   };
 }
