@@ -47,6 +47,12 @@ test.describe("Tools API execution contract", () => {
     expect(executionService).not.toMatch(/from\("subscriptions"\)[\s\S]*select\("status,grace_until"\)/);
     expect(executionService).toMatch(/throw new ToolExecutionAccessError\(/);
     expect(executionService).toMatch(/balanceSource: toolAccess\.billing\.balanceSource/);
+    expect(executionService).toMatch(/message:\s*"Execution denied before tool run"/);
+    expect(executionService).toMatch(/source_table_queried/);
+    expect(executionService).toMatch(/current_credit_balance/);
+    expect(executionService).toMatch(/tool_credit_cost/);
+    expect(executionService).toMatch(/subscription_status/);
+    expect(executionService).toMatch(/denial_reason/);
 
     expect(toolsRoute).toMatch(/message:\s*"Generate clicked"/);
     expect(toolsRoute).toMatch(/currentBalance/);

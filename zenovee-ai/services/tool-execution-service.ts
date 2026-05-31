@@ -48,6 +48,39 @@ function isTransientError(error: unknown) {
 }
 
 export class ToolExecutionService {
+  private static async logExecutionDenial(params: {
+    userId: string;
+    toolId: string;
+    toolCreditCost: number;
+    currentCreditBalance: number;
+    sourceTableQueried: string;
+    subscriptionStatus: string | null;
+    denialReason: string;
+    phase: "entitlement_check" | "credit_debit_rpc";
+    balanceSource?: string | null;
+    subscriptionSource?: string | null;
+    rpcError?: string | null;
+  }) {
+    serverLog({
+      level: "warn",
+      route: "services/tool-execution-service.execute",
+      message: "Execution denied before tool run",
+      metadata: {
+        user_id: params.userId,
+        tool_id: params.toolId,
+        tool_credit_cost: params.toolCreditCost,
+        current_credit_balance: params.currentCreditBalance,
+        source_table_queried: params.sourceTableQueried,
+        subscription_status: params.subscriptionStatus,
+        denial_reason: params.denialReason,
+        phase: params.phase,
+        balanceSource: params.balanceSource ?? null,
+        subscriptionSource: params.subscriptionSource ?? null,
+        rpcError: params.rpcError ?? null,
+      },
+    });
+  }
+
   static async getCredits(userId: string) {
     const snapshot = await getBillingSnapshot(userId);
     return snapshot.availableCredits;
@@ -171,6 +204,21 @@ export class ToolExecutionService {
       },
     });
     if (!toolAccess.allowed) {
+      await this.logExecutionDenial({
+        userId: args.userId,
+        toolId: tool.id,
+        toolCreditCost: toolAccess.creditCost,
+        currentCreditBalance: toolAccess.remainingCredits,
+        sourceTableQueried:
+          toolAccess.billing.balanceSource === "plan_inference"
+            ? "user_credits + payments"
+            : "user_credits",
+        subscriptionStatus: toolAccess.billing.subscriptionStatus,
+        denialReason: toolAccess.denialReason ?? toolAccess.code,
+        phase: "entitlement_check",
+        balanceSource: toolAccess.billing.balanceSource,
+        subscriptionSource: toolAccess.billing.subscriptionSource,
+      });
       throw new ToolExecutionAccessError({
         message:
           toolAccess.code === "SUBSCRIPTION_REQUIRED"
@@ -315,6 +363,20 @@ export class ToolExecutionService {
     });
 
     if (debitError) {
+      const latestBillingSnapshot = await getBillingSnapshot(args.userId);
+      await this.logExecutionDenial({
+        userId: args.userId,
+        toolId: tool.id,
+        toolCreditCost: creditCost,
+        currentCreditBalance: latestBillingSnapshot.availableCredits,
+        sourceTableQueried: "user_credits",
+        subscriptionStatus: latestBillingSnapshot.subscriptionStatus,
+        denialReason: debitError.message.includes("INSUFFICIENT_CREDITS") ? "insufficient_credits" : debitError.message,
+        phase: "credit_debit_rpc",
+        balanceSource: latestBillingSnapshot.balanceSource,
+        subscriptionSource: latestBillingSnapshot.subscriptionSource,
+        rpcError: debitError.message,
+      });
       await supabase.from("tool_executions").update({ status: "blocked", error_message: debitError.message } as never).eq("id", execution.id);
       throw new Error(debitError.message.includes("INSUFFICIENT_CREDITS") ? "Insufficient credits for this tool execution." : debitError.message);
     }
