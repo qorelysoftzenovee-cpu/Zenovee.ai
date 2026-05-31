@@ -1,5 +1,6 @@
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getToolDefinition } from "@/definitions";
+import { getPlanById } from "@/lib/billing/plans";
 
 export type BillingGateCode =
   | "OK"
@@ -157,14 +158,21 @@ export async function getBillingSnapshot(userId: string): Promise<BillingSnapsho
   const resolvedPlan = sub?.plan_id ?? sub?.plan_name ?? latestSuccessfulPayment?.plan ?? null;
   const fallbackActive = !sub?.status && Boolean(resolvedPlan) && Number(credits?.available_credits ?? 0) > 0;
   const effectiveStatus = sub?.status ?? (fallbackActive ? "ACTIVE" : null);
+  const planRecord = resolvedPlan ? getPlanById(resolvedPlan) ?? null : null;
+  const rawAvailableCredits = Number(credits?.available_credits ?? 0);
+  const rawTotalCredits = Number(credits?.total_credits ?? 0);
+  const rawUsedCredits = Number(credits?.used_credits ?? 0);
+  const shouldInferCredits = effectiveStatus === "ACTIVE" && Boolean(planRecord) && rawTotalCredits === 0 && rawAvailableCredits === 0;
+  const inferredTotalCredits = shouldInferCredits ? Number(planRecord?.credits ?? 0) : rawTotalCredits;
+  const inferredAvailableCredits = shouldInferCredits ? Math.max(0, inferredTotalCredits - rawUsedCredits) : rawAvailableCredits;
 
   return {
     plan: resolvedPlan,
     subscriptionStatus: effectiveStatus,
     hasActiveSubscription: effectiveStatus === "ACTIVE" || effectiveStatus === "PAST_DUE",
     renewalAt: sub?.next_renewal_at ?? null,
-    availableCredits: Number(credits?.available_credits ?? 0),
-    totalCredits: Number(credits?.total_credits ?? 0),
-    usedCredits: Number(credits?.used_credits ?? 0),
+    availableCredits: inferredAvailableCredits,
+    totalCredits: inferredTotalCredits,
+    usedCredits: rawUsedCredits,
   };
 }

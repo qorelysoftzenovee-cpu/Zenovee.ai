@@ -98,16 +98,21 @@ async function reportCheckoutState(orderId: string | undefined, state: "cancelle
 export function PricingActions({
   planId,
   planName,
+  activePlanId: activePlanIdProp,
+  isActiveSubscription: isActiveSubscriptionProp,
 }: {
   planId: string;
   planName: string;
+  activePlanId?: string | null;
+  isActiveSubscription?: boolean;
 }) {
   const router = useRouter();
   const { subscription, isLoading: isBillingLoading } = useBillingSubscription();
   const normalizedPlanId = planId.trim().toLowerCase();
   const isScalePlan = normalizedPlanId === "scale";
-  const activePlanId = subscription?.planId?.trim().toLowerCase() ?? null;
-  const isActivePlan = subscription?.isActive === true && activePlanId === normalizedPlanId;
+  const activePlanId = activePlanIdProp?.trim().toLowerCase() ?? subscription?.planId?.trim().toLowerCase() ?? null;
+  const hasActiveSubscription = isActiveSubscriptionProp ?? subscription?.isActive === true;
+  const isActivePlan = hasActiveSubscription && activePlanId === normalizedPlanId;
   const [status, setStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [statusTone, setStatusTone] = useState<"default" | "success" | "error">("default");

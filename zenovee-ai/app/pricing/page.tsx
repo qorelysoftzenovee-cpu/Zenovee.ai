@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PricingActions } from "@/components/pricing/pricing-actions";
 import { getActivePlans, formatRupees, getPlanSupportText } from "@/lib/billing/plans";
+import { getBillingSnapshot } from "@/lib/billing/credits";
 import Navigation from "@/app/components/Navigation";
 import { Footer } from "@/components/layout/footer";
 import { getCurrentUser } from "@/lib/auth";
@@ -8,6 +9,7 @@ import { SUPPORT_EMAIL } from "@/lib/seo/site";
 
 export default async function PricingPage() {
   const user = await getCurrentUser();
+  const billingSnapshot = user ? await getBillingSnapshot(user.id) : null;
   const subscriptionPlans = getActivePlans();
   return (
     <div className="min-h-screen bg-background">
@@ -49,6 +51,8 @@ export default async function PricingPage() {
                 <PricingActions
                   planId={plan.id}
                   planName={plan.displayName}
+                  activePlanId={billingSnapshot?.plan ?? null}
+                  isActiveSubscription={billingSnapshot?.hasActiveSubscription ?? false}
                 />
               </CardContent>
             </Card>
