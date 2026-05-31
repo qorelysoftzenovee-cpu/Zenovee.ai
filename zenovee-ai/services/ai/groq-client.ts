@@ -13,10 +13,10 @@ import { DEFAULT_HEAVY_MODEL, DEFAULT_LIGHT_MODEL } from "@/services/ai/models";
 const DEFAULT_TIMEOUT_MS = 30_000;
 const DEFAULT_MAX_RETRIES = 2;
 
-const MODEL_PRICING_PER_1M_TOKENS: Record<AIModel, { input: number; output: number }> = {
-  [DEFAULT_HEAVY_MODEL]: { input: 0.59, output: 0.79 },
-  [DEFAULT_LIGHT_MODEL]: { input: 0.05, output: 0.08 },
-};
+const MODEL_PRICING_PER_1M_TOKENS = {
+  "llama-3.1-70b-versatile": { input: 0.59, output: 0.79 },
+  "llama-3.1-8b-instant": { input: 0.05, output: 0.08 },
+} satisfies Record<AIModel, { input: number; output: number }>;
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
   return new Promise<T>((resolve, reject) => {
