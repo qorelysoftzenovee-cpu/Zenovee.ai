@@ -34,10 +34,25 @@ const CATEGORY_COPY = {
     accent: "from-emerald-500/14 via-lime-500/8 to-transparent",
     badge: "Search growth",
   },
-  "Premium Image/Brand Assets": {
+  "Premium Image Assets": {
     description: "Plan polished visuals, campaign assets, and consistent brand direction at enterprise quality.",
     accent: "from-rose-500/12 via-pink-500/8 to-transparent",
     badge: "Visual studio",
+  },
+  Productivity: {
+    description: "Unlock faster execution with utility tools that reduce repetitive work and streamline team output.",
+    accent: "from-slate-500/10 via-zinc-500/8 to-transparent",
+    badge: "Execution speed",
+  },
+  Research: {
+    description: "Surface sharper insights, organize inputs, and turn information into decision-ready direction.",
+    accent: "from-indigo-500/12 via-blue-500/8 to-transparent",
+    badge: "Insight engine",
+  },
+  Marketing: {
+    description: "Support campaign planning, strategic messaging, and cross-channel execution from one discovery layer.",
+    accent: "from-teal-500/12 via-cyan-500/8 to-transparent",
+    badge: "Growth campaigns",
   },
 } as const;
 
@@ -195,11 +210,29 @@ function getCategoryTheme(category: WorkspaceCategory) {
         card: "border-emerald-200/70 bg-gradient-to-br from-emerald-50 via-white to-white",
         icon: "bg-emerald-100 text-emerald-700",
       };
-    case "Premium Image/Brand Assets":
+    case "Premium Image Assets":
       return {
         label: "border-rose-200 bg-rose-50 text-rose-700",
         card: "border-rose-200/70 bg-gradient-to-br from-rose-50 via-white to-white",
         icon: "bg-rose-100 text-rose-700",
+      };
+    case "Productivity":
+      return {
+        label: "border-slate-200 bg-slate-50 text-slate-700",
+        card: "border-slate-200/70 bg-gradient-to-br from-slate-50 via-white to-white",
+        icon: "bg-slate-100 text-slate-700",
+      };
+    case "Research":
+      return {
+        label: "border-indigo-200 bg-indigo-50 text-indigo-700",
+        card: "border-indigo-200/70 bg-gradient-to-br from-indigo-50 via-white to-white",
+        icon: "bg-indigo-100 text-indigo-700",
+      };
+    case "Marketing":
+      return {
+        label: "border-teal-200 bg-teal-50 text-teal-700",
+        card: "border-teal-200/70 bg-gradient-to-br from-teal-50 via-white to-white",
+        icon: "bg-teal-100 text-teal-700",
       };
   }
 }
@@ -301,15 +334,17 @@ export function ToolsWorkspace() {
     () =>
       listToolDefinitions()
         .filter((tool) => tool.metadata.availability === "active" && (tool.metadata.visibility ?? "public") === "public")
-        .filter((tool): tool is typeof tool & { metadata: typeof tool.metadata & { category: WorkspaceCategory } } =>
-          WORKSPACE_CATEGORY_SET.has(tool.metadata.category as WorkspaceCategory)
-        )
         .map((tool) => ({
           id: tool.id,
           name: tool.metadata.name,
           description: tool.metadata.description,
           creditCost: tool.creditCost,
-          category: tool.metadata.category,
+          category:
+            tool.metadata.category === "Premium Image/Brand Assets"
+              ? "Premium Image Assets"
+              : WORKSPACE_CATEGORY_SET.has(tool.metadata.category as WorkspaceCategory)
+                ? (tool.metadata.category as WorkspaceCategory)
+                : "Marketing",
           icon: tool.metadata.icon || "✨",
           featured: Boolean(tool.metadata.featured),
           trending: Boolean(tool.metadata.trending),
@@ -426,12 +461,10 @@ export function ToolsWorkspace() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [query]);
 
-  const toolMap = useMemo(() => new Map(tools.map((tool) => [tool.id, tool])), [tools]);
-  const favoriteTools = useMemo(() => favoriteIds.map((id) => toolMap.get(id)).filter((tool): tool is WorkspaceTool => Boolean(tool)), [favoriteIds, toolMap]);
   const favoriteIdSet = useMemo(() => new Set(favoriteIds), [favoriteIds]);
   const recentIdSet = useMemo(() => new Set(recentIds), [recentIds]);
 
-  const categories = useMemo(() => ["All", ...CATEGORY_ORDER.filter((category) => tools.some((tool) => tool.category === category))], [tools]);
+  const categories = useMemo(() => ["All", ...CATEGORY_ORDER], []);
   const effectiveActiveCategory = categories.includes(activeCategory) ? activeCategory : "All";
   const normalizedQuery = useMemo(() => normalizeSearchValue(debouncedQuery), [debouncedQuery]);
   const queryTokens = useMemo(() => normalizedQuery.split(" ").filter(Boolean), [normalizedQuery]);
@@ -462,8 +495,6 @@ export function ToolsWorkspace() {
     () => CATEGORY_ORDER.map((category) => ({ category, tools: filteredTools.filter((tool) => tool.category === category) })).filter((group) => group.tools.length > 0),
     [filteredTools]
   );
-  const isCategoryFocused = effectiveActiveCategory !== "All";
-
   const toggleFavorite = useCallback((id: string) => {
     if (!validToolIdSet.has(id)) return;
     const currentFavorites = favoritesRef.current;
@@ -494,30 +525,15 @@ export function ToolsWorkspace() {
           <div className="space-y-4">
             <div className="inline-flex items-center gap-2 rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-violet-700">
               <Sparkles className="size-3.5" />
-              Tool Operating System
+              Premium AI Tool Platform
             </div>
             <div className="space-y-3">
               <h1 className="max-w-4xl text-3xl font-semibold tracking-tight text-slate-950 md:text-4xl">
-                Calm, category-driven AI workflows for enterprise execution.
+                Discover premium AI tools through categories, not workspaces.
               </h1>
               <p className="max-w-3xl text-sm leading-7 text-muted-foreground md:text-base">
-                Discover tools by business function, surface the systems that matter most, and expand categories only when you need them.
+                Explore Zenovee as a single tool platform with clear business-function filters, faster discovery, and less navigation overhead.
               </p>
-            </div>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
-            <div className="rounded-3xl border border-slate-200/80 bg-white/90 p-4">
-              <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Workspace tools</p>
-              <p className="mt-2 text-2xl font-semibold text-slate-950">{tools.length}</p>
-            </div>
-            <div className="rounded-3xl border border-slate-200/80 bg-white/90 p-4">
-              <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Categories</p>
-              <p className="mt-2 text-2xl font-semibold text-slate-950">{categories.length - 1}</p>
-            </div>
-            <div className="rounded-3xl border border-slate-200/80 bg-white/90 p-4">
-              <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Saved favorites</p>
-              <p className="mt-2 text-2xl font-semibold text-slate-950">{favoriteIds.length}</p>
             </div>
           </div>
         </div>
@@ -578,24 +594,6 @@ export function ToolsWorkspace() {
         ))}
       </div>
 
-      {!isCategoryFocused ? (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-2">
-          <Card className="border-violet-200/80 bg-gradient-to-br from-violet-50 to-white">
-            <CardContent className="p-5">
-              <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Workspace tools</p>
-              <p className="mt-2 text-2xl font-semibold text-slate-950">{tools.length}</p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-amber-200/80 bg-gradient-to-br from-amber-50 to-white">
-            <CardContent className="p-5">
-              <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Saved favorites</p>
-              <p className="mt-2 text-2xl font-semibold text-slate-950">{favoriteTools.length}</p>
-            </CardContent>
-          </Card>
-        </div>
-      ) : null}
-
       {isSearchActive ? (
         <section className="space-y-4">
           <div className="flex items-end justify-between gap-4">
@@ -641,7 +639,7 @@ export function ToolsWorkspace() {
         {groupedCategories.length === 0 ? (
           <Card className="border-dashed border-slate-200 bg-white/70">
             <CardContent className="p-8 text-sm text-muted-foreground">
-              No tools match your current search and filters. Try another category, clear the search, or switch back to all tools.
+              No tools match your current search and filters yet. Try another category, clear the search, or switch back to all tools.
             </CardContent>
           </Card>
         ) : (
