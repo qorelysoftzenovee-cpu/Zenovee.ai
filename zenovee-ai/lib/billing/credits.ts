@@ -44,6 +44,31 @@ export type ToolEntitlementResult = {
   billing: BillingSnapshot;
 };
 
+export class ToolExecutionAccessError extends Error {
+  code: BillingGateCode;
+  denialReason?: string;
+  toolId: string;
+  currentBalance: number;
+  requiredCredits: number;
+
+  constructor(params: {
+    message: string;
+    code: BillingGateCode;
+    denialReason?: string;
+    toolId: string;
+    currentBalance: number;
+    requiredCredits: number;
+  }) {
+    super(params.message);
+    this.name = "ToolExecutionAccessError";
+    this.code = params.code;
+    this.denialReason = params.denialReason;
+    this.toolId = params.toolId;
+    this.currentBalance = params.currentBalance;
+    this.requiredCredits = params.requiredCredits;
+  }
+}
+
 export async function getToolCreditRule(toolId: string): Promise<ToolCreditRule> {
   const supabase = getSupabaseAdmin();
   const tool = getToolDefinition(toolId);
@@ -69,13 +94,8 @@ export async function hasActiveSubscription(userId: string): Promise<boolean> {
 }
 
 export async function getRemainingCredits(userId: string): Promise<number> {
-  const supabase = getSupabaseAdmin();
-  const { data } = await supabase
-    .from("user_credits")
-    .select("available_credits")
-    .eq("user_id", userId)
-    .maybeSingle<{ available_credits: number }>();
-  return Number(data?.available_credits ?? 0);
+  const snapshot = await getBillingSnapshot(userId);
+  return snapshot.availableCredits;
 }
 
 export async function requireCredits(userId: string, required: number) {
@@ -205,7 +225,6 @@ export async function getBillingSnapshot(userId: string): Promise<BillingSnapsho
   const rawUsedCredits = Number(credits?.used_credits ?? 0);
   const shouldInferCredits = Boolean(planRecord) && hasSuccessfulPayment && rawTotalCredits === 0 && rawAvailableCredits === 0;
   const inferredTotalCredits = shouldInferCredits ? Number(planRecord?.credits ?? 0) : rawTotalCredits;
-  const inferredAvailableCredits = shouldInferCredits ? Math.max(0, inferredTotalCredits - rawUsedCredits) : rawAvailableCredits;
 
   const effectiveRenewalAt = sub?.next_renewal_at ?? (hasSuccessfulPayment ? computeNextRenewalDate() : null);
 
@@ -214,7 +233,7 @@ export async function getBillingSnapshot(userId: string): Promise<BillingSnapsho
     subscriptionStatus: effectiveStatus,
     hasActiveSubscription: effectiveStatus === "ACTIVE" || effectiveStatus === "PAST_DUE",
     renewalAt: effectiveRenewalAt,
-    availableCredits: inferredAvailableCredits,
+    availableCredits: rawAvailableCredits,
     totalCredits: inferredTotalCredits,
     usedCredits: rawUsedCredits,
     subscriptionLookupResult: {

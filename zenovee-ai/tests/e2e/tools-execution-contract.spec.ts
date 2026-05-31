@@ -43,10 +43,15 @@ test.describe("Tools API execution contract", () => {
 
     expect(executionService).toMatch(/const toolAccess = await canUseTool\(args\.userId, tool\.id\)/);
     expect(executionService).not.toMatch(/from\("subscriptions"\)[\s\S]*select\("status,grace_until"\)/);
+    expect(executionService).toMatch(/throw new ToolExecutionAccessError\(/);
 
     expect(toolsRoute).toMatch(/message:\s*"Generate clicked"/);
-    expect(toolsRoute).toMatch(/accessDeniedReason/);
+    expect(toolsRoute).toMatch(/currentBalance/);
+    expect(toolsRoute).toMatch(/requiredCredits/);
+    expect(toolsRoute).toMatch(/denialReason/);
     expect(extensionRoute).toMatch(/message:\s*"Generate clicked"/);
-    expect(extensionRoute).toMatch(/accessDeniedReason/);
+    expect(extensionRoute).toMatch(/currentBalance/);
+    expect(extensionRoute).toMatch(/requiredCredits/);
+    expect(extensionRoute).toMatch(/denialReason/);
   });
 });

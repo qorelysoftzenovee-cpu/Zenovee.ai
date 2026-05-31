@@ -8,7 +8,7 @@ import { jsonApiError, safeErrorMessage, withApiErrorHandling } from "@/lib/runt
 import { serverLog } from "@/lib/logger";
 import { z } from "zod";
 import { checkRateLimit, resolveClientIp } from "@/lib/rate-limit";
-import { getBillingSnapshot } from "@/lib/billing/credits";
+import { getBillingSnapshot, getToolCreditRule, ToolExecutionAccessError } from "@/lib/billing/credits";
 
 const executeToolSchema = z.object({
   toolId: z.string().min(1, "Tool id is required"),
@@ -27,6 +27,21 @@ function getErrorMessage(error: unknown) {
 }
 
 function classifyExecutionError(error: unknown): { message: string; code: string; status: number } {
+  if (error instanceof ToolExecutionAccessError) {
+    if (error.code === "SUBSCRIPTION_REQUIRED") {
+      return { message: "An active subscription is required to run this tool.", code: "SUBSCRIPTION_REQUIRED", status: 402 };
+    }
+    if (error.code === "INSUFFICIENT_CREDITS") {
+      return { message: "You don't have enough credits for this generation.", code: "INSUFFICIENT_CREDITS", status: 402 };
+    }
+    if (error.code === "TOOL_DISABLED") {
+      return { message: "This tool is temporarily unavailable.", code: "TOOL_DISABLED", status: 423 };
+    }
+    if (error.code === "COOLDOWN_ACTIVE") {
+      return { message: error.message, code: "COOLDOWN_ACTIVE", status: 429 };
+    }
+  }
+
   const message = safeErrorMessage(error, "Tool execution failed.");
   const normalized = message.toLowerCase();
 
@@ -66,9 +81,12 @@ export async function POST(req: Request) {
       const payload = executeToolSchema.parse(await req.json());
       const { toolId, input, options, workspaceId, moduleId } = payload;
       requestedToolId = toolId;
-      const creditsBefore = await ToolExecutionService.getCredits(user.id);
       const ipAddress = resolveClientIp(req);
-      const billingSnapshot = await getBillingSnapshot(user.id);
+      const [billingSnapshot, toolRule] = await Promise.all([
+        getBillingSnapshot(user.id),
+        getToolCreditRule(toolId),
+      ]);
+      const creditsBefore = billingSnapshot.availableCredits;
       serverLog({
         level: "info",
         route: "/api/tools:POST",
@@ -76,10 +94,13 @@ export async function POST(req: Request) {
         metadata: {
           userId: user.id,
           toolId,
+          currentBalance: billingSnapshot.availableCredits,
+          requiredCredits: toolRule.creditCost,
           planId: billingSnapshot.plan,
           status: billingSnapshot.subscriptionStatus,
           credits: billingSnapshot.availableCredits,
           subscriptionLookupResult: billingSnapshot.subscriptionLookupResult,
+          denialReason: null,
           accessDeniedReason: null,
         },
       });
@@ -154,15 +175,30 @@ export async function POST(req: Request) {
         metadata: {
           userId,
           toolId: requestedToolId,
+          currentBalance: error instanceof ToolExecutionAccessError ? error.currentBalance : billingSnapshot.availableCredits,
+          requiredCredits: error instanceof ToolExecutionAccessError ? error.requiredCredits : null,
           planId: billingSnapshot.plan,
           status: billingSnapshot.subscriptionStatus,
           credits: billingSnapshot.availableCredits,
           subscriptionLookupResult: billingSnapshot.subscriptionLookupResult,
+          denialReason: error instanceof ToolExecutionAccessError ? (error.denialReason ?? classified.code) : classified.code,
           accessDeniedReason: classified.code,
         },
       });
       return NextResponse.json(
-        { success: false, error: classified.message, code: classified.code },
+        {
+          success: false,
+          error: classified.message,
+          code: classified.code,
+          details: error instanceof ToolExecutionAccessError
+            ? {
+                toolId: error.toolId,
+                actualBalance: error.currentBalance,
+                requiredCredits: error.requiredCredits,
+                denialReason: error.denialReason ?? classified.code,
+              }
+            : undefined,
+        },
         { status: classified.status }
       );
     }
@@ -271,9 +307,9 @@ export async function GET(req: Request) {
         (tool) => tool.metadata.availability === "active" && (tool.metadata.visibility ?? "public") === "public"
       );
       const workspaces = await ToolExecutionService.listWorkspacesWithPricing();
-      const credits = await ToolExecutionService.getCredits(user.id);
+      const billingSnapshot = await getBillingSnapshot(user.id);
 
-      return NextResponse.json({ success: true, data: { tools, workspaces, credits } });
+      return NextResponse.json({ success: true, data: { tools, workspaces, credits: billingSnapshot.availableCredits } });
     } catch (error) {
       return jsonApiError(getErrorMessage(error), 400);
     }

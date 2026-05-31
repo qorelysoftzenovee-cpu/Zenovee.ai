@@ -5,7 +5,7 @@ import { AIProtectionError } from "@/services/ai/protection";
 import { AIGenerationError, toClientErrorDetails } from "@/services/ai/prompt-orchestrator";
 import { jsonApiError, withApiErrorHandling } from "@/lib/runtime";
 import { serverLog } from "@/lib/logger";
-import { getBillingSnapshot } from "@/lib/billing/credits";
+import { getBillingSnapshot, getToolCreditRule, ToolExecutionAccessError } from "@/lib/billing/credits";
 
 export async function POST(request: Request) {
   return withApiErrorHandling("/api/extension/generate:POST", async () => {
@@ -20,8 +20,11 @@ export async function POST(request: Request) {
 
       const { toolId, input, options } = await request.json();
       requestedToolId = typeof toolId === "string" ? toolId : null;
-      const creditsBefore = await ToolExecutionService.getCredits(user.id);
-      const billingSnapshot = await getBillingSnapshot(user.id);
+      const [billingSnapshot, toolRule] = await Promise.all([
+        getBillingSnapshot(user.id),
+        getToolCreditRule(toolId),
+      ]);
+      const creditsBefore = billingSnapshot.availableCredits;
       serverLog({
         level: "info",
         route: "/api/extension/generate:POST",
@@ -29,10 +32,13 @@ export async function POST(request: Request) {
         metadata: {
           userId: user.id,
           toolId,
+          currentBalance: billingSnapshot.availableCredits,
+          requiredCredits: toolRule.creditCost,
           planId: billingSnapshot.plan,
           status: billingSnapshot.subscriptionStatus,
           credits: billingSnapshot.availableCredits,
           subscriptionLookupResult: billingSnapshot.subscriptionLookupResult,
+          denialReason: null,
           accessDeniedReason: null,
         },
       });
@@ -121,13 +127,39 @@ export async function POST(request: Request) {
         metadata: {
           userId,
           toolId: requestedToolId,
+          currentBalance: error instanceof ToolExecutionAccessError ? error.currentBalance : billingSnapshot.availableCredits,
+          requiredCredits: error instanceof ToolExecutionAccessError ? error.requiredCredits : null,
           planId: billingSnapshot.plan,
           status: billingSnapshot.subscriptionStatus,
           credits: billingSnapshot.availableCredits,
           subscriptionLookupResult: billingSnapshot.subscriptionLookupResult,
-          accessDeniedReason: error instanceof Error ? error.message : "unknown_error",
+          denialReason: error instanceof ToolExecutionAccessError ? (error.denialReason ?? error.code) : (error instanceof Error ? error.message : "unknown_error"),
+          accessDeniedReason: error instanceof ToolExecutionAccessError ? error.code : (error instanceof Error ? error.message : "unknown_error"),
         },
       });
+
+      if (error instanceof ToolExecutionAccessError) {
+        const status = error.code === "COOLDOWN_ACTIVE" ? 429 : error.code === "TOOL_DISABLED" ? 423 : 402;
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              error.code === "SUBSCRIPTION_REQUIRED"
+                ? "An active subscription is required to run this tool."
+                : error.code === "INSUFFICIENT_CREDITS"
+                ? "You don't have enough credits for this generation."
+                : error.message,
+            code: error.code,
+            details: {
+              toolId: error.toolId,
+              actualBalance: error.currentBalance,
+              requiredCredits: error.requiredCredits,
+              denialReason: error.denialReason ?? error.code,
+            },
+          },
+          { status }
+        );
+      }
 
       return jsonApiError("We couldn't generate your output right now.", 400);
     }

@@ -6,7 +6,7 @@ import type { Json } from "@/lib/supabase/types";
 import type { ToolDefinition } from "@/types/tools";
 import { listWorkspaceConfigs } from "@/services/workspaces/registry";
 import { serverLog } from "@/lib/logger";
-import { canUseTool, getToolCreditRule } from "@/lib/billing/credits";
+import { canUseTool, getBillingSnapshot, getToolCreditRule, ToolExecutionAccessError } from "@/lib/billing/credits";
 import { PromptBuilderService } from "@/services/execution/prompt-builder-service";
 import { AIExecutionService } from "@/services/execution/ai-execution-service";
 import { OutputValidationService } from "@/services/execution/output-validation-service";
@@ -49,13 +49,8 @@ function isTransientError(error: unknown) {
 
 export class ToolExecutionService {
   static async getCredits(userId: string) {
-    const supabase = getSupabaseAdmin();
-    const { data } = await supabase
-      .from("user_credits")
-      .select("available_credits")
-      .eq("user_id", userId)
-      .maybeSingle<{ available_credits: number }>();
-    return Number(data?.available_credits ?? 0);
+    const snapshot = await getBillingSnapshot(userId);
+    return snapshot.availableCredits;
   }
 
   static async listToolsWithPricing() {
@@ -172,10 +167,21 @@ export class ToolExecutionService {
       },
     });
     if (!toolAccess.allowed) {
-      if (toolAccess.code === "SUBSCRIPTION_REQUIRED") throw new Error("Active subscription required.");
-      if (toolAccess.code === "INSUFFICIENT_CREDITS") throw new Error("Insufficient credits for this tool execution.");
-      if (toolAccess.code === "COOLDOWN_ACTIVE") throw new Error(toolAccess.message ?? "Tool cooldown active.");
-      if (toolAccess.code === "TOOL_DISABLED") throw new Error("This tool is temporarily disabled by admin.");
+      throw new ToolExecutionAccessError({
+        message:
+          toolAccess.code === "SUBSCRIPTION_REQUIRED"
+            ? "Active subscription required."
+            : toolAccess.code === "INSUFFICIENT_CREDITS"
+            ? "Insufficient credits for this tool execution."
+            : toolAccess.code === "COOLDOWN_ACTIVE"
+            ? (toolAccess.message ?? "Tool cooldown active.")
+            : "This tool is temporarily disabled by admin.",
+        code: toolAccess.code,
+        denialReason: toolAccess.denialReason,
+        toolId: tool.id,
+        currentBalance: toolAccess.remainingCredits,
+        requiredCredits: toolAccess.creditCost,
+      });
     }
 
     const { data: priceRaw } = await supabase
