@@ -40,18 +40,25 @@ test.describe("Tools API execution contract", () => {
     expect(billingCredits).toMatch(/fallbackActive\s*=\s*Boolean\(resolvedPlan\)\s*&&\s*hasSuccessfulPayment/);
     expect(billingCredits).toMatch(/hasActiveSubscription:\s*effectiveStatus\s*===\s*"ACTIVE"\s*\|\|\s*effectiveStatus\s*===\s*"PAST_DUE"/);
     expect(billingCredits).toMatch(/export\s+async\s+function\s+canUseTool[\s\S]*getBillingSnapshot\(userId\)/);
+    expect(billingCredits).toMatch(/balanceSource:\s*"user_credits"\s*\|\s*"plan_inference"/);
+    expect(billingCredits).toMatch(/availableCredits:\s*inferredAvailableCredits/);
 
     expect(executionService).toMatch(/const toolAccess = await canUseTool\(args\.userId, tool\.id\)/);
     expect(executionService).not.toMatch(/from\("subscriptions"\)[\s\S]*select\("status,grace_until"\)/);
     expect(executionService).toMatch(/throw new ToolExecutionAccessError\(/);
+    expect(executionService).toMatch(/balanceSource: toolAccess\.billing\.balanceSource/);
 
     expect(toolsRoute).toMatch(/message:\s*"Generate clicked"/);
     expect(toolsRoute).toMatch(/currentBalance/);
     expect(toolsRoute).toMatch(/requiredCredits/);
     expect(toolsRoute).toMatch(/denialReason/);
+    expect(toolsRoute).toMatch(/balanceSource/);
+    expect(toolsRoute).toMatch(/subscriptionSource/);
     expect(extensionRoute).toMatch(/message:\s*"Generate clicked"/);
     expect(extensionRoute).toMatch(/currentBalance/);
     expect(extensionRoute).toMatch(/requiredCredits/);
     expect(extensionRoute).toMatch(/denialReason/);
+    expect(extensionRoute).toMatch(/balanceSource/);
+    expect(extensionRoute).toMatch(/subscriptionSource/);
   });
 });

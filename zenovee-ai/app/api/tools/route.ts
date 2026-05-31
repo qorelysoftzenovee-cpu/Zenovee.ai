@@ -8,7 +8,7 @@ import { jsonApiError, safeErrorMessage, withApiErrorHandling } from "@/lib/runt
 import { serverLog } from "@/lib/logger";
 import { z } from "zod";
 import { checkRateLimit, resolveClientIp } from "@/lib/rate-limit";
-import { getBillingSnapshot, getToolCreditRule, ToolExecutionAccessError } from "@/lib/billing/credits";
+import { getBillingSnapshot, getDefaultBillingSnapshot, getToolCreditRule, ToolExecutionAccessError } from "@/lib/billing/credits";
 
 const executeToolSchema = z.object({
   toolId: z.string().min(1, "Tool id is required"),
@@ -96,6 +96,8 @@ export async function POST(req: Request) {
           toolId,
           currentBalance: billingSnapshot.availableCredits,
           requiredCredits: toolRule.creditCost,
+          balanceSource: billingSnapshot.balanceSource,
+          subscriptionSource: billingSnapshot.subscriptionSource,
           planId: billingSnapshot.plan,
           status: billingSnapshot.subscriptionStatus,
           credits: billingSnapshot.availableCredits,
@@ -151,23 +153,7 @@ export async function POST(req: Request) {
         );
       }
       const classified = classifyExecutionError(error);
-      const billingSnapshot = userId
-        ? await getBillingSnapshot(userId)
-        : {
-            plan: null,
-            subscriptionStatus: null,
-            hasActiveSubscription: false,
-            renewalAt: null,
-            availableCredits: 0,
-            totalCredits: 0,
-            usedCredits: 0,
-            subscriptionLookupResult: {
-              subscriptionFound: false,
-              paymentFound: false,
-              rawSubscriptionStatus: null,
-              fallbackActive: false,
-            },
-          };
+      const billingSnapshot = userId ? await getBillingSnapshot(userId) : getDefaultBillingSnapshot();
       serverLog({
         level: "warn",
         route: "/api/tools:POST",
@@ -177,6 +163,8 @@ export async function POST(req: Request) {
           toolId: requestedToolId,
           currentBalance: error instanceof ToolExecutionAccessError ? error.currentBalance : billingSnapshot.availableCredits,
           requiredCredits: error instanceof ToolExecutionAccessError ? error.requiredCredits : null,
+          balanceSource: billingSnapshot.balanceSource,
+          subscriptionSource: billingSnapshot.subscriptionSource,
           planId: billingSnapshot.plan,
           status: billingSnapshot.subscriptionStatus,
           credits: billingSnapshot.availableCredits,
@@ -196,6 +184,8 @@ export async function POST(req: Request) {
                 actualBalance: error.currentBalance,
                 requiredCredits: error.requiredCredits,
                 denialReason: error.denialReason ?? classified.code,
+                balanceSource: billingSnapshot.balanceSource,
+                subscriptionSource: billingSnapshot.subscriptionSource,
               }
             : undefined,
         },

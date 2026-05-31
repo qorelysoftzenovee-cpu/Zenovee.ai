@@ -25,6 +25,8 @@ export type BillingSnapshot = {
   availableCredits: number;
   totalCredits: number;
   usedCredits: number;
+  balanceSource: "user_credits" | "plan_inference";
+  subscriptionSource: "subscriptions" | "payments_fallback" | "none";
   subscriptionLookupResult: {
     subscriptionFound: boolean;
     paymentFound: boolean;
@@ -43,6 +45,28 @@ export type ToolEntitlementResult = {
   cooldownRemainingSeconds: number;
   billing: BillingSnapshot;
 };
+
+function getDefaultBillingSnapshot(): BillingSnapshot {
+  return {
+    plan: null,
+    subscriptionStatus: null,
+    hasActiveSubscription: false,
+    renewalAt: null,
+    availableCredits: 0,
+    totalCredits: 0,
+    usedCredits: 0,
+    balanceSource: "user_credits",
+    subscriptionSource: "none",
+    subscriptionLookupResult: {
+      subscriptionFound: false,
+      paymentFound: false,
+      rawSubscriptionStatus: null,
+      fallbackActive: false,
+    },
+  };
+}
+
+export { getDefaultBillingSnapshot };
 
 export class ToolExecutionAccessError extends Error {
   code: BillingGateCode;
@@ -225,6 +249,13 @@ export async function getBillingSnapshot(userId: string): Promise<BillingSnapsho
   const rawUsedCredits = Number(credits?.used_credits ?? 0);
   const shouldInferCredits = Boolean(planRecord) && hasSuccessfulPayment && rawTotalCredits === 0 && rawAvailableCredits === 0;
   const inferredTotalCredits = shouldInferCredits ? Number(planRecord?.credits ?? 0) : rawTotalCredits;
+  const inferredAvailableCredits = shouldInferCredits ? Math.max(0, Number(planRecord?.credits ?? 0) - rawUsedCredits) : rawAvailableCredits;
+  const balanceSource: BillingSnapshot["balanceSource"] = shouldInferCredits ? "plan_inference" : "user_credits";
+  const subscriptionSource: BillingSnapshot["subscriptionSource"] = sub
+    ? "subscriptions"
+    : fallbackActive
+    ? "payments_fallback"
+    : "none";
 
   const effectiveRenewalAt = sub?.next_renewal_at ?? (hasSuccessfulPayment ? computeNextRenewalDate() : null);
 
@@ -233,9 +264,11 @@ export async function getBillingSnapshot(userId: string): Promise<BillingSnapsho
     subscriptionStatus: effectiveStatus,
     hasActiveSubscription: effectiveStatus === "ACTIVE" || effectiveStatus === "PAST_DUE",
     renewalAt: effectiveRenewalAt,
-    availableCredits: rawAvailableCredits,
+    availableCredits: inferredAvailableCredits,
     totalCredits: inferredTotalCredits,
     usedCredits: rawUsedCredits,
+    balanceSource,
+    subscriptionSource,
     subscriptionLookupResult: {
       subscriptionFound: Boolean(sub),
       paymentFound: Boolean(latestSuccessfulPayment),

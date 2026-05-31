@@ -5,7 +5,7 @@ import { AIProtectionError } from "@/services/ai/protection";
 import { AIGenerationError, toClientErrorDetails } from "@/services/ai/prompt-orchestrator";
 import { jsonApiError, withApiErrorHandling } from "@/lib/runtime";
 import { serverLog } from "@/lib/logger";
-import { getBillingSnapshot, getToolCreditRule, ToolExecutionAccessError } from "@/lib/billing/credits";
+import { getBillingSnapshot, getDefaultBillingSnapshot, getToolCreditRule, ToolExecutionAccessError } from "@/lib/billing/credits";
 
 export async function POST(request: Request) {
   return withApiErrorHandling("/api/extension/generate:POST", async () => {
@@ -34,6 +34,8 @@ export async function POST(request: Request) {
           toolId,
           currentBalance: billingSnapshot.availableCredits,
           requiredCredits: toolRule.creditCost,
+          balanceSource: billingSnapshot.balanceSource,
+          subscriptionSource: billingSnapshot.subscriptionSource,
           planId: billingSnapshot.plan,
           status: billingSnapshot.subscriptionStatus,
           credits: billingSnapshot.availableCredits,
@@ -64,23 +66,7 @@ export async function POST(request: Request) {
       });
     } catch (error) {
       if (error instanceof AIProtectionError) {
-        const billingSnapshot = userId
-          ? await getBillingSnapshot(userId)
-          : {
-              plan: null,
-              subscriptionStatus: null,
-              hasActiveSubscription: false,
-              renewalAt: null,
-              availableCredits: 0,
-              totalCredits: 0,
-              usedCredits: 0,
-              subscriptionLookupResult: {
-                subscriptionFound: false,
-                paymentFound: false,
-                rawSubscriptionStatus: null,
-                fallbackActive: false,
-              },
-            };
+        const billingSnapshot = userId ? await getBillingSnapshot(userId) : getDefaultBillingSnapshot();
         serverLog({
           level: "warn",
           route: "/api/extension/generate:POST",
@@ -88,6 +74,8 @@ export async function POST(request: Request) {
           metadata: {
             userId,
             toolId: requestedToolId,
+            balanceSource: billingSnapshot.balanceSource,
+            subscriptionSource: billingSnapshot.subscriptionSource,
             planId: billingSnapshot.plan,
             status: billingSnapshot.subscriptionStatus,
             credits: billingSnapshot.availableCredits,
@@ -103,23 +91,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: error.message, code: error.code, details: toClientErrorDetails(error) }, { status: error.status });
       }
 
-      const billingSnapshot = userId
-        ? await getBillingSnapshot(userId)
-        : {
-            plan: null,
-            subscriptionStatus: null,
-            hasActiveSubscription: false,
-            renewalAt: null,
-            availableCredits: 0,
-            totalCredits: 0,
-            usedCredits: 0,
-            subscriptionLookupResult: {
-              subscriptionFound: false,
-              paymentFound: false,
-              rawSubscriptionStatus: null,
-              fallbackActive: false,
-            },
-          };
+      const billingSnapshot = userId ? await getBillingSnapshot(userId) : getDefaultBillingSnapshot();
       serverLog({
         level: "warn",
         route: "/api/extension/generate:POST",
@@ -129,6 +101,8 @@ export async function POST(request: Request) {
           toolId: requestedToolId,
           currentBalance: error instanceof ToolExecutionAccessError ? error.currentBalance : billingSnapshot.availableCredits,
           requiredCredits: error instanceof ToolExecutionAccessError ? error.requiredCredits : null,
+          balanceSource: billingSnapshot.balanceSource,
+          subscriptionSource: billingSnapshot.subscriptionSource,
           planId: billingSnapshot.plan,
           status: billingSnapshot.subscriptionStatus,
           credits: billingSnapshot.availableCredits,
@@ -155,6 +129,8 @@ export async function POST(request: Request) {
               actualBalance: error.currentBalance,
               requiredCredits: error.requiredCredits,
               denialReason: error.denialReason ?? error.code,
+                balanceSource: billingSnapshot.balanceSource,
+                subscriptionSource: billingSnapshot.subscriptionSource,
             },
           },
           { status }
