@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import Script from "next/script";
+import { useBillingSubscription } from "@/components/providers/billing-provider";
 
 type RazorpayVerifyPayload = {
   razorpay_payment_id: string;
@@ -102,8 +103,11 @@ export function PricingActions({
   planName: string;
 }) {
   const router = useRouter();
+  const { subscription, isLoading: isBillingLoading } = useBillingSubscription();
   const normalizedPlanId = planId.trim().toLowerCase();
   const isScalePlan = normalizedPlanId === "scale";
+  const activePlanId = subscription?.planId?.trim().toLowerCase() ?? null;
+  const isActivePlan = subscription?.isActive === true && activePlanId === normalizedPlanId;
   const [status, setStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [statusTone, setStatusTone] = useState<"default" | "success" | "error">("default");
@@ -161,6 +165,12 @@ export function PricingActions({
   }, [isScriptReady]);
 
   const handleCheckout = async () => {
+    if (isActivePlan) {
+      setStatusTone("success");
+      setStatus("This is your active plan.");
+      return;
+    }
+
     if (loading) return;
     setLoading(true);
     setStatus(null);
@@ -311,8 +321,8 @@ export function PricingActions({
   return (
     <div className="space-y-3">
       <Script src="https://checkout.razorpay.com/v1/checkout.js" onLoad={() => setIsScriptReady(true)} onError={() => setIsScriptReady(false)} />
-      <Button className="w-full min-h-11" onClick={handleCheckout} disabled={loading} aria-label={`Checkout ${planName} plan`}>
-        {loading ? "Preparing secure checkout..." : `Continue with ${planName}`}
+      <Button className="w-full min-h-11" onClick={handleCheckout} disabled={loading || isBillingLoading || isActivePlan} aria-label={`Checkout ${planName} plan`}>
+        {isActivePlan ? `${planName} Active` : loading ? "Preparing secure checkout..." : `Continue with ${planName}`}
       </Button>
       <p className="text-xs text-muted-foreground">Protected monthly billing for Zenovee plans. Subscription access updates automatically after successful verification.</p>
       {status ? (
