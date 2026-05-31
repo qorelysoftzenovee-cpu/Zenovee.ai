@@ -18,6 +18,10 @@ const executeToolSchema = z.object({
   moduleId: z.string().min(1).optional().nullable(),
 });
 
+function shouldExposeDebugDenialDetails() {
+  return process.env.NODE_ENV === "development" || process.env.DEBUG_TOOL_EXECUTION_DENIALS === "true";
+}
+
 function getErrorMessage(error: unknown) {
   if (error instanceof Error) {
     return error.message;
@@ -154,6 +158,14 @@ export async function POST(req: Request) {
       }
       const classified = classifyExecutionError(error);
       const billingSnapshot = userId ? await getBillingSnapshot(userId) : getDefaultBillingSnapshot();
+      const debugDenialDetails = error instanceof ToolExecutionAccessError && shouldExposeDebugDenialDetails()
+        ? {
+            current_credit_balance: error.currentBalance,
+            tool_credit_cost: error.requiredCredits,
+            denial_reason: error.denialReason ?? classified.code,
+            subscription_status: billingSnapshot.subscriptionStatus,
+          }
+        : undefined;
       serverLog({
         level: "warn",
         route: "/api/tools:POST",
@@ -186,10 +198,21 @@ export async function POST(req: Request) {
                 denialReason: error.denialReason ?? classified.code,
                 balanceSource: billingSnapshot.balanceSource,
                 subscriptionSource: billingSnapshot.subscriptionSource,
+                debug: debugDenialDetails,
               }
             : undefined,
         },
-        { status: classified.status }
+        {
+          status: classified.status,
+          headers: debugDenialDetails
+            ? {
+                "x-debug-current-credit-balance": String(debugDenialDetails.current_credit_balance),
+                "x-debug-tool-credit-cost": String(debugDenialDetails.tool_credit_cost),
+                "x-debug-denial-reason": String(debugDenialDetails.denial_reason),
+                "x-debug-subscription-status": String(debugDenialDetails.subscription_status ?? ""),
+              }
+            : undefined,
+        }
       );
     }
   }, "Tool execution failed.");

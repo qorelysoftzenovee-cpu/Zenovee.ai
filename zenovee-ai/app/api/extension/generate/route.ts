@@ -7,6 +7,10 @@ import { jsonApiError, withApiErrorHandling } from "@/lib/runtime";
 import { serverLog } from "@/lib/logger";
 import { getBillingSnapshot, getDefaultBillingSnapshot, getToolCreditRule, ToolExecutionAccessError } from "@/lib/billing/credits";
 
+function shouldExposeDebugDenialDetails() {
+  return process.env.NODE_ENV === "development" || process.env.DEBUG_TOOL_EXECUTION_DENIALS === "true";
+}
+
 export async function POST(request: Request) {
   return withApiErrorHandling("/api/extension/generate:POST", async () => {
     let userId: string | null = null;
@@ -113,6 +117,14 @@ export async function POST(request: Request) {
       });
 
       if (error instanceof ToolExecutionAccessError) {
+        const debugDenialDetails = shouldExposeDebugDenialDetails()
+          ? {
+              current_credit_balance: error.currentBalance,
+              tool_credit_cost: error.requiredCredits,
+              denial_reason: error.denialReason ?? error.code,
+              subscription_status: billingSnapshot.subscriptionStatus,
+            }
+          : undefined;
         const status = error.code === "COOLDOWN_ACTIVE" ? 429 : error.code === "TOOL_DISABLED" ? 423 : 402;
         return NextResponse.json(
           {
@@ -129,11 +141,22 @@ export async function POST(request: Request) {
               actualBalance: error.currentBalance,
               requiredCredits: error.requiredCredits,
               denialReason: error.denialReason ?? error.code,
-                balanceSource: billingSnapshot.balanceSource,
-                subscriptionSource: billingSnapshot.subscriptionSource,
+              balanceSource: billingSnapshot.balanceSource,
+              subscriptionSource: billingSnapshot.subscriptionSource,
+              debug: debugDenialDetails,
             },
           },
-          { status }
+            {
+              status,
+              headers: debugDenialDetails
+                ? {
+                    "x-debug-current-credit-balance": String(debugDenialDetails.current_credit_balance),
+                    "x-debug-tool-credit-cost": String(debugDenialDetails.tool_credit_cost),
+                    "x-debug-denial-reason": String(debugDenialDetails.denial_reason),
+                    "x-debug-subscription-status": String(debugDenialDetails.subscription_status ?? ""),
+                  }
+                : undefined,
+            }
         );
       }
 
