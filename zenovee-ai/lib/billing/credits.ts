@@ -1,6 +1,7 @@
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getToolDefinition } from "@/definitions";
 import { getPlanById } from "@/lib/billing/plans";
+import { computeNextRenewalDate } from "@/lib/billing/service";
 
 export type BillingGateCode =
   | "OK"
@@ -173,11 +174,13 @@ export async function getBillingSnapshot(userId: string): Promise<BillingSnapsho
   const inferredTotalCredits = shouldInferCredits ? Number(planRecord?.credits ?? 0) : rawTotalCredits;
   const inferredAvailableCredits = shouldInferCredits ? Math.max(0, inferredTotalCredits - rawUsedCredits) : rawAvailableCredits;
 
+  const effectiveRenewalAt = sub?.next_renewal_at ?? (hasSuccessfulPayment ? computeNextRenewalDate() : null);
+
   return {
     plan: resolvedPlan,
     subscriptionStatus: effectiveStatus,
     hasActiveSubscription: effectiveStatus === "ACTIVE" || effectiveStatus === "PAST_DUE",
-    renewalAt: sub?.next_renewal_at ?? null,
+    renewalAt: effectiveRenewalAt,
     availableCredits: inferredAvailableCredits,
     totalCredits: inferredTotalCredits,
     usedCredits: rawUsedCredits,
