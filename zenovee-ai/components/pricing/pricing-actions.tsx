@@ -326,9 +326,15 @@ export function PricingActions({
   return (
     <div className="space-y-3">
       <Script src="https://checkout.razorpay.com/v1/checkout.js" onLoad={() => setIsScriptReady(true)} onError={() => setIsScriptReady(false)} />
-      <Button className="w-full min-h-11" onClick={handleCheckout} disabled={loading || isBillingLoading || isActivePlan} aria-label={`Checkout ${planName} plan`}>
-        {isActivePlan ? `${planName} Active` : loading ? "Preparing secure checkout..." : `Continue with ${planName}`}
-      </Button>
+      {isActivePlan ? (
+        <div className="flex min-h-11 w-full items-center justify-center rounded-md border border-primary/30 bg-primary/10 px-4 py-2 text-sm font-semibold text-primary">
+          {planName} Active
+        </div>
+      ) : (
+        <Button className="w-full min-h-11" onClick={handleCheckout} disabled={loading || isBillingLoading} aria-label={`Checkout ${planName} plan`}>
+          {loading ? "Preparing secure checkout..." : `Continue with ${planName}`}
+        </Button>
+      )}
       <p className="text-xs text-muted-foreground">Protected monthly billing for Zenovee plans. Subscription access updates automatically after successful verification.</p>
       {status ? (
         <p className={`text-xs ${statusTone === "error" ? "text-rose-500" : statusTone === "success" ? "text-emerald-600 dark:text-emerald-300" : "text-muted-foreground"}`}>
