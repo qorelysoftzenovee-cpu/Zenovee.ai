@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { runAIStructuredWithSchema } from "@/services/ai";
-import type { AIGenerateStructuredResult, AIModel } from "@/services/ai/types";
+import type { AIGenerateStructuredResult } from "@/services/ai/types";
+import { DEFAULT_HEAVY_MODEL, DEFAULT_LIGHT_MODEL, getModelExecutionConfig, getPreferredModelForOutputLength, type AIModel } from "@/services/ai/models";
 import {
   type GenerationExecutionOptions,
   type GenerationMode,
@@ -193,36 +194,35 @@ function mapModeInstruction(mode: GenerationMode) {
 
 function resolveModelConfiguration(tool: ToolDefinition, controls: ResolvedPromptControls, adminOverrides?: ToolPromptAdminOverrides) {
   if (adminOverrides?.modelOverride) {
+    const config = getModelExecutionConfig(adminOverrides.modelOverride, {
+      isLong: controls.outputLength === "long",
+    });
+
     return {
       model: adminOverrides.modelOverride,
       temperature: 0.4,
-      maxTokens: adminOverrides.modelOverride === "llama-3.1-70b-versatile" ? 4200 : 2400,
-      timeoutMs: adminOverrides.modelOverride === "llama-3.1-70b-versatile" ? 45_000 : 30_000,
+      maxTokens: config.maxTokens,
+      timeoutMs: config.timeoutMs,
       reason: "Admin override applied.",
     };
   }
 
   const isLong = controls.outputLength === "long";
-  const isShort = controls.outputLength === "short";
-  const baseModel: AIModel = tool.usageClass === "heavy"
-    ? "llama-3.1-70b-versatile"
-    : isShort
-      ? "llama-3.1-8b-instant"
-      : "mixtral-8x7b";
-
-  const model = isLong ? "llama-3.1-70b-versatile" : baseModel;
+  const model: AIModel = getPreferredModelForOutputLength({
+    usageClass: tool.usageClass,
+    outputLength: controls.outputLength,
+  });
+  const config = getModelExecutionConfig(model, { isLong });
 
   return {
     model,
-    temperature: controls.outputLength === "short" ? 0.35 : 0.45,
-    maxTokens: model === "llama-3.1-70b-versatile" ? (isLong ? 4200 : 2800) : model === "mixtral-8x7b" ? 2200 : 1600,
-    timeoutMs: model === "llama-3.1-70b-versatile" ? 45_000 : 30_000,
+    temperature: controls.outputLength === "short" ? 0.35 : config.temperature,
+    maxTokens: config.maxTokens,
+    timeoutMs: config.timeoutMs,
     reason:
-      model === "llama-3.1-70b-versatile"
+      model === DEFAULT_HEAVY_MODEL
         ? "Using the strongest Groq model for long-form or high-complexity output quality."
-        : model === "mixtral-8x7b"
-          ? "Using a balanced model for structured medium-length outputs."
-          : "Using a lightweight Groq model for fast, concise generations.",
+        : "Using a lightweight Groq model for fast, concise generations.",
   };
 }
 

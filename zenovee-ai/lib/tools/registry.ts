@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { ToolDefinition } from "@/types/tools";
+import { getDefaultModelForUsageClass } from "@/services/ai/models";
 
 const hiddenPublicToolIds = new Set(
   (process.env.NEXT_PUBLIC_HIDDEN_TOOL_IDS ?? "")
@@ -431,7 +432,7 @@ function buildTool(item: Item): ToolDefinition {
     outputSchema,
     creditCost: item.creditCost,
     usageClass: item.usageClass ?? "standard",
-    aiModel: item.usageClass === "heavy" ? "llama-3.1-70b-versatile" : "mixtral-8x7b",
+    aiModel: getDefaultModelForUsageClass(item.usageClass ?? "standard"),
     exportFormats: ["txt", "md", "pdf", "json"],
     promptTemplate: (input) => buildPrompt(item, input as Record<string, unknown>),
     outputFormatter: (response) => parseJsonResponse(response),
@@ -448,7 +449,7 @@ export const internalToolDefinitions: ToolDefinition[] = idsByCategory[TOOL_CATE
   outputSchema: browserOutputSchema,
   creditCost: 10,
   usageClass: "standard",
-  aiModel: "llama-3.1-70b-versatile",
+  aiModel: getDefaultModelForUsageClass("standard"),
   promptTemplate: (i) => `Browser tool ${id}.\n${JSON.stringify(i)}`,
   outputFormatter: (r) => parseJsonResponse(r),
   exportFormats: ["txt", "md", "pdf", "json"],

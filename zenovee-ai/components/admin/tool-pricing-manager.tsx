@@ -4,9 +4,10 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { GROQ_MODELS, type AIModel } from "@/services/ai/models";
 
 type ToolPromptMetadata = {
-  modelOverride?: "llama-3.1-70b-versatile" | "llama-3.1-8b-instant" | "mixtral-8x7b";
+  modelOverride?: AIModel;
   systemPromptAppend?: string;
   userPromptAppend?: string;
   defaultTone?: string;
@@ -129,9 +130,9 @@ export function ToolPricingManager({ items }: { items: ToolPricingItem[] }) {
                   onChange={(e) => updateRow(row.toolId, { metadata: { ...row.metadata, modelOverride: (e.target.value || undefined) as ToolPromptMetadata["modelOverride"] } })}
                 >
                   <option value="">Auto-select</option>
-                  <option value="llama-3.1-8b-instant">llama-3.1-8b-instant</option>
-                  <option value="mixtral-8x7b">mixtral-8x7b</option>
-                  <option value="llama-3.1-70b-versatile">llama-3.1-70b-versatile</option>
+                  {GROQ_MODELS.map((model) => (
+                    <option key={model} value={model}>{model}</option>
+                  ))}
                 </select>
               </div>
 

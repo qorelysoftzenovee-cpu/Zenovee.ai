@@ -1,6 +1,7 @@
 import type { ZodSchema } from "zod";
+import type { AIModel } from "@/services/ai/models";
 
-export type AIModel = "llama-3.1-70b-versatile" | "llama-3.1-8b-instant" | "mixtral-8x7b";
+export type { AIModel } from "@/services/ai/models";
 export type AIProvider = "groq";
 
 export interface AIUsage {

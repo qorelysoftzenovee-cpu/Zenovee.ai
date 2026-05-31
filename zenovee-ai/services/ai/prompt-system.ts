@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { AIModel } from "@/services/ai/types";
+import { GROQ_MODELS, type AIModel } from "@/services/ai/models";
 
 export const OUTPUT_LENGTHS = ["short", "medium", "long"] as const;
 export const GENERATION_MODES = ["generate", "regenerate", "improve", "shorten", "expand"] as const;
@@ -22,7 +22,7 @@ export const generationExecutionOptionsSchema = z.object({
 });
 
 export const toolPromptAdminOverridesSchema = z.object({
-  modelOverride: z.enum(["llama-3.1-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b"] satisfies readonly AIModel[]).optional(),
+  modelOverride: z.enum(GROQ_MODELS satisfies readonly AIModel[]).optional(),
   systemPromptAppend: z.string().max(4000).optional().default(""),
   userPromptAppend: z.string().max(4000).optional().default(""),
   defaultTone: z.string().trim().max(80).optional().default(""),

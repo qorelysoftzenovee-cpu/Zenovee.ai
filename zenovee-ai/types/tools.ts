@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { AIModel } from "@/services/ai/models";
 
 export interface ToolField {
   name: string;
@@ -65,7 +66,7 @@ export interface ToolDefinition<TInput = any, TOutput = Record<string, unknown>>
   outputSchema: z.ZodType<TOutput>;
   creditCost: number;
   usageClass?: "standard" | "heavy";
-  aiModel: "llama-3.1-70b-versatile" | "llama-3.1-8b-instant" | "mixtral-8x7b";
+  aiModel: AIModel;
   promptTemplate: (input: TInput) => string;
   outputFormatter: (response: string) => TOutput;
   exportFormats?: Array<"txt" | "md" | "pdf" | "json" | "png">;

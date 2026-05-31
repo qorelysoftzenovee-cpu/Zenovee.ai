@@ -4,6 +4,7 @@ import { requireAdminApi } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { listToolDefinitions } from "@/definitions";
 import { jsonApiError } from "@/lib/runtime";
+import { GROQ_MODELS } from "@/services/ai/models";
 
 type ToolPricingRow = {
   tool_id: string;
@@ -14,7 +15,7 @@ type ToolPricingRow = {
 };
 
 const metadataSchema = z.object({
-  modelOverride: z.enum(["llama-3.1-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b"]).optional(),
+  modelOverride: z.enum(GROQ_MODELS).optional(),
   systemPromptAppend: z.string().max(4000).optional(),
   userPromptAppend: z.string().max(4000).optional(),
   defaultTone: z.string().max(80).optional(),
