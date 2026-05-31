@@ -1,4 +1,5 @@
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { ensureUserAccountState } from "@/lib/account-sync";
 import { normalizeRole, type AppRole } from "@/lib/auth";
 
 export type ExtensionAuthUser = {
@@ -34,6 +35,13 @@ export async function getExtensionUser(request: Request): Promise<ExtensionAuthU
   if (error || !user?.id || !user.email) {
     return null;
   }
+
+  await ensureUserAccountState({
+    userId: user.id,
+    email: user.email,
+    name: String(user.user_metadata?.name ?? ""),
+    source: "lib/extension-auth.getExtensionUser",
+  });
 
   const { data: profile } = await supabaseAdmin
     .from("users")

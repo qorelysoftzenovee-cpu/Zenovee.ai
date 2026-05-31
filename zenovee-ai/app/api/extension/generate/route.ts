@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { AccountSyncRequiredError } from "@/lib/account-sync";
 import { ToolExecutionService } from "@/services/tool-execution-service";
 import { getExtensionUser, getRequestIpAddress } from "@/lib/extension-auth";
 import { AIProtectionError } from "@/services/ai/protection";
@@ -93,6 +94,20 @@ export async function POST(request: Request) {
       if (error instanceof AIGenerationError) {
         serverLog({ level: "warn", route: "/api/extension/generate:POST", message: error.message, metadata: error.details });
         return NextResponse.json({ error: error.message, code: error.code, details: toClientErrorDetails(error) }, { status: error.status });
+      }
+
+      if (error instanceof AccountSyncRequiredError) {
+        serverLog({
+          level: "warn",
+          route: "/api/extension/generate:POST",
+          message: error.message,
+          metadata: {
+            userId,
+            toolId: requestedToolId,
+            accessDeniedReason: error.code,
+          },
+        });
+        return NextResponse.json({ success: false, error: error.message, code: error.code }, { status: error.status });
       }
 
       const billingSnapshot = userId ? await getBillingSnapshot(userId) : getDefaultBillingSnapshot();

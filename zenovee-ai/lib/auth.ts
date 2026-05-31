@@ -5,6 +5,7 @@ import type { Database } from "@/lib/supabase/types";
 import { serverLog } from "@/lib/logger";
 import { env } from "@/lib/env";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { ensureUserAccountState } from "@/lib/account-sync";
 
 export type AppRole = "admin" | "user";
 
@@ -63,6 +64,13 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
     if (!user?.id || !user.email) {
       return null;
     }
+
+    await ensureUserAccountState({
+      userId: user.id,
+      email: user.email,
+      name: String(user.user_metadata?.name ?? ""),
+      source: "lib/auth.getCurrentUser",
+    });
 
     const { data: profile } = await supabase
       .from("users")

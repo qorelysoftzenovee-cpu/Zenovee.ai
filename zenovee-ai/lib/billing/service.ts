@@ -1,4 +1,5 @@
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { ensureUserAccountState } from "@/lib/account-sync";
 import { buildActivationPayload, getPlanById } from "@/lib/billing/plans";
 import { createRazorpayPlanForAppPlan } from "@/lib/razorpay/client";
 import { serverLog } from "@/lib/logger";
@@ -39,6 +40,7 @@ export async function getOrCreateRazorpayPlanId(appPlanId: string) {
 export async function assignPlanCredits(userId: string, appPlanId: string, reference = `plan_allocation:${appPlanId}`) {
   const plan = getPlanById(appPlanId);
   if (!plan) throw new Error("Invalid plan");
+  await ensureUserAccountState({ userId, planId: appPlanId, source: "lib/billing.assignPlanCredits" });
   const activation = buildActivationPayload(appPlanId);
 
   const supabaseAdmin = getSupabaseAdmin();
@@ -70,7 +72,7 @@ export async function assignPlanCredits(userId: string, appPlanId: string, refer
   const nextBalance = Number(allocation?.balance_after ?? activation.credits);
   const { error: userErr } = await supabaseAdmin
     .from("users")
-    .update({ credits_balance: nextBalance, plan: appPlanId, updated_at: nowIso } as never)
+    .update({ credits_balance: nextBalance, updated_at: nowIso } as never)
     .eq("id", userId);
 
   if (userErr) throw new Error(userErr.message);
@@ -85,6 +87,7 @@ export async function assignPlanCredits(userId: string, appPlanId: string, refer
 
 export async function addTopupCredits(userId: string, topupId: string, credits: number, reference: string) {
   const supabaseAdmin = getSupabaseAdmin();
+  await ensureUserAccountState({ userId, source: "lib/billing.addTopupCredits" });
   const nowIso = new Date().toISOString();
   const supabaseRpc = supabaseAdmin as unknown as SupabaseRpcClient;
 

@@ -1,4 +1,5 @@
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { ensureUserAccountState } from "@/lib/account-sync";
 import { assignPlanCredits, computeGraceExpiryDate, computeNextRenewalDate } from "@/lib/billing/service";
 import { serverLog } from "@/lib/logger";
 import { buildActivationPayload, resolvePlanId } from "@/lib/billing/plans";
@@ -205,6 +206,12 @@ export class BillingSyncService {
           skipReason: "MISSING_SUBSCRIPTION_CONTEXT",
         };
       }
+
+      await ensureUserAccountState({
+        userId,
+        planId: resolvedPlanId,
+        source: "lib/billing.sync-service",
+      });
 
       if (eventType === "payment.captured" || eventType === "subscription.charged") {
         if (!razorpayPaymentId) throw new Error("Missing razorpay payment id");

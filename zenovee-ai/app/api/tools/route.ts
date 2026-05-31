@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
+import { AccountSyncRequiredError } from "@/lib/account-sync";
 import { ToolExecutionService } from "@/services/tool-execution-service";
 import { AIProtectionError } from "@/services/ai/protection";
 import { AIGenerationError, toClientErrorDetails } from "@/services/ai/prompt-orchestrator";
@@ -31,6 +32,10 @@ function getErrorMessage(error: unknown) {
 }
 
 function classifyExecutionError(error: unknown): { message: string; code: string; status: number } {
+  if (error instanceof AccountSyncRequiredError) {
+    return { message: error.message, code: error.code, status: error.status };
+  }
+
   if (error instanceof ToolExecutionAccessError) {
     if (error.code === "SUBSCRIPTION_REQUIRED") {
       return { message: "An active subscription is required to run this tool.", code: "SUBSCRIPTION_REQUIRED", status: 402 };
@@ -156,6 +161,20 @@ export async function POST(req: Request) {
           { status: 400 }
         );
       }
+
+      if (error instanceof AccountSyncRequiredError) {
+        serverLog({
+          level: "warn",
+          route: "/api/tools:POST",
+          message: error.message,
+          metadata: {
+            userId,
+            toolId: requestedToolId,
+            accessDeniedReason: error.code,
+          },
+        });
+      }
+
       const classified = classifyExecutionError(error);
       const billingSnapshot = userId ? await getBillingSnapshot(userId) : getDefaultBillingSnapshot();
       const debugDenialDetails = error instanceof ToolExecutionAccessError && shouldExposeDebugDenialDetails()

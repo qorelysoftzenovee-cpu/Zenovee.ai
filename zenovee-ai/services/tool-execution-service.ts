@@ -1,4 +1,5 @@
 import { getToolDefinition, listToolDefinitions } from "@/definitions";
+import { AccountSyncRequiredError, ensureUserAccountState } from "@/lib/account-sync";
 import { AIProtectionError, AIProtectionService } from "@/services/ai/protection";
 import { generationExecutionOptionsSchema, getToolPromptControlCatalog, getToolPromptProfile } from "@/services/ai/prompt-system";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -18,7 +19,7 @@ type SupabaseRpcClient = {
   rpc: (
     fn: string,
     args: Record<string, unknown>
-  ) => Promise<{ data: unknown; error: { message: string } | null }>;
+  ) => Promise<{ data: unknown; error: { message: string; details?: string | null; hint?: string | null; code?: string | null } | null }>;
 };
 
 type ExecuteArgs = {
@@ -82,6 +83,7 @@ export class ToolExecutionService {
   }
 
   static async getCredits(userId: string) {
+    await ensureUserAccountState({ userId, source: "services/tool-execution-service.getCredits" });
     const snapshot = await getBillingSnapshot(userId);
     return snapshot.availableCredits;
   }
@@ -162,6 +164,7 @@ export class ToolExecutionService {
 
   static async execute(args: ExecuteArgs) {
     const supabase = getSupabaseAdmin();
+    await ensureUserAccountState({ userId: args.userId, source: "services/tool-execution-service.execute" });
     const tool = getToolDefinition(args.toolId);
     if (!tool) throw new Error("Requested tool was not found.");
     if (tool.metadata.availability === "coming_soon") throw new Error(tool.metadata.disabledReason ?? "Tool unavailable.");
@@ -354,12 +357,35 @@ export class ToolExecutionService {
     }
 
     const supabaseRpc = supabase as unknown as SupabaseRpcClient;
-    const { data: debitRaw, error: debitError } = await supabaseRpc.rpc("debit_user_credits", {
+    const debitPayload = {
       p_user_id: args.userId,
       p_credits: creditCost,
       p_reference: `tool:${tool.id}`,
       p_execution_id: execution.id,
       p_metadata: { toolId: tool.id, toolName: tool.metadata.name },
+    };
+    serverLog({
+      level: "info",
+      route: "services/tool-execution-service.execute",
+      message: "Calling debit_user_credits RPC",
+      metadata: debitPayload,
+    });
+    const { data: debitRaw, error: debitError } = await supabaseRpc.rpc("debit_user_credits", {
+      ...debitPayload,
+    });
+
+    serverLog({
+      level: debitError ? "warn" : "info",
+      route: "services/tool-execution-service.execute",
+      message: "debit_user_credits RPC completed",
+      metadata: {
+        requestPayload: debitPayload,
+        responseBody: debitRaw,
+        postgresError: debitError?.message ?? null,
+        postgresDetail: debitError?.details ?? null,
+        postgresHint: debitError?.hint ?? null,
+        postgresCode: debitError?.code ?? null,
+      },
     });
 
     if (debitError) {
