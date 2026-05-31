@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { OutputRenderer } from "@/components/tools/output-renderer";
 import type { ToolDefinition, ToolPreset } from "@/types/tools";
 import { AlertDialog } from "@/components/ui/dialogs";
-import { ArrowRight, Clock3, Sparkles, RefreshCcw, ShieldCheck } from "lucide-react";
+import { ArrowRight, CheckCircle2, Clock3, RefreshCcw, ShieldCheck, Sparkles, Wand2 } from "lucide-react";
 
 const ALLOWED_BADGES = new Set(["new", "most popular", "recommended"]);
 
@@ -26,6 +26,12 @@ type Props = {
   workspaceId?: string | null;
   moduleId?: string | null;
 };
+
+function normalizeExampleValues(values: Record<string, string>) {
+  return Object.fromEntries(
+    Object.entries(values).map(([key, value]) => [key, value])
+  ) as Record<string, unknown>;
+}
 
 export function ToolRunner({ tool, workspaceId = null, moduleId = null }: Props) {
   const formUid = useId();
@@ -50,6 +56,8 @@ export function ToolRunner({ tool, workspaceId = null, moduleId = null }: Props)
   const estimatedTime = tool.metadata.estimatedTimeSeconds ? `${tool.metadata.estimatedTimeSeconds}s` : null;
   const activePresetId = activePreset?.label ?? "";
   const complexity = tool.metadata.complexity ? tool.metadata.complexity.toUpperCase() : null;
+  const primaryExample = tool.examples?.[0] ?? null;
+  const outputPreview = tool.metadata.outputPreview;
 
   const validationError = useMemo(() => {
     const missing = tool.fields.find((field) => field.required && String(input[field.name] ?? "").trim().length === 0);
@@ -62,6 +70,13 @@ export function ToolRunner({ tool, workspaceId = null, moduleId = null }: Props)
   const applyPreset = (preset: ToolPreset) => {
     setInput(preset.values);
     setActivePreset(preset);
+    setError(null);
+  };
+
+  const applyExample = (values?: Record<string, string>) => {
+    if (!values) return;
+    setInput(normalizeExampleValues(values));
+    setActivePreset(null);
     setError(null);
   };
 
@@ -181,6 +196,16 @@ export function ToolRunner({ tool, workspaceId = null, moduleId = null }: Props)
                 <div className="space-y-1">
                   <h1 className="text-3xl font-semibold tracking-tight">{tool.metadata.name}</h1>
                   <p className="max-w-2xl text-sm leading-7 text-slate-300">{toolTagline}</p>
+                  <div className="grid gap-3 pt-2 sm:grid-cols-2">
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-sm text-slate-200">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">What it does</p>
+                      <p className="mt-2 leading-6 text-slate-200">{tool.metadata.description}</p>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-sm text-slate-200">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Who it’s for</p>
+                      <p className="mt-2 leading-6 text-slate-200">{tool.metadata.audience ?? "Teams that need a faster, clearer AI-generated result."}</p>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -217,9 +242,27 @@ export function ToolRunner({ tool, workspaceId = null, moduleId = null }: Props)
       <Card className="border-border/80 bg-card/95 shadow-sm">
         <CardHeader>
           <CardTitle>Tool Builder</CardTitle>
-          <p className="text-sm text-muted-foreground">Configure your input, use presets, and generate polished results with a single click.</p>
+          <p className="text-sm text-muted-foreground">Configure your input, use examples, and generate polished results with a single click.</p>
         </CardHeader>
         <CardContent className="space-y-6">
+          {primaryExample ? (
+            <div className="rounded-3xl border border-primary/20 bg-primary/5 p-4">
+              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Example input</p>
+                  <p className="text-sm font-semibold text-foreground">{primaryExample.title}</p>
+                  <p className="text-sm leading-6 text-muted-foreground">{primaryExample.description}</p>
+                </div>
+                {primaryExample.values ? (
+                  <Button type="button" variant="secondary" onClick={() => applyExample(primaryExample.values)}>
+                    <Wand2 className="h-4 w-4" />
+                    Try Example
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+
           <div className="grid gap-5">
             {tool.fields.map((field) => {
               const value = String(input[field.name] ?? "");
@@ -232,6 +275,12 @@ export function ToolRunner({ tool, workspaceId = null, moduleId = null }: Props)
                         {field.label}
                       </label>
                       <p className="mt-1 text-sm text-muted-foreground">{field.helperText ?? `Provide a strong ${field.label.toLowerCase()} to guide your output.`}</p>
+                      {field.exampleValue ? (
+                        <div className="mt-3 rounded-2xl border border-dashed border-border/80 bg-muted/30 p-3 text-sm text-muted-foreground">
+                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-foreground/80">Example</p>
+                          <p className="mt-2 leading-6">{field.exampleValue}</p>
+                        </div>
+                      ) : null}
                     </div>
                     {field.required ? <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">Required</span> : null}
                   </div>
@@ -257,7 +306,7 @@ export function ToolRunner({ tool, workspaceId = null, moduleId = null }: Props)
                         aria-label={field.label}
                         value={value}
                         onChange={(e) => setInput((prev) => ({ ...prev, [field.name]: e.target.value }))}
-                        placeholder={field.placeholder ?? `Add your ${field.label.toLowerCase()} here...`}
+                        placeholder={field.placeholder ?? `Example: ${field.label.toLowerCase()}`}
                         className="min-h-[140px] rounded-2xl border border-border bg-background px-4 py-3 text-sm font-medium text-foreground placeholder:text-muted-foreground/80 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
                       />
                     ) : (
@@ -266,7 +315,7 @@ export function ToolRunner({ tool, workspaceId = null, moduleId = null }: Props)
                         aria-label={field.label}
                         value={value}
                         onChange={(e) => setInput((prev) => ({ ...prev, [field.name]: e.target.value }))}
-                        placeholder={field.placeholder ?? `Type your ${field.label.toLowerCase()}...`}
+                        placeholder={field.placeholder ?? `Example: ${field.label.toLowerCase()}`}
                         className="rounded-2xl border border-border bg-background px-4 py-3 text-sm font-medium text-foreground placeholder:text-muted-foreground/80 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
                       />
                     )}
@@ -292,6 +341,38 @@ export function ToolRunner({ tool, workspaceId = null, moduleId = null }: Props)
             <p className="font-medium text-foreground">Why this tool costs {tool.creditCost} credits</p>
             <p className="mt-1">{tool.metadata.creditTooltip ?? "Advanced AI workflows consume more credits due to larger generation complexity."}</p>
           </div>
+
+          {outputPreview ? (
+            <div className="rounded-3xl border border-emerald-200 bg-emerald-50/60 p-5">
+              <div className="flex items-start gap-3">
+                <CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-600" />
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Expected output</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-700">{outputPreview.summary}</p>
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">✓ What you receive</p>
+                      <p className="mt-2 text-sm text-slate-600">{tool.metadata.resultDescription ?? "A structured AI-generated result tailored to this tool."}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">✓ Sections included</p>
+                      <ul className="mt-2 space-y-1 text-sm text-slate-600">
+                        {outputPreview.sections.map((section) => (
+                          <li key={section}>• {section}</li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">✓ Output format</p>
+                      <p className="mt-2 text-sm text-slate-600">{outputPreview.format}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : null}
         </CardContent>
       </Card>
 
@@ -331,8 +412,17 @@ export function ToolRunner({ tool, workspaceId = null, moduleId = null }: Props)
           <CardContent className="grid gap-3">
             {tool.examples.map((example) => (
               <div key={example.title} className="rounded-3xl border border-border/70 bg-background p-4 transition hover:border-primary/70 hover:shadow-sm">
-                <p className="text-sm font-semibold text-foreground">{example.title}</p>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">{example.description}</p>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">{example.title}</p>
+                    <p className="mt-2 text-sm leading-6 text-muted-foreground">{example.description}</p>
+                  </div>
+                  {example.values ? (
+                    <Button type="button" variant="outline" size="sm" onClick={() => applyExample(example.values)}>
+                      Try Example
+                    </Button>
+                  ) : null}
+                </div>
               </div>
             ))}
           </CardContent>

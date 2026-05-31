@@ -5,6 +5,7 @@ export interface ToolField {
   label: string;
   type: "textarea" | "text" | "select" | "number" | "file";
   placeholder?: string;
+  exampleValue?: string;
   required?: boolean;
   helperText?: string;
   options?: Array<{ label: string; value: string }>;
@@ -19,6 +20,13 @@ export interface ToolPreset {
 export interface ToolExample {
   title: string;
   description: string;
+  values?: Record<string, string>;
+}
+
+export interface ToolOutputPreview {
+  summary: string;
+  sections: string[];
+  format: string;
 }
 
 export type ToolComplexity = "light" | "medium" | "heavy";
@@ -46,6 +54,9 @@ export interface ToolDefinition<TInput = any, TOutput = Record<string, unknown>>
     complexity?: ToolComplexity;
     expectedOutputValue?: string;
     creditTooltip?: string;
+    audience?: string;
+    resultDescription?: string;
+    outputPreview?: ToolOutputPreview;
   };
   fields: ToolField[];
   examples?: ToolExample[];

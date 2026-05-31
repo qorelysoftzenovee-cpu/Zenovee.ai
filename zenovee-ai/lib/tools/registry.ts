@@ -27,6 +27,154 @@ export type ToolExecutionResult = Record<string, unknown>;
 export type ToolPricingInfo = { toolId: string; creditCost: number; usageClass?: "standard" | "heavy" };
 type ToolComplexity = "light" | "medium" | "heavy";
 
+const FIELD_EXAMPLE_VALUES: Record<string, string> = {
+  objective: "Write a LinkedIn post about AI automation for small businesses.",
+  executivePersona: "Founder sharing practical lessons from scaling a service business.",
+  audiencePsychology: "Owners want growth but worry automation will sound robotic or expensive.",
+  authorityPositioning: "Practical operator who simplifies AI into revenue-focused systems.",
+  platform: "LinkedIn",
+  storytellingStyle: "Clear, credible, and insight-led with one short personal story.",
+  constraints: "Avoid hype, keep it under 220 words, and end with a soft CTA.",
+  offer: "AI workflow setup service for small B2B teams.",
+  icp: "US-based B2B SaaS companies with 10–50 employees.",
+  buyerStage: "aware",
+  topObjections: "Too expensive, hard to implement, and unsure of ROI.",
+  desiredCTA: "Book a 20-minute discovery call.",
+  channel: "linkedin",
+  product: "AI assistant that drafts sales follow-ups from call notes.",
+  audience: "Founders and sales leaders at small B2B companies.",
+  awarenessLevel: "solution-aware",
+  framework: "AIDA",
+  emotionalGoal: "Make the reader feel relieved that follow-up no longer needs manual effort.",
+  primaryTopic: "AI automation for small businesses",
+  businessContext: "A consultancy helping local service businesses adopt simple AI workflows.",
+  intentFocus: "commercial",
+  geoOrNiche: "Small businesses in India",
+  competitorContext: "Competing against agencies that focus on enterprise-only automation retainers.",
+  assetGoal: "Create a premium hero image concept for an AI automation landing page.",
+  brandAesthetic: "Modern, minimal, dark-on-light SaaS brand with premium accents.",
+  subject: "A business owner reviewing automated workflows on a laptop dashboard.",
+  mood: "Confident, optimistic, and polished.",
+};
+
+const FIELD_HELPER_TEXT: Record<string, string> = {
+  objective: "What you want the tool to create or solve for you.",
+  executivePersona: "Who the message should sound like so the voice feels credible and specific.",
+  audiencePsychology: "What your audience is thinking, fearing, or hoping for right now.",
+  authorityPositioning: "How you want to be perceived in the market.",
+  platform: "Where this output will be used so the format matches the channel.",
+  storytellingStyle: "The tone or narrative style the tool should follow.",
+  constraints: "Optional guardrails like word count, brand rules, or topics to avoid.",
+  offer: "What you are selling, promoting, or pitching.",
+  icp: "Who this is for, including company type, role, or market segment.",
+  buyerStage: "How aware the audience is before they see your message.",
+  topObjections: "Main reasons the buyer may hesitate, separated clearly.",
+  desiredCTA: "The exact next action you want the audience to take.",
+  channel: "Choose the channel so the output matches how people read there.",
+  product: "The product, service, or solution being positioned.",
+  audience: "The people this copy should persuade.",
+  awarenessLevel: "How familiar the audience already is with the problem and solution.",
+  framework: "Pick the persuasion framework you want the tool to use.",
+  emotionalGoal: "What feeling the final copy should create.",
+  primaryTopic: "The main search topic or content theme to build around.",
+  businessContext: "A short summary of your business, offer, or market context.",
+  intentFocus: "The search intent you want the output to target.",
+  geoOrNiche: "Location, vertical, or niche to make the strategy more relevant.",
+  competitorContext: "Optional competing offers, sites, or positioning to account for.",
+  assetGoal: "What the visual asset needs to achieve.",
+  brandAesthetic: "Describe the overall brand look and feel.",
+  subject: "The main object, person, or scene the visual should focus on.",
+  mood: "The emotional tone the final visual should communicate.",
+};
+
+function toSentenceLabel(key: string) {
+  return key.replace(/([A-Z])/g, " $1").trim();
+}
+
+function getFieldExampleValue(key: string, options?: readonly string[]) {
+  if (FIELD_EXAMPLE_VALUES[key]) return FIELD_EXAMPLE_VALUES[key];
+  if (options?.length) return options[0] ?? "";
+  return `Example ${toSentenceLabel(key).toLowerCase()} input`;
+}
+
+function getFieldPlaceholder(key: string, options?: readonly string[]) {
+  const example = getFieldExampleValue(key, options);
+  return options?.length ? `Example: ${example}` : example;
+}
+
+function getFieldHelperText(key: string, label: string) {
+  return FIELD_HELPER_TEXT[key] ?? `Describe the ${label.toLowerCase()} clearly so the result is more specific.`;
+}
+
+function getAudienceForCategory(category: ToolCategory) {
+  switch (category) {
+    case TOOL_CATEGORIES.EXECUTIVE_BRANDING:
+      return "Founders, executives, coaches, and personal brand builders.";
+    case TOOL_CATEGORIES.B2B_SALES:
+      return "Sales teams, founders, and revenue operators running outbound or deal support.";
+    case TOOL_CATEGORIES.CONVERSION_COPY:
+      return "Marketers, copywriters, and growth teams improving conversion messaging.";
+    case TOOL_CATEGORIES.SEO_AUTHORITY:
+      return "Content strategists, SEO teams, and businesses building topical authority.";
+    case TOOL_CATEGORIES.PREMIUM_ASSETS:
+      return "Brand, marketing, and creative teams planning premium visual assets.";
+    default:
+      return "Teams using AI tools to produce faster, clearer business outputs.";
+  }
+}
+
+function getResultDescription(category: ToolCategory) {
+  switch (category) {
+    case TOOL_CATEGORIES.EXECUTIVE_BRANDING:
+      return "A polished authority-building draft with hooks, structure, and positioning guidance.";
+    case TOOL_CATEGORIES.B2B_SALES:
+      return "A sales-ready messaging asset with objection handling, framing, and CTA direction.";
+    case TOOL_CATEGORIES.CONVERSION_COPY:
+      return "A persuasive copy asset organized into conversion-focused sections and final messaging.";
+    case TOOL_CATEGORIES.SEO_AUTHORITY:
+      return "A structured SEO strategy output with search intent, clusters, metadata, and content direction.";
+    case TOOL_CATEGORIES.PREMIUM_ASSETS:
+      return "A premium creative brief or prompt set you can use to produce high-end visuals faster.";
+    default:
+      return "A structured AI-generated result tailored to the selected business use case.";
+  }
+}
+
+function getOutputPreview(category: ToolCategory) {
+  switch (category) {
+    case TOOL_CATEGORIES.EXECUTIVE_BRANDING:
+      return {
+        summary: "You receive a publish-ready authority draft with strategic context.",
+        sections: ["Strategic hook", "Story structure", "Authority angles", "Final draft"],
+        format: "Structured text with named sections",
+      };
+    case TOOL_CATEGORIES.B2B_SALES:
+      return {
+        summary: "You receive sales messaging that is easier to send, adapt, and test.",
+        sections: ["ICP alignment", "Objection handling", "Pitch", "CTA sequence"],
+        format: "Structured text with tactical bullets",
+      };
+    case TOOL_CATEGORIES.CONVERSION_COPY:
+      return {
+        summary: "You receive conversion-focused copy blocks plus a final assembled version.",
+        sections: ["Framework sections", "Hooks", "CTA hierarchy", "Final copy"],
+        format: "Structured copy blocks and final draft",
+      };
+    case TOOL_CATEGORIES.SEO_AUTHORITY:
+      return {
+        summary: "You receive an SEO plan organized for execution and content production.",
+        sections: ["Intent analysis", "Keyword clusters", "Metadata", "Content structure"],
+        format: "Structured strategy outline with lists and objects",
+      };
+    default:
+      return {
+        summary: "You receive a creative output brief you can use immediately.",
+        sections: ["Master prompt", "Composition guidance", "Style rules", "Variations"],
+        format: "Structured prompt system with visual directions",
+      };
+  }
+}
+
 function parseJsonResponse<T>(response: string): T {
   const normalized = response.trim().replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```$/i, "").trim();
   return JSON.parse(normalized) as T;
@@ -233,13 +381,17 @@ function buildTool(item: Item): ToolDefinition {
         }))
       : undefined;
 
+    const label = toSentenceLabel(key);
+
     return {
       name: key,
-      label: key.replace(/([A-Z])/g, " $1").trim(),
+      label,
       type: isEnum ? ("select" as const) : ("textarea" as const),
       required: !(schema instanceof z.ZodOptional) && !(schema instanceof z.ZodDefault),
       options,
-      placeholder: `Enter ${key.replace(/([A-Z])/g, " $1").toLowerCase()}`,
+      placeholder: getFieldPlaceholder(key, options?.map((option) => option.value)),
+      exampleValue: getFieldExampleValue(key, options?.map((option) => option.value)),
+      helperText: getFieldHelperText(key, label),
     };
   });
 
@@ -250,7 +402,7 @@ function buildTool(item: Item): ToolDefinition {
       description: item.description,
       category: item.category,
       icon: item.icon,
-      tagline: `${item.name} — specialized professional system`,
+      tagline: `${item.name} helps teams create ${getResultDescription(item.category).toLowerCase()}`,
       outputType: isSeo ? "article" : isCopy ? "landing-page" : isSales ? "ad-copy" : "text",
       estimatedTimeSeconds: item.usageClass === "heavy" ? 75 : 40,
       tags: [item.category, "Premium", "Specialized"],
@@ -262,9 +414,18 @@ function buildTool(item: Item): ToolDefinition {
       complexity: item.complexity,
       expectedOutputValue: item.expectedOutputValue,
       creditTooltip: item.creditTooltip,
+      audience: getAudienceForCategory(item.category),
+      resultDescription: getResultDescription(item.category),
+      outputPreview: getOutputPreview(item.category),
     },
     fields,
-    examples: [{ title: `${item.name} run`, description: item.description }],
+    examples: [
+      {
+        title: `${item.name} example`,
+        description: getFieldExampleValue(Object.keys(shape)[0] ?? "objective"),
+        values: Object.fromEntries(fields.map((field) => [field.name, field.exampleValue ?? ""])),
+      },
+    ],
     presets: [],
     inputSchema,
     outputSchema,
@@ -281,7 +442,7 @@ export const premiumToolDefinitions: ToolDefinition[] = premiumItems.map(buildTo
 
 export const internalToolDefinitions: ToolDefinition[] = idsByCategory[TOOL_CATEGORIES.BROWSER_TOOLS].map((id) => ({
   id,
-  metadata: { name: titleFromId(id), description: `${titleFromId(id)} internal browser utility.`, category: TOOL_CATEGORIES.BROWSER_TOOLS, icon: "🧩", visibility: "internal", availability: "active", trending: true, complexity: "light", premiumBadge: "Internal Utility", expectedOutputValue: "Fast page-aware utility action", creditTooltip: CREDIT_TOOLTIP },
+  metadata: { name: titleFromId(id), description: `${titleFromId(id)} internal browser utility.`, category: TOOL_CATEGORIES.BROWSER_TOOLS, icon: "🧩", visibility: "internal", availability: "active", trending: true, complexity: "light", premiumBadge: "Internal Utility", expectedOutputValue: "Fast page-aware utility action", creditTooltip: CREDIT_TOOLTIP, audience: "Internal browser extension users.", resultDescription: "A fast page-aware writing or optimization action.", outputPreview: { summary: "You receive a quick browser-side writing result.", sections: ["Result", "Suggestions"], format: "Short structured text" } },
   fields: [],
   inputSchema: browserInputSchema,
   outputSchema: browserOutputSchema,
